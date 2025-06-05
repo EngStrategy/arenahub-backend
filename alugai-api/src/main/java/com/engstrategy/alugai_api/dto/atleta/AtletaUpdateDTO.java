@@ -1,33 +1,28 @@
 package com.engstrategy.alugai_api.dto.atleta;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.validator.constraints.URL;
 
-import java.time.LocalDateTime;
-
-@Schema(description = "Resposta com dados do atleta")
+@Schema(description = "Dados para atualização de um atleta")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class AtletaResponseDTO {
-
-    @Schema(description = "ID do atleta", example = "1")
-    private Long id;
+public class AtletaUpdateDTO {
 
     @Schema(description = "Nome do atleta", example = "João Silva")
+    @Size(min = 2, max = 100, message = "Nome deve ter entre 2 e 100 caracteres")
     private String nome;
 
-    @Schema(description = "Email do atleta", example = "joao@email.com")
-    private String email;
-
     @Schema(description = "Telefone do atleta", example = "(11) 99999-9999")
+    @Pattern(regexp = "\\(\\d{2}\\)\\s\\d{4,5}-\\d{4}", message = "Telefone deve estar no formato (XX) XXXXX-XXXX")
     private String telefone;
 
     @Schema(description = "URL da foto do atleta", example = "https://exemplo.com/foto.jpg")
+    @URL(message = "URL da foto deve ser válida")
     private String urlFoto;
-
-    @Schema(description = "Data de criação", example = "2024-01-01T10:00:00")
-    private LocalDateTime dataCriacao;
 }

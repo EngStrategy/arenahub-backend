@@ -2,6 +2,9 @@ package com.engstrategy.alugai_api.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+
+import java.time.LocalDateTime;
 
 @MappedSuperclass
 @Getter
@@ -28,5 +31,9 @@ public abstract class Usuario {
 
     @Column(name = "url_foto")
     private String urlFoto;
+
+    @CreationTimestamp
+    @Column(name = "data_criacao")
+    private LocalDateTime dataCriacao;
 
 }
