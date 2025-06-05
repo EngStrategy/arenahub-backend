@@ -1,18 +1,27 @@
 package com.engstrategy.alugai_api.model;
 
+import com.engstrategy.alugai_api.model.enums.DiaDaSemana;
 import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
 import jakarta.persistence.*;
 import lombok.*;
 
-@Embeddable
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class HorarioFuncionamento {
 
-    private String diaDaSemana;
-    private String horarios;
-    private double valor;
-    private StatusAgendamento status;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Enumerated(EnumType.STRING)
+    private DiaDaSemana diaDaSemana;
+
+    @OneToMany(mappedBy = "horarioFuncionamento", cascade = CascadeType.ALL)
+    private List<IntervaloHorario> intervalosDeHorario = new ArrayList<>();
 }

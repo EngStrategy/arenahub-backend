@@ -3,8 +3,6 @@ package com.engstrategy.alugai_api.model;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.util.UUID;
-
 @MappedSuperclass
 @Getter
 @Setter
@@ -27,5 +25,8 @@ public abstract class Usuario {
 
     @Column(nullable = false)
     private String senha;
+
+    @Column(name = "url_foto")
+    private String urlFoto;
 
 }

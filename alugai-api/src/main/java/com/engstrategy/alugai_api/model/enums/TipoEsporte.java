@@ -1,12 +1,13 @@
 package com.engstrategy.alugai_api.model.enums;
 
 public enum TipoEsporte {
-    FUTEBOL,
+    FUTEBOL_SOCIETY,
+    FUTEBOL_SETE,
+    FUTEBOL_ONZE,
     FUTSAL,
-    TENIS,
-    BOLICHE,
     BEACHTENIS,
     VOLEI,
-    PINGPONG,
-    BASQUETE;
+    FUTEVOLEI,
+    BASQUETE,
+    HANDEBOL;
 }

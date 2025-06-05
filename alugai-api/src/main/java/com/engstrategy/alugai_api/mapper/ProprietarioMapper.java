@@ -2,9 +2,7 @@ package com.engstrategy.alugai_api.mapper;
 
 import com.engstrategy.alugai_api.dto.proprietario.ProprietarioCadastroDTO;
 import com.engstrategy.alugai_api.dto.proprietario.ProprietarioResponseDTO;
-import com.engstrategy.alugai_api.model.Proprietario;
 import org.mapstruct.*;
-import org.springframework.stereotype.Component;
 
 /**
  * Mapper responsável por conversões entre Proprietario e seus respectivos DTOs.

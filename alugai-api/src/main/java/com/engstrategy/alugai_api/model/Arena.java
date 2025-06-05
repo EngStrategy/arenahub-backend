@@ -4,34 +4,28 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 @Entity
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class Arena {
+public class Arena extends Usuario {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(unique=true, nullable=false)
+    private String cpfProprietario;
 
-    private String nome;
+    @Column(unique = true)
     private String cnpj;
 
     @Embedded
     private Endereco endereco;
 
     private String telefone;
-    private String descricao;
-    private String horarioFuncionamento;
-    private String regrasGerais;
 
-    @ManyToOne
-    @JoinColumn(name = "proprietario_id", nullable = false)
-    private Proprietario proprietario;
+    private String descricao;
 
     @OneToMany(mappedBy = "arena", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Quadra> quadras = new ArrayList<>();
+
 }
