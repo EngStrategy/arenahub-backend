@@ -24,4 +24,8 @@ public class HorarioFuncionamento {
 
     @OneToMany(mappedBy = "horarioFuncionamento", cascade = CascadeType.ALL)
     private List<IntervaloHorario> intervalosDeHorario = new ArrayList<>();
+
+    @ManyToOne
+    @JoinColumn(name = "quadra_id", nullable = false)
+    private Quadra quadra;
 }
