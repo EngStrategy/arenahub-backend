@@ -21,8 +21,6 @@ public class Arena extends Usuario {
     @Embedded
     private Endereco endereco;
 
-    private String telefone;
-
     private String descricao;
 
     @OneToMany(mappedBy = "arena", cascade = CascadeType.ALL, orphanRemoval = true)
