@@ -1,12 +1,16 @@
 package com.engstrategy.alugai_api.config;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -15,7 +19,10 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -23,13 +30,27 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .authorizeHttpRequests(authorize -> authorize
-                        .anyRequest().permitAll() // Libera todas as requisições
+                .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Aplicar CORS
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        // Swagger UI - DEVE VIR PRIMEIRO
+                        .requestMatchers("/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/v3/api-docs/**", "/v3/api-docs.yaml").permitAll()
+                        .requestMatchers("/swagger-resources/**").permitAll()
+                        .requestMatchers("/webjars/**").permitAll()
+                        // Seus endpoints públicos existentes
+                        .requestMatchers("/api/v1/usuarios/auth").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/atletas").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/arenas").permitAll()
+                        // Seus endpoints com autorização
+                        .requestMatchers("/api/v1/atletas/**").hasRole("ATLETA")
+                        .requestMatchers("/api/v1/arenas/**").hasRole("ARENA")
+                        .anyRequest().authenticated()
                 )
-                .csrf(csrf -> csrf.disable()) // Desativa CSRF para desenvolvimento
-                .cors(cors -> cors.configurationSource(corsConfigurationSource())); // Aplica configuração de CORS
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -37,13 +58,37 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("*")); // Permite todas as origens
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS")); // Métodos HTTP permitidos
-        configuration.setAllowedHeaders(List.of("*")); // Permite todos os cabeçalhos
-        configuration.setAllowCredentials(false); // Não permite credenciais
+
+        // Origens permitidas para desenvolvimento e produção
+        configuration.setAllowedOrigins(List.of(
+                "http://localhost:3000",    // React dev server
+                "http://localhost:5173",    // Vite dev server
+                "http://localhost:8080",    // Backend (para testes diretos)
+                "http://127.0.0.1:3000",   // Variação do localhost
+                "http://127.0.0.1:5173",   // Variação do localhost
+                "https://seudominio.com"    // Substitua pelo seu domínio quando tiver
+        ));
+
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+
+        // Headers específicos que sua aplicação usa
+        configuration.setAllowedHeaders(List.of(
+                "Authorization",
+                "Content-Type",
+                "Accept",
+                "Origin",
+                "Access-Control-Request-Method",
+                "Access-Control-Request-Headers"
+        ));
+
+        // Permite credenciais (necessário para Authorization header)
+        configuration.setAllowCredentials(true);
+
+        // Headers expostos para o frontend
+        configuration.setExposedHeaders(List.of("Authorization"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration); // Aplica a configuração a todos os caminhos
+        source.registerCorsConfiguration("/**", configuration);
         return source;
     }
 }
