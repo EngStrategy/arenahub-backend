@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.validator.constraints.URL;
@@ -12,6 +13,7 @@ import org.hibernate.validator.constraints.URL;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class AtletaUpdateDTO {
 
     @Schema(description = "Nome do atleta", example = "João Silva")

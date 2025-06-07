@@ -3,6 +3,8 @@ package com.engstrategy.alugai_api.controller;
 import com.engstrategy.alugai_api.dto.atleta.AtletaCreateDTO;
 import com.engstrategy.alugai_api.dto.atleta.AtletaResponseDTO;
 import com.engstrategy.alugai_api.dto.atleta.AtletaUpdateDTO;
+import com.engstrategy.alugai_api.mapper.AtletaMapper;
+import com.engstrategy.alugai_api.model.Atleta;
 import com.engstrategy.alugai_api.service.AtletaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -30,6 +32,7 @@ import org.springframework.web.bind.annotation.*;
 public class AtletaController {
 
     private final AtletaService atletaService;
+    private final AtletaMapper atletaMapper;
 
     @PostMapping
     @Operation(summary = "Criar atleta", description = "Cria um novo atleta no sistema")
@@ -40,10 +43,11 @@ public class AtletaController {
             @ApiResponse(responseCode = "400", description = "Dados inválidos fornecidos"),
             @ApiResponse(responseCode = "409", description = "Email ou telefone já cadastrado")
     })
-    public ResponseEntity<AtletaResponseDTO> criarAtleta(
-            @Valid @RequestBody AtletaCreateDTO atletaCreateDTO) {
-        AtletaResponseDTO atleta = atletaService.criarAtleta(atletaCreateDTO);
-        return ResponseEntity.status(HttpStatus.CREATED).body(atleta);
+    public ResponseEntity<AtletaResponseDTO> criarAtleta(@Valid @RequestBody AtletaCreateDTO atletaCreateDTO) {
+
+        Atleta atleta = atletaMapper.mapAtletaCreateDtoToAtleta(atletaCreateDTO);
+        AtletaResponseDTO response = atletaMapper.mapAtletaToAtletaResponseDto(atletaService.criarAtleta(atleta));
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/{id}")
@@ -57,8 +61,10 @@ public class AtletaController {
     public ResponseEntity<AtletaResponseDTO> buscarAtletaPorId(
             @Parameter(description = "ID do atleta", required = true)
             @PathVariable Long id) {
-        AtletaResponseDTO atleta = atletaService.buscarPorId(id);
-        return ResponseEntity.ok(atleta);
+
+        Atleta atleta = atletaService.buscarPorId(id);
+        AtletaResponseDTO response = atletaMapper.mapAtletaToAtletaResponseDto(atleta);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping
@@ -76,10 +82,10 @@ public class AtletaController {
             @Parameter(description = "Direção da ordenação (asc/desc)")
             @RequestParam(defaultValue = "asc") String direction) {
 
-        Pageable pageable = PageRequest.of(page, size,
-                Sort.by(Sort.Direction.fromString(direction), sort));
-        Page<AtletaResponseDTO> atletas = atletaService.listarTodos(pageable);
-        return ResponseEntity.ok(atletas);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(direction), sort));
+        Page<Atleta> atletas = atletaService.listarTodos(pageable);
+        Page<AtletaResponseDTO> response = atletas.map(atletaMapper::mapAtletaToAtletaResponseDto);
+        return ResponseEntity.ok(response);
     }
 
     @PutMapping("/{id}")
@@ -95,8 +101,10 @@ public class AtletaController {
             @Parameter(description = "ID do atleta", required = true)
             @PathVariable Long id,
             @Valid @RequestBody AtletaUpdateDTO atletaUpdateDTO) {
-        AtletaResponseDTO atleta = atletaService.atualizar(id, atletaUpdateDTO);
-        return ResponseEntity.ok(atleta);
+
+        Atleta updatedAtleta = atletaService.atualizar(id, atletaUpdateDTO);
+        AtletaResponseDTO response = atletaMapper.mapAtletaToAtletaResponseDto(updatedAtleta);
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{id}")

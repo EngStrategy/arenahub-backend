@@ -1,7 +1,9 @@
 package com.engstrategy.alugai_api.dto.arena;
 
+import com.engstrategy.alugai_api.model.enums.Role;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -11,6 +13,7 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class ArenaResponseDTO {
 
     @Schema(description = "ID da arena", example = "1")
@@ -42,4 +45,7 @@ public class ArenaResponseDTO {
 
     @Schema(description = "Data de criação", example = "2024-01-01T10:00:00")
     private LocalDateTime dataCriacao;
+
+    @Schema(description = "Role do usuário", example = "ARENA")
+    private Role role;
 }

@@ -1,11 +1,10 @@
 package com.engstrategy.alugai_api.dto.atleta;
 
+import com.engstrategy.alugai_api.model.enums.Role;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.validator.constraints.URL;
@@ -14,6 +13,7 @@ import org.hibernate.validator.constraints.URL;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class AtletaCreateDTO {
 
     @Schema(description = "Nome do atleta", example = "João Silva", required = true)
@@ -39,5 +39,9 @@ public class AtletaCreateDTO {
     @Schema(description = "URL da foto do atleta", example = "https://exemplo.com/foto.jpg")
     @URL(message = "URL da foto deve ser válida")
     private String urlFoto;
+
+    @Schema(description = "Role do usuario", example = "ATLETA")
+    @NotNull(message = "Role é obrigatória")
+    private Role role;
 }
 

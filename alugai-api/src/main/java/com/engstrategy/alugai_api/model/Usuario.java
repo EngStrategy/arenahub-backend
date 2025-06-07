@@ -1,7 +1,9 @@
 package com.engstrategy.alugai_api.model;
 
+import com.engstrategy.alugai_api.model.enums.Role;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
@@ -11,6 +13,7 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@SuperBuilder
 public abstract class Usuario {
 
     @Id
@@ -35,5 +38,9 @@ public abstract class Usuario {
     @CreationTimestamp
     @Column(name = "data_criacao")
     private LocalDateTime dataCriacao;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Role role;
 
 }

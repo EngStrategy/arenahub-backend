@@ -1,7 +1,10 @@
 package com.engstrategy.alugai_api.dto.atleta;
 
+import com.engstrategy.alugai_api.model.enums.Role;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -11,6 +14,7 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class AtletaResponseDTO {
 
     @Schema(description = "ID do atleta", example = "1")
@@ -30,4 +34,8 @@ public class AtletaResponseDTO {
 
     @Schema(description = "Data de criação", example = "2024-01-01T10:00:00")
     private LocalDateTime dataCriacao;
+
+    @Schema(description = "Role do usuario", example = "ATLETA")
+    @NotNull(message = "Role é obrigatória")
+    private Role role;
 }

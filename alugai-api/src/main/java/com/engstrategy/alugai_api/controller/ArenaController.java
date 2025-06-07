@@ -3,6 +3,8 @@ package com.engstrategy.alugai_api.controller;
 import com.engstrategy.alugai_api.dto.arena.ArenaCreateDTO;
 import com.engstrategy.alugai_api.dto.arena.ArenaResponseDTO;
 import com.engstrategy.alugai_api.dto.arena.ArenaUpdateDTO;
+import com.engstrategy.alugai_api.mapper.ArenaMapper;
+import com.engstrategy.alugai_api.model.Arena;
 import com.engstrategy.alugai_api.service.ArenaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -30,6 +32,7 @@ import org.springframework.web.bind.annotation.*;
 public class ArenaController {
 
     private final ArenaService arenaService;
+    private final ArenaMapper arenaMapper;
 
     @PostMapping
     @Operation(summary = "Criar arena", description = "Cria uma nova arena no sistema")
@@ -40,10 +43,10 @@ public class ArenaController {
             @ApiResponse(responseCode = "400", description = "Dados inválidos fornecidos"),
             @ApiResponse(responseCode = "409", description = "Email, telefone, CPF ou CNPJ já cadastrado")
     })
-    public ResponseEntity<ArenaResponseDTO> criarArena(
-            @Valid @RequestBody ArenaCreateDTO arenaCreateDTO) {
-        ArenaResponseDTO arena = arenaService.criarArena(arenaCreateDTO);
-        return ResponseEntity.status(HttpStatus.CREATED).body(arena);
+    public ResponseEntity<ArenaResponseDTO> criarArena(@Valid @RequestBody ArenaCreateDTO arenaCreateDTO) {
+        Arena arena = arenaMapper.mapArenaCreateDtoToArena(arenaCreateDTO);
+        ArenaResponseDTO response = arenaMapper.mapArenaToArenaResponseDTO(arenaService.criarArena(arena));
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/{id}")
@@ -57,8 +60,10 @@ public class ArenaController {
     public ResponseEntity<ArenaResponseDTO> buscarArenaPorId(
             @Parameter(description = "ID da arena", required = true)
             @PathVariable Long id) {
-        ArenaResponseDTO arena = arenaService.buscarPorId(id);
-        return ResponseEntity.ok(arena);
+
+        Arena arena = arenaService.buscarPorId(id);
+        ArenaResponseDTO response = arenaMapper.mapArenaToArenaResponseDTO(arena);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping
@@ -80,10 +85,11 @@ public class ArenaController {
             @Parameter(description = "Filtrar por esporte (valores possíveis: FUTEBOL_SOCIETY, FUTEBOL_SETE, FUTEBOL_ONZE, FUTSAL, BEACHTENIS, VOLEI, FUTEVOLEI, BASQUETE, HANDEBOL)")
             @RequestParam(required = false) String esporte) {
 
-        Pageable pageable = PageRequest.of(page, size,
-                Sort.by(Sort.Direction.fromString(direction), sort));
-        Page<ArenaResponseDTO> arenas = arenaService.listarTodos(pageable, cidade, esporte);
-        return ResponseEntity.ok(arenas);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(direction), sort));
+
+        Page<Arena> arenas = arenaService.listarTodos(pageable, cidade, esporte);
+        Page<ArenaResponseDTO> response = arenas.map(arenaMapper::mapArenaToArenaResponseDTO);
+        return ResponseEntity.ok(response);
     }
 
     @PutMapping("/{id}")
@@ -99,8 +105,10 @@ public class ArenaController {
             @Parameter(description = "ID da arena", required = true)
             @PathVariable Long id,
             @Valid @RequestBody ArenaUpdateDTO arenaUpdateDTO) {
-        ArenaResponseDTO arena = arenaService.atualizar(id, arenaUpdateDTO);
-        return ResponseEntity.ok(arena);
+
+        Arena updatedArena = arenaService.atualizar(id, arenaUpdateDTO);
+        ArenaResponseDTO response = arenaMapper.mapArenaToArenaResponseDTO(updatedArena);
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{id}")

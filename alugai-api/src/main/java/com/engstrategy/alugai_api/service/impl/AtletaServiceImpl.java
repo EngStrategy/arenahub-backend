@@ -1,7 +1,5 @@
 package com.engstrategy.alugai_api.service.impl;
 
-import com.engstrategy.alugai_api.dto.atleta.AtletaCreateDTO;
-import com.engstrategy.alugai_api.dto.atleta.AtletaResponseDTO;
 import com.engstrategy.alugai_api.dto.atleta.AtletaUpdateDTO;
 import com.engstrategy.alugai_api.model.Atleta;
 import com.engstrategy.alugai_api.repository.AtletaRepository;
@@ -28,57 +26,47 @@ public class AtletaServiceImpl implements AtletaService {
 
     @Override
     @Transactional
-    public AtletaResponseDTO criarAtleta(AtletaCreateDTO atletaCreateDTO) {
-        validarDadosUnicos(atletaCreateDTO.getEmail(), atletaCreateDTO.getTelefone());
+    public Atleta criarAtleta(Atleta atleta) {
+        validarDadosUnicos(atleta.getEmail(), atleta.getTelefone());
 
-        Atleta atleta = new Atleta();
-        atleta.setNome(atletaCreateDTO.getNome());
-        atleta.setEmail(atletaCreateDTO.getEmail());
-        atleta.setTelefone(atletaCreateDTO.getTelefone());
-        atleta.setSenha(passwordEncoder.encode(atletaCreateDTO.getSenha()));
-        atleta.setUrlFoto(atletaCreateDTO.getUrlFoto());
-
-        Atleta atletaSalvo = atletaRepository.save(atleta);
-        return converterParaResponseDTO(atletaSalvo);
+        encodePassword(atleta);
+        return atletaRepository.save(atleta);
     }
 
     @Override
-    public AtletaResponseDTO buscarPorId(Long id) {
-        Atleta atleta = atletaRepository.findById(id)
+    public Atleta buscarPorId(Long id) {
+        return atletaRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Atleta não encontrado com ID: " + id));
-        return converterParaResponseDTO(atleta);
     }
 
     @Override
-    public Page<AtletaResponseDTO> listarTodos(Pageable pageable) {
-        return atletaRepository.findAll(pageable)
-                .map(this::converterParaResponseDTO);
+    public Page<Atleta> listarTodos(Pageable pageable) {
+        return atletaRepository.findAll(pageable);
     }
 
     @Override
     @Transactional
-    public AtletaResponseDTO atualizar(Long id, AtletaUpdateDTO atletaUpdateDTO) {
-        Atleta atleta = atletaRepository.findById(id)
+    public Atleta atualizar(Long id, AtletaUpdateDTO atletaUpdateDTO) {
+        Atleta savedAtleta = atletaRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Atleta não encontrado com ID: " + id));
 
         // Verifica se o telefone mudou e se é único
-        if (atletaUpdateDTO.getTelefone() != null && !atletaUpdateDTO.getTelefone().equals(atleta.getTelefone())) {
+        if (atletaUpdateDTO.getTelefone() != null && !atletaUpdateDTO.getTelefone().equals(savedAtleta.getTelefone())) {
             if (atletaRepository.existsByTelefone(atletaUpdateDTO.getTelefone())) {
                 throw new IllegalArgumentException("Telefone já está em uso.");
             }
-            atleta.setTelefone(atletaUpdateDTO.getTelefone());
+            savedAtleta.setTelefone(atletaUpdateDTO.getTelefone());
         }
 
         // Atualiza os campos que não são nulos
         if (atletaUpdateDTO.getNome() != null) {
-            atleta.setNome(atletaUpdateDTO.getNome());
+            savedAtleta.setNome(atletaUpdateDTO.getNome());
         }
         if (atletaUpdateDTO.getUrlFoto() != null) {
-            atleta.setUrlFoto(atletaUpdateDTO.getUrlFoto());
+            savedAtleta.setUrlFoto(atletaUpdateDTO.getUrlFoto());
         }
 
-        Atleta atletaAtualizado = atletaRepository.save(atleta);
-        return converterParaResponseDTO(atletaAtualizado);
+        return atletaRepository.save(savedAtleta);
     }
 
     @Override
@@ -98,14 +86,8 @@ public class AtletaServiceImpl implements AtletaService {
         }
     }
 
-    private AtletaResponseDTO converterParaResponseDTO(Atleta atleta) {
-        AtletaResponseDTO responseDTO = new AtletaResponseDTO();
-        responseDTO.setId(atleta.getId());
-        responseDTO.setNome(atleta.getNome());
-        responseDTO.setEmail(atleta.getEmail());
-        responseDTO.setTelefone(atleta.getTelefone());
-        responseDTO.setUrlFoto(atleta.getUrlFoto());
-        responseDTO.setDataCriacao(atleta.getDataCriacao());
-        return responseDTO;
+    private void encodePassword(Atleta atleta) {
+        String encodedPassword = passwordEncoder.encode(atleta.getSenha());
+        atleta.setSenha(encodedPassword);
     }
 }

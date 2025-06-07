@@ -5,6 +5,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.validator.constraints.URL;
@@ -13,6 +14,7 @@ import org.hibernate.validator.constraints.URL;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class ArenaUpdateDTO {
 
     @Schema(description = "Nome da arena", example = "Arena Sports Center")

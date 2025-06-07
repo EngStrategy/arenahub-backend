@@ -1,9 +1,11 @@
 package com.engstrategy.alugai_api.dto.arena;
 
+import com.engstrategy.alugai_api.model.enums.Role;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.validator.constraints.URL;
@@ -12,6 +14,7 @@ import org.hibernate.validator.constraints.URL;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class ArenaCreateDTO {
 
     @Schema(description = "Nome da arena", example = "Arena Sports Center", required = true)
@@ -55,4 +58,8 @@ public class ArenaCreateDTO {
     @Schema(description = "URL da foto da arena", example = "https://exemplo.com/foto.jpg")
     @URL(message = "URL da foto deve ser válida")
     private String urlFoto;
+
+    @Schema(description = "Role do usuario", example = "ARENA")
+    @NotNull(message = "Role é obrigatória")
+    private Role role;
 }
