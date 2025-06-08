@@ -33,19 +33,18 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Aplicar CORS
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Swagger UI - DEVE VIR PRIMEIRO
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/v3/api-docs.yaml").permitAll()
                         .requestMatchers("/swagger-resources/**").permitAll()
                         .requestMatchers("/webjars/**").permitAll()
-                        // Seus endpoints públicos existentes
+                        // endpoints públicos
                         .requestMatchers("/api/v1/usuarios/auth").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/atletas").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/arenas").permitAll()
-                        // Seus endpoints com autorização
+                        // endpoints com autorização
                         .requestMatchers("/api/v1/atletas/**").hasRole("ATLETA")
                         .requestMatchers("/api/v1/arenas/**").hasRole("ARENA")
                         .anyRequest().authenticated()
@@ -65,8 +64,7 @@ public class SecurityConfig {
                 "http://localhost:5173",    // Vite dev server
                 "http://localhost:8080",    // Backend (para testes diretos)
                 "http://127.0.0.1:3000",   // Variação do localhost
-                "http://127.0.0.1:5173",   // Variação do localhost
-                "https://seudominio.com"    // Substitua pelo seu domínio quando tiver
+                "http://127.0.0.1:5173"   // Variação do localhost
         ));
 
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
@@ -81,7 +79,7 @@ public class SecurityConfig {
                 "Access-Control-Request-Headers"
         ));
 
-        // Permite credenciais (necessário para Authorization header)
+        // Permite credenciais
         configuration.setAllowCredentials(true);
 
         // Headers expostos para o frontend

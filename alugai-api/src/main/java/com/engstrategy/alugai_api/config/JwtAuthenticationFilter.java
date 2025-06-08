@@ -1,5 +1,6 @@
 package com.engstrategy.alugai_api.config;
 
+import com.engstrategy.alugai_api.exceptions.InvalidTokenException;
 import com.engstrategy.alugai_api.jwt.JwtService;
 import com.engstrategy.alugai_api.model.Usuario;
 import com.engstrategy.alugai_api.model.enums.Role;
@@ -55,7 +56,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             }
         } catch (Exception e) {
-            // Token inválido, continua sem autenticação
+            throw new InvalidTokenException("Token inválido");
         }
 
         filterChain.doFilter(request, response);

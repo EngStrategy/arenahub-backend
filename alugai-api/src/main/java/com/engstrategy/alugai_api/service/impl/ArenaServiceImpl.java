@@ -1,6 +1,8 @@
 package com.engstrategy.alugai_api.service.impl;
 
 import com.engstrategy.alugai_api.dto.arena.ArenaUpdateDTO;
+import com.engstrategy.alugai_api.exceptions.UniqueConstraintViolationException;
+import com.engstrategy.alugai_api.exceptions.UserNotFoundException;
 import com.engstrategy.alugai_api.mapper.EnderecoMapper;
 import com.engstrategy.alugai_api.model.Arena;
 import com.engstrategy.alugai_api.repository.ArenaRepository;
@@ -36,7 +38,7 @@ public class ArenaServiceImpl implements ArenaService {
     @Override
     public Arena buscarPorId(Long id) {
         return arenaRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Arena não encontrada com ID: " + id));
+                .orElseThrow(() -> new UserNotFoundException("Arena não encontrada com ID: " + id));
     }
 
     @Override
@@ -62,11 +64,11 @@ public class ArenaServiceImpl implements ArenaService {
     @Transactional
     public Arena atualizar(Long id, ArenaUpdateDTO arenaUpdateDTO) {
         Arena savedArena = arenaRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Arena não encontrada com ID: " + id));
+                .orElseThrow(() -> new UserNotFoundException("Arena não encontrada com ID: " + id));
 
         if (arenaUpdateDTO.getTelefone() != null && !arenaUpdateDTO.getTelefone().equals(savedArena.getTelefone())) {
             if (arenaRepository.existsByTelefone(arenaUpdateDTO.getTelefone())) {
-                throw new IllegalArgumentException("Telefone já está em uso.");
+                throw new UniqueConstraintViolationException("Telefone já está em uso.");
             }
             savedArena.setTelefone(arenaUpdateDTO.getTelefone());
         }
@@ -91,22 +93,22 @@ public class ArenaServiceImpl implements ArenaService {
     @Transactional
     public void excluir(Long id) {
         Arena arena = arenaRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Arena não encontrada com ID: " + id));
+                .orElseThrow(() -> new UserNotFoundException("Arena não encontrada com ID: " + id));
         arenaRepository.delete(arena);
     }
 
     private void validarDadosUnicos(String email, String telefone, String cpfProprietario, String cnpj) {
         if (arenaRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException("Email já está em uso.");
+            throw new UniqueConstraintViolationException("Email já está em uso.");
         }
         if (arenaRepository.existsByTelefone(telefone)) {
-            throw new IllegalArgumentException("Telefone já está em uso.");
+            throw new UniqueConstraintViolationException("Telefone já está em uso.");
         }
         if (arenaRepository.existsByCpfProprietario(cpfProprietario)) {
-            throw new IllegalArgumentException("CPF do proprietário já está em uso.");
+            throw new UniqueConstraintViolationException("CPF do proprietário já está em uso.");
         }
         if (cnpj != null && arenaRepository.existsByCnpj(cnpj)) {
-            throw new IllegalArgumentException("CNPJ já está em uso.");
+            throw new UniqueConstraintViolationException("CNPJ já está em uso.");
         }
     }
 

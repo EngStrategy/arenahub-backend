@@ -1,10 +1,11 @@
 package com.engstrategy.alugai_api.service.impl;
 
 import com.engstrategy.alugai_api.dto.atleta.AtletaUpdateDTO;
+import com.engstrategy.alugai_api.exceptions.UniqueConstraintViolationException;
+import com.engstrategy.alugai_api.exceptions.UserNotFoundException;
 import com.engstrategy.alugai_api.model.Atleta;
 import com.engstrategy.alugai_api.repository.AtletaRepository;
 import com.engstrategy.alugai_api.service.AtletaService;
-import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -36,7 +37,7 @@ public class AtletaServiceImpl implements AtletaService {
     @Override
     public Atleta buscarPorId(Long id) {
         return atletaRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Atleta não encontrado com ID: " + id));
+                .orElseThrow(() -> new UserNotFoundException("Atleta não encontrado com ID: " + id));
     }
 
     @Override
@@ -48,12 +49,12 @@ public class AtletaServiceImpl implements AtletaService {
     @Transactional
     public Atleta atualizar(Long id, AtletaUpdateDTO atletaUpdateDTO) {
         Atleta savedAtleta = atletaRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Atleta não encontrado com ID: " + id));
+                .orElseThrow(() -> new UserNotFoundException("Atleta não encontrado com ID: " + id));
 
         // Verifica se o telefone mudou e se é único
         if (atletaUpdateDTO.getTelefone() != null && !atletaUpdateDTO.getTelefone().equals(savedAtleta.getTelefone())) {
             if (atletaRepository.existsByTelefone(atletaUpdateDTO.getTelefone())) {
-                throw new IllegalArgumentException("Telefone já está em uso.");
+                throw new UniqueConstraintViolationException("Telefone já está em uso.");
             }
             savedAtleta.setTelefone(atletaUpdateDTO.getTelefone());
         }
@@ -73,16 +74,16 @@ public class AtletaServiceImpl implements AtletaService {
     @Transactional
     public void excluir(Long id) {
         Atleta atleta = atletaRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Atleta não encontrado com ID: " + id));
+                .orElseThrow(() -> new UserNotFoundException("Atleta não encontrado com ID: " + id));
         atletaRepository.delete(atleta);
     }
 
     private void validarDadosUnicos(String email, String telefone) {
         if (atletaRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException("Email já está em uso.");
+            throw new UniqueConstraintViolationException("Email já está em uso.");
         }
         if (atletaRepository.existsByTelefone(telefone)) {
-            throw new IllegalArgumentException("Telefone já está em uso.");
+            throw new UniqueConstraintViolationException("Telefone já está em uso.");
         }
     }
 

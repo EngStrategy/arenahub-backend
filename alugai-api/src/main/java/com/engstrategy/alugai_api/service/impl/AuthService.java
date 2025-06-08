@@ -2,6 +2,8 @@ package com.engstrategy.alugai_api.service.impl;
 
 import com.engstrategy.alugai_api.dto.usuario.AuthResponse;
 import com.engstrategy.alugai_api.dto.usuario.LoginRequest;
+import com.engstrategy.alugai_api.exceptions.InvalidCredentialsException;
+import com.engstrategy.alugai_api.exceptions.UserNotFoundException;
 import com.engstrategy.alugai_api.jwt.JwtService;
 import com.engstrategy.alugai_api.model.Usuario;
 import lombok.RequiredArgsConstructor;
@@ -20,11 +22,11 @@ public class AuthService {
         Usuario usuario = userService.findUserByEmail(loginRequest.getEmail()); // Use UserService
 
         if (usuario == null) {
-            throw new RuntimeException("Usuário não encontrado");
+            throw new UserNotFoundException("Usuário não encontrado");
         }
 
-        if (!passwordEncoder.matches(loginRequest.getSenha(), usuario.getSenha())) {
-            throw new RuntimeException("Senha inválida");
+        if (!passwordEncoder.matches(loginRequest.getPassword(), usuario.getSenha())) {
+            throw new InvalidCredentialsException("Senha inválida");
         }
 
         String token = jwtService.generateToken(usuario);
@@ -32,9 +34,10 @@ public class AuthService {
         return AuthResponse.builder()
                 .accessToken(token)
                 .userId(usuario.getId())
-                .nome(usuario.getNome())
+                .name(usuario.getNome())
                 .role(usuario.getRole().toString())
                 .expiresIn(3600) // 1 hora em segundos
+                .imageUrl(usuario.getUrlFoto())
                 .build();
     }
 }

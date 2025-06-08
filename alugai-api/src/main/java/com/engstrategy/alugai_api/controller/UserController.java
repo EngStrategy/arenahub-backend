@@ -87,7 +87,6 @@ public class UserController {
     }
 
     private Object mapArenaToResponse(Arena arena) {
-        // Usar seu ArenaMapper aqui
         return ArenaResponseDTO.builder()
                 .id(arena.getId())
                 .nome(arena.getNome())
@@ -98,7 +97,6 @@ public class UserController {
     }
 
     private Object mapAtletaToResponse(Atleta atleta) {
-        // Usar seu AtletaMapper aqui
         return AtletaResponseDTO.builder()
                 .id(atleta.getId())
                 .nome(atleta.getNome())

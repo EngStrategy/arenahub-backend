@@ -2,6 +2,8 @@ package com.engstrategy.alugai_api.controller;
 
 import com.engstrategy.alugai_api.dto.usuario.AuthResponse;
 import com.engstrategy.alugai_api.dto.usuario.LoginRequest;
+import com.engstrategy.alugai_api.exceptions.InvalidCredentialsException;
+import com.engstrategy.alugai_api.exceptions.UserNotFoundException;
 import com.engstrategy.alugai_api.service.impl.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -11,7 +13,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -46,8 +47,10 @@ public class AuthController {
         try {
             AuthResponse response = authService.authenticate(loginRequest);
             return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        } catch (UserNotFoundException e) {
+            throw new UserNotFoundException(e.getMessage());
+        } catch (InvalidCredentialsException e) {
+            throw new InvalidCredentialsException(e.getMessage());
         }
     }
 }

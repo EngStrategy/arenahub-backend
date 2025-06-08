@@ -23,7 +23,7 @@ public class AuthResponse {
 
     @Schema(description = "Nome do usuário",
             example = "João Silva")
-    private String nome;
+    private String name;
 
     @Schema(description = "Tipo de usuário",
             example = "ATLETA",
@@ -33,4 +33,8 @@ public class AuthResponse {
     @Schema(description = "Tempo de expiração do token em segundos",
             example = "3600")
     private long expiresIn;
+
+    @Schema(description = "URL da foto do usuário", example = "https://imagem.com.br")
+    private String imageUrl;
+
 }
