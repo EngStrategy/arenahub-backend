@@ -13,11 +13,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Collections;
 
 @Component
 @RequiredArgsConstructor
@@ -45,13 +45,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             Long userId = jwtService.getUserIdFromToken(token);
 
             if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                Usuario user = userService.findUserById(userId, role);
+                Usuario usuario = userService.findUserById(userId, role);
 
-                if (user != null) {
+                if (usuario != null) {
+                    UserDetails userDetails = org.springframework.security.core.userdetails.User
+                            .withUsername(usuario.getEmail())
+                            .password("") // Senha não necessária para JWT
+                            .authorities(new SimpleGrantedAuthority("ROLE_" + usuario.getRole().name()))
+                            .build();
+
+                    // Configurar o SecurityContext
                     UsernamePasswordAuthenticationToken authToken =
-                            new UsernamePasswordAuthenticationToken(user, null,
-                                    Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role.name())));
-
+                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             }
