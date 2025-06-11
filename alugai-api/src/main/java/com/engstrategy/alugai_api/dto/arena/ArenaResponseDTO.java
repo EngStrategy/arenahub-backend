@@ -28,12 +28,6 @@ public class ArenaResponseDTO {
     @Schema(description = "Telefone da arena", example = "(11) 99999-9999")
     private String telefone;
 
-    @Schema(description = "CPF do proprietário", example = "123.456.789-00")
-    private String cpfProprietario;
-
-    @Schema(description = "CNPJ da arena", example = "12.345.678/0001-90")
-    private String cnpj;
-
     @Schema(description = "Endereço da arena")
     private EnderecoDTO endereco;
 

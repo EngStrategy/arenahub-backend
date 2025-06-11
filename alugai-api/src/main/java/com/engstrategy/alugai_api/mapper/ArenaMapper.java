@@ -33,8 +33,6 @@ public class ArenaMapper {
                 .nome(arena.getNome())
                 .email(arena.getEmail())
                 .telefone(arena.getTelefone())
-                .cpfProprietario(arena.getCpfProprietario())
-                .cnpj(arena.getCnpj())
                 .descricao(arena.getDescricao())
                 .urlFoto(arena.getUrlFoto())
                 .endereco(enderecoMapper.mapEnderecoToEnderecoDTO(arena.getEndereco()))
