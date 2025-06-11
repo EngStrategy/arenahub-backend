@@ -14,7 +14,6 @@ public class AtletaMapper {
                 .email(atletaCreateDTO.getEmail())
                 .telefone(atletaCreateDTO.getTelefone())
                 .senha(atletaCreateDTO.getSenha())
-                .urlFoto(atletaCreateDTO.getUrlFoto())
                 .role(atletaCreateDTO.getRole())
                 .build();
     }

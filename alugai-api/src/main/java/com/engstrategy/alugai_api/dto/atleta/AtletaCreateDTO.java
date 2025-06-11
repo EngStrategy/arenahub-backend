@@ -36,10 +36,6 @@ public class AtletaCreateDTO {
     @Size(min = 8, message = "Senha deve ter no mínimo 8 caracteres")
     private String senha;
 
-    @Schema(description = "URL da foto do atleta", example = "https://exemplo.com/foto.jpg")
-    @URL(message = "URL da foto deve ser válida")
-    private String urlFoto;
-
     @Schema(description = "Role do usuario", example = "ATLETA")
     @NotNull(message = "Role é obrigatória")
     private Role role;
