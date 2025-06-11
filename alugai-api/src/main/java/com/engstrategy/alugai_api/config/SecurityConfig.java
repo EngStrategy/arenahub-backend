@@ -44,6 +44,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/usuarios/auth").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/atletas").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/arenas").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/arenas").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/arenas/**").permitAll()
                         // endpoints com autorização
                         .requestMatchers("/api/v1/atletas/**").hasRole("ATLETA")
                         .requestMatchers("/api/v1/arenas/**").hasRole("ARENA")
