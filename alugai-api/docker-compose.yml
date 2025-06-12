@@ -26,6 +26,22 @@ services:
     networks:
       - alugainetwork
 
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: alugai_app
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/alugai
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+    ports:
+      - '8080:8080'
+    depends_on:
+      - db
+    networks:
+      - alugainetwork
+
 volumes:
   alugai_postgres_data:
 
