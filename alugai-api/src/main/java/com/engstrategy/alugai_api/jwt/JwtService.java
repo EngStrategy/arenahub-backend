@@ -18,6 +18,12 @@ import java.util.Map;
 public class JwtService {
 
     private final SecretKeyGenerator secretKeyGenerator;
+    private static final long EXPIRATION_HOURS = 24;
+    private static final long EXPIRATION_SECONDS = EXPIRATION_HOURS * 3600;
+
+    public long getExpirationInSeconds() {
+        return EXPIRATION_SECONDS;
+    }
 
     public String generateToken(Usuario user) {
         var key = secretKeyGenerator.getKey();
@@ -63,8 +69,7 @@ public class JwtService {
     }
 
     private Date generateExpirationDate() {
-        var expirationMinutes = 60;
-        LocalDateTime now = LocalDateTime.now().plusMinutes(expirationMinutes);
+        LocalDateTime now = LocalDateTime.now().plusHours(EXPIRATION_HOURS);
         return Date.from(now.atZone(ZoneId.systemDefault()).toInstant());
     }
 

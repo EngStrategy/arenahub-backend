@@ -19,7 +19,7 @@ public class AuthService {
     private final JwtService jwtService;
 
     public AuthResponse authenticate(LoginRequest loginRequest) {
-        Usuario usuario = userService.findUserByEmail(loginRequest.getEmail()); // Use UserService
+        Usuario usuario = userService.findUserByEmail(loginRequest.getEmail());
 
         if (usuario == null) {
             throw new UserNotFoundException("Usuário não encontrado");
@@ -36,7 +36,7 @@ public class AuthService {
                 .userId(usuario.getId())
                 .name(usuario.getNome())
                 .role(usuario.getRole().toString())
-                .expiresIn(3600) // 1 hora em segundos
+                .expiresIn(jwtService.getExpirationInSeconds())
                 .imageUrl(usuario.getUrlFoto())
                 .build();
     }

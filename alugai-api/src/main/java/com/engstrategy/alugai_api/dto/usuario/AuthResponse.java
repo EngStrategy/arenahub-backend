@@ -31,7 +31,7 @@ public class AuthResponse {
     private String role;
 
     @Schema(description = "Tempo de expiração do token em segundos",
-            example = "3600")
+            example = "86400")
     private long expiresIn;
 
     @Schema(description = "URL da foto do usuário", example = "https://imagem.com.br")
