@@ -43,4 +43,6 @@ public abstract class Usuario {
     @Column(nullable = false)
     private Role role;
 
+    @Column(nullable = false)
+    private boolean ativo = false;
 }

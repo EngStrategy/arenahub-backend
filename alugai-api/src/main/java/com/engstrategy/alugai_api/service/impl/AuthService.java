@@ -2,6 +2,7 @@ package com.engstrategy.alugai_api.service.impl;
 
 import com.engstrategy.alugai_api.dto.usuario.AuthResponse;
 import com.engstrategy.alugai_api.dto.usuario.LoginRequest;
+import com.engstrategy.alugai_api.exceptions.EmailUnconfirmedException;
 import com.engstrategy.alugai_api.exceptions.InvalidCredentialsException;
 import com.engstrategy.alugai_api.exceptions.UserNotFoundException;
 import com.engstrategy.alugai_api.jwt.JwtService;
@@ -23,6 +24,10 @@ public class AuthService {
 
         if (usuario == null) {
             throw new UserNotFoundException("Usuário não encontrado");
+        }
+
+        if (!usuario.isAtivo()) {
+            throw new EmailUnconfirmedException("Email não confirmado");
         }
 
         if (!passwordEncoder.matches(loginRequest.getPassword(), usuario.getSenha())) {

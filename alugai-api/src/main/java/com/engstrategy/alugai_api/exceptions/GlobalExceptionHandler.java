@@ -37,6 +37,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
+    @ExceptionHandler(EmailUnconfirmedException.class)
+    public ResponseEntity<ErrorResponse> handleEmailUnconfirmedException(EmailUnconfirmedException ex) {
+        ErrorResponse error = new ErrorResponse("EMAIL_UNCONFIRMED", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
+
     // Tratamento genérico para validações do @Valid
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {

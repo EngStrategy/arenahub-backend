@@ -5,10 +5,12 @@ import com.engstrategy.alugai_api.exceptions.UniqueConstraintViolationException;
 import com.engstrategy.alugai_api.exceptions.UserNotFoundException;
 import com.engstrategy.alugai_api.mapper.EnderecoMapper;
 import com.engstrategy.alugai_api.model.Arena;
+import com.engstrategy.alugai_api.model.CodigoVerificacao;
 import com.engstrategy.alugai_api.repository.ArenaRepository;
+import com.engstrategy.alugai_api.repository.CodigoVerificacaoRepository;
 import com.engstrategy.alugai_api.repository.specs.ArenaSpecs;
 import com.engstrategy.alugai_api.service.ArenaService;
-import jakarta.persistence.EntityNotFoundException;
+import com.engstrategy.alugai_api.util.GeradorCodigoVerificacao;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -24,6 +26,8 @@ public class ArenaServiceImpl implements ArenaService {
     private final ArenaRepository arenaRepository;
     private final PasswordEncoder passwordEncoder;
     private final EnderecoMapper enderecoMapper;
+    private final CodigoVerificacaoRepository codigoVerificacaoRepository;
+    private final EmailService emailService;
 
     @Override
     @Transactional
@@ -32,7 +36,14 @@ public class ArenaServiceImpl implements ArenaService {
                 arena.getCpfProprietario(), arena.getCnpj());
 
         encodePassword(arena);
-        return arenaRepository.save(arena);
+        Arena savedArena = arenaRepository.save(arena);
+
+        CodigoVerificacao codigoVerificacao = GeradorCodigoVerificacao.gerarCodigoVerificacao(savedArena.getEmail());
+        codigoVerificacaoRepository.save(codigoVerificacao);
+
+        emailService.enviarCodigoVerificacao(arena.getEmail(), arena.getNome(), codigoVerificacao.getCode());
+
+        return savedArena;
     }
 
     @Override

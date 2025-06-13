@@ -3,27 +3,30 @@ package com.engstrategy.alugai_api.service.impl;
 import com.engstrategy.alugai_api.dto.atleta.AtletaUpdateDTO;
 import com.engstrategy.alugai_api.exceptions.UniqueConstraintViolationException;
 import com.engstrategy.alugai_api.exceptions.UserNotFoundException;
+import com.engstrategy.alugai_api.model.Arena;
 import com.engstrategy.alugai_api.model.Atleta;
+import com.engstrategy.alugai_api.model.CodigoVerificacao;
 import com.engstrategy.alugai_api.repository.AtletaRepository;
+import com.engstrategy.alugai_api.repository.CodigoVerificacaoRepository;
 import com.engstrategy.alugai_api.service.AtletaService;
+import com.engstrategy.alugai_api.util.GeradorCodigoVerificacao;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.RequestBody;
 
 @Service
+@RequiredArgsConstructor
 public class AtletaServiceImpl implements AtletaService {
 
     private final AtletaRepository atletaRepository;
     private final PasswordEncoder passwordEncoder;
-
-    @Autowired
-    public AtletaServiceImpl(AtletaRepository atletaRepository, PasswordEncoder passwordEncoder) {
-        this.atletaRepository = atletaRepository;
-        this.passwordEncoder = passwordEncoder;
-    }
+    private final CodigoVerificacaoRepository codigoVerificacaoRepository;
+    private final EmailService emailService;
 
     @Override
     @Transactional
@@ -31,7 +34,14 @@ public class AtletaServiceImpl implements AtletaService {
         validarDadosUnicos(atleta.getEmail(), atleta.getTelefone());
 
         encodePassword(atleta);
-        return atletaRepository.save(atleta);
+        Atleta savedAtleta = atletaRepository.save(atleta);
+
+        CodigoVerificacao codigoVerificacao = GeradorCodigoVerificacao.gerarCodigoVerificacao(savedAtleta.getEmail());
+        codigoVerificacaoRepository.save(codigoVerificacao);
+
+        emailService.enviarCodigoVerificacao(atleta.getEmail(), atleta.getNome(), codigoVerificacao.getCode());
+
+        return savedAtleta;
     }
 
     @Override
