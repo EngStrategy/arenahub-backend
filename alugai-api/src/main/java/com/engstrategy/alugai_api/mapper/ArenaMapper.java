@@ -3,6 +3,7 @@ package com.engstrategy.alugai_api.mapper;
 import com.engstrategy.alugai_api.dto.arena.ArenaCreateDTO;
 import com.engstrategy.alugai_api.dto.arena.ArenaResponseDTO;
 import com.engstrategy.alugai_api.model.Arena;
+import com.engstrategy.alugai_api.model.enums.Role;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -23,7 +24,8 @@ public class ArenaMapper {
                 .descricao(arenaCreateDTO.getDescricao())
                 .urlFoto(arenaCreateDTO.getUrlFoto())
                 .endereco(enderecoMapper.mapEnderecoDtoToEndereco(arenaCreateDTO.getEndereco()))
-                .role(arenaCreateDTO.getRole())
+                .role(Role.ARENA)
+                .ativo(false)
                 .build();
     }
 

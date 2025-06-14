@@ -36,8 +36,5 @@ public class AtletaCreateDTO {
     @Size(min = 8, message = "Senha deve ter no mínimo 8 caracteres")
     private String senha;
 
-    @Schema(description = "Role do usuario", example = "ATLETA")
-    @NotNull(message = "Role é obrigatória")
-    private Role role;
 }
 

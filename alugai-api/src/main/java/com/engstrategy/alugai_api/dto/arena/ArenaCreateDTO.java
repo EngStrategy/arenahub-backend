@@ -59,7 +59,4 @@ public class ArenaCreateDTO {
     @URL(message = "URL da foto deve ser válida")
     private String urlFoto;
 
-    @Schema(description = "Role do usuario", example = "ARENA")
-    @NotNull(message = "Role é obrigatória")
-    private Role role;
 }
