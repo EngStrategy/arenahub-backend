@@ -3,7 +3,6 @@ package com.engstrategy.alugai_api.model;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-
 import java.util.ArrayList;
 import java.util.List;
 
