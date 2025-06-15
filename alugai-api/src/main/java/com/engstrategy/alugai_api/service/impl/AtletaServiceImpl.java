@@ -76,9 +76,6 @@ public class AtletaServiceImpl implements AtletaService {
         if (atletaUpdateDTO.getUrlFoto() != null) {
             savedAtleta.setUrlFoto(atletaUpdateDTO.getUrlFoto());
         }
-        if(atletaUpdateDTO.getUrlFoto() == null) {
-            savedAtleta.setUrlFoto(null);
-        }
 
         return atletaRepository.save(savedAtleta);
     }

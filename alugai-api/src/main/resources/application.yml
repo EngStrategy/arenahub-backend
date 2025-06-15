@@ -1,5 +1,11 @@
-# dev
 spring:
+  profiles:
+    active: dev
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
   datasource:
     url: jdbc:postgresql://localhost:5432/alugai
     username: postgres
@@ -9,5 +15,17 @@ spring:
     hibernate:
       ddl-auto: create-drop
     show-sql: true
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: engstrategy05@gmail.com
+    password: csrycjlmdxwswclg
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+      test-connection: true
 
 # prod (configuracao abaixo, futuramente)
