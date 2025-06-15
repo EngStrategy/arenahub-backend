@@ -2,6 +2,7 @@ package com.engstrategy.alugai_api.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -10,6 +11,7 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@SuperBuilder
 public class Arena extends Usuario {
 
     @Column(unique=true, nullable=false)
@@ -20,8 +22,6 @@ public class Arena extends Usuario {
 
     @Embedded
     private Endereco endereco;
-
-    private String telefone;
 
     private String descricao;
 
