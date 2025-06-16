@@ -43,6 +43,36 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
     }
 
+    @ExceptionHandler(InvalidConfirmationCodeException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidConfirmationCodeException(InvalidConfirmationCodeException ex) {
+        ErrorResponse error = new ErrorResponse("INVALID_CONFIRMATION_CODE", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
+
+    @ExceptionHandler(ResendCodeLimitException.class)
+    public ResponseEntity<ErrorResponse> handleResendCodeLimitException(ResendCodeLimitException ex) {
+        ErrorResponse error = new ErrorResponse("RESEND_CODE_LIMIT", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
+
+    @ExceptionHandler(ExpiredConfirmationCodeException.class)
+    public ResponseEntity<ErrorResponse> handleExpiredConfirmationCodeException(ExpiredConfirmationCodeException ex) {
+        ErrorResponse error = new ErrorResponse("EXPIRED_CONFIRMATION_CODE", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
+
+    @ExceptionHandler(AlreadyConfirmedEmailException.class)
+    public ResponseEntity<ErrorResponse> handleAlreadyConfirmedEmailException(AlreadyConfirmedEmailException ex) {
+        ErrorResponse error = new ErrorResponse("ALREADY_CONFIRMED_EMAIL", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
+    @ExceptionHandler(InvalidCooldownResendConfirmationCodeException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidCooldownResendConfirmationCodeException(InvalidCooldownResendConfirmationCodeException ex) {
+        ErrorResponse error = new ErrorResponse("INVALID_COOLDOWN_RESEND_CONFIRMATION_CODE", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
+
     // Tratamento genérico para validações do @Valid
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {

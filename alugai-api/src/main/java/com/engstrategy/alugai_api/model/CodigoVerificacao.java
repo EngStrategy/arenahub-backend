@@ -29,6 +29,11 @@ public class CodigoVerificacao {
 
     @Column(nullable = false)
     private String email;
+
+    private LocalDateTime lastResendAt;
+
+    @Column(nullable = false)
+    private int resendCount;
 }
 
 

@@ -13,6 +13,7 @@ public class GeradorCodigoVerificacao {
                 .email(arenaEmail)
                 .createdAt(LocalDateTime.now())
                 .expiresAt(LocalDateTime.now().plusMinutes(15))
+                .resendCount(0)
                 .build();
     }
 }
