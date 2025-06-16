@@ -96,6 +96,9 @@ public class ArenaServiceImpl implements ArenaService {
         if (arenaUpdateDTO.getEndereco() != null) {
             savedArena.setEndereco(enderecoMapper.mapEnderecoDtoToEndereco(arenaUpdateDTO.getEndereco()));
         }
+        if(arenaUpdateDTO.getUrlFoto() == null) {
+            savedArena.setUrlFoto(null);
+        }
 
         return arenaRepository.save(savedArena);
     }
