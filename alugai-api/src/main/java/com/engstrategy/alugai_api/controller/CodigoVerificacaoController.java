@@ -8,8 +8,6 @@ import com.engstrategy.alugai_api.model.ResendVerificationRequest;
 import com.engstrategy.alugai_api.model.VerificacaoRequest;
 import com.engstrategy.alugai_api.service.impl.CodigoVerificacaoService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
