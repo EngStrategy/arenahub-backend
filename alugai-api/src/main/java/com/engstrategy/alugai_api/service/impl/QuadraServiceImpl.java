@@ -1,6 +1,8 @@
 package com.engstrategy.alugai_api.service.impl;
 
 import com.engstrategy.alugai_api.dto.quadra.QuadraUpdateDTO;
+import com.engstrategy.alugai_api.exceptions.EntityNotFoundException;
+import com.engstrategy.alugai_api.exceptions.QuadraArenaMismatchException;
 import com.engstrategy.alugai_api.exceptions.UserNotFoundException;
 import com.engstrategy.alugai_api.model.Arena;
 import com.engstrategy.alugai_api.model.Quadra;
@@ -25,7 +27,7 @@ public class QuadraServiceImpl implements QuadraService {
     @Transactional
     public Quadra criarQuadra(Quadra quadra, Long arenaId) {
         Arena arena = arenaRepository.findById(arenaId)
-                .orElseThrow(() -> new UserNotFoundException("Arena não encontrada com ID: " + arenaId));
+                .orElseThrow(() -> new EntityNotFoundException("Arena não encontrada com ID: " + arenaId));
         quadra.setArena(arena);
         return quadraRepository.save(quadra);
     }
@@ -33,7 +35,7 @@ public class QuadraServiceImpl implements QuadraService {
     @Override
     public Quadra buscarPorId(Long id) {
         return quadraRepository.findById(id)
-                .orElseThrow(() -> new UserNotFoundException("Quadra não encontrada com ID: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Quadra não encontrada com ID: " + id));
     }
 
     @Override
@@ -55,7 +57,7 @@ public class QuadraServiceImpl implements QuadraService {
     @Transactional
     public Quadra atualizar(Long id, QuadraUpdateDTO quadraUpdateDTO) {
         Quadra savedQuadra = quadraRepository.findById(id)
-                .orElseThrow(() -> new UserNotFoundException("Quadra não encontrada com ID: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Quadra não encontrada com ID: " + id));
 
         if (quadraUpdateDTO.getNomeQuadra() != null) {
             savedQuadra.setNomeQuadra(quadraUpdateDTO.getNomeQuadra());
@@ -87,9 +89,18 @@ public class QuadraServiceImpl implements QuadraService {
 
     @Override
     @Transactional
-    public void excluir(Long id) {
-        Quadra quadra = quadraRepository.findById(id)
-                .orElseThrow(() -> new UserNotFoundException("Quadra não encontrada com ID: " + id));
+    public void excluir(Long quadraId, Long arenaId) {
+        Quadra quadra = quadraRepository.findById(quadraId)
+                .orElseThrow(() -> new EntityNotFoundException("Quadra não encontrada com ID: " + quadraId));
+
+        var arena = arenaRepository.findById(arenaId)
+                .orElseThrow(() -> new EntityNotFoundException("Arena não encontrada com ID: " + arenaId));
+
+        if(!quadra.getArena().getId().equals(arena.getId())){
+            throw new QuadraArenaMismatchException("A quadra com o id " + quadraId + " não pertence a arena com o id " +
+                    arenaId);
+        }
+
         quadraRepository.delete(quadra);
     }
 }

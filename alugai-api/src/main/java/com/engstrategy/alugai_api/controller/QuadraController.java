@@ -21,6 +21,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContext;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -107,16 +108,19 @@ public class QuadraController {
         return ResponseEntity.ok(response);
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{quadraId}/arena/{arenaId}")
     @Operation(summary = "Excluir quadra", description = "Remove uma quadra do sistema")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "204", description = "Quadra excluída com sucesso"),
-            @ApiResponse(responseCode = "404", description = "Quadra não encontrada")
+            @ApiResponse(responseCode = "404", description = "Quadra não encontrada"),
+            @ApiResponse(responseCode = "422", description = "Quadra não associada à arena especificada")
     })
     public ResponseEntity<Void> excluirQuadra(
             @Parameter(description = "ID da quadra", required = true)
-            @PathVariable Long id) {
-        quadraService.excluir(id);
+            @PathVariable Long quadraId,
+            @Parameter(description = "ID da arena", required = true)
+            @PathVariable Long arenaId) {
+        quadraService.excluir(quadraId, arenaId);
         return ResponseEntity.noContent().build();
     }
 }

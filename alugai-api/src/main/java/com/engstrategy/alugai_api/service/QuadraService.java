@@ -10,5 +10,5 @@ public interface QuadraService {
     Quadra buscarPorId(Long id);
     Page<Quadra> listarTodos(Pageable pageable, Long arenaId, String esporte);
     Quadra atualizar(Long id, QuadraUpdateDTO quadraUpdateDTO);
-    void excluir(Long id);
+    void excluir(Long quadraId, Long arenaId);
 }
