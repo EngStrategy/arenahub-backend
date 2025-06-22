@@ -1,10 +1,7 @@
 package com.engstrategy.alugai_api.model;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalTime;
@@ -14,6 +11,7 @@ import java.time.LocalTime;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class IntervaloHorario {
 
     @Id
@@ -31,5 +29,4 @@ public class IntervaloHorario {
     @ManyToOne
     @JoinColumn(name = "horario_funcionamento_id", nullable = false)
     private HorarioFuncionamento horarioFuncionamento;
-
 }

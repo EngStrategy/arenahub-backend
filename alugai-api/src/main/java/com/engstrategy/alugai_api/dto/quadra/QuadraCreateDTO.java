@@ -4,6 +4,7 @@ import com.engstrategy.alugai_api.model.enums.DuracaoReserva;
 import com.engstrategy.alugai_api.model.enums.MaterialEsportivo;
 import com.engstrategy.alugai_api.model.enums.TipoEsporte;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -57,4 +58,8 @@ public class QuadraCreateDTO {
     @NotNull(message = "ID da arena é obrigatório")
     private Long arenaId;
 
+    @Schema(description = "Horários de funcionamento da quadra", required = true)
+    @NotEmpty(message = "Pelo menos um horário de funcionamento deve ser informado")
+    @Valid
+    private List<HorarioFuncionamentoCreateDTO> horariosFuncionamento;
 }

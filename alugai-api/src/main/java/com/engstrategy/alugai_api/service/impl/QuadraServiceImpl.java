@@ -26,6 +26,8 @@ public class QuadraServiceImpl implements QuadraService {
     public Quadra criarQuadra(Quadra quadra, Long arenaId) {
         Arena arena = arenaRepository.findById(arenaId)
                 .orElseThrow(() -> new UserNotFoundException("Arena não encontrada com ID: " + arenaId));
+
+        quadra.getHorariosFuncionamento().forEach(horario -> horario.setQuadra(quadra));
         quadra.setArena(arena);
         return quadraRepository.save(quadra);
     }

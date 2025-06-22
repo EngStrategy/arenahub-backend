@@ -46,13 +46,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/arenas").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/arenas").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/arenas/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "api/v1/quadras").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/quadras").permitAll()
                         .requestMatchers("/api/v1/verify").permitAll()
                         .requestMatchers("/api/v1/resend-verification").permitAll()
                         // endpoints com autorização
                         .requestMatchers("/api/v1/atletas/**").hasRole("ATLETA")
                         .requestMatchers("/api/v1/arenas/**").hasRole("ARENA")
-                        .requestMatchers("api/v1/quadras/**").hasRole("ARENA")
+                        .requestMatchers("/api/v1/quadras/**").hasRole("ARENA")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
