@@ -22,7 +22,7 @@ public class IntervaloHorarioCreateDTO {
     @NotNull(message = "Hora de início é obrigatória")
     private LocalTime inicio;
 
-    @Schema(description = "Hora de fim do intervalo", example = "09:00", required = true)
+    @Schema(description = "Hora de fim do intervalo", example = "12:00", required = true)
     @NotNull(message = "Hora de fim é obrigatória")
     private LocalTime fim;
 

@@ -3,7 +3,6 @@ package com.engstrategy.alugai_api.service.impl;
 import com.engstrategy.alugai_api.dto.atleta.AtletaUpdateDTO;
 import com.engstrategy.alugai_api.exceptions.UniqueConstraintViolationException;
 import com.engstrategy.alugai_api.exceptions.UserNotFoundException;
-import com.engstrategy.alugai_api.model.Arena;
 import com.engstrategy.alugai_api.model.Atleta;
 import com.engstrategy.alugai_api.model.CodigoVerificacao;
 import com.engstrategy.alugai_api.repository.AtletaRepository;
@@ -11,13 +10,11 @@ import com.engstrategy.alugai_api.repository.CodigoVerificacaoRepository;
 import com.engstrategy.alugai_api.service.AtletaService;
 import com.engstrategy.alugai_api.util.GeradorCodigoVerificacao;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.RequestBody;
 
 @Service
 @RequiredArgsConstructor

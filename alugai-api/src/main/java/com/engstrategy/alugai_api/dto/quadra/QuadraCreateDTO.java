@@ -59,7 +59,6 @@ public class QuadraCreateDTO {
     private Long arenaId;
 
     @Schema(description = "Horários de funcionamento da quadra", required = true)
-    @NotEmpty(message = "Pelo menos um horário de funcionamento deve ser informado")
     @Valid
     private List<HorarioFuncionamentoCreateDTO> horariosFuncionamento;
 }
