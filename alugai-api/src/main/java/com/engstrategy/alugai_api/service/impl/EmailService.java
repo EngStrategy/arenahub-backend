@@ -25,6 +25,19 @@ public class EmailService {
         }
     }
 
+    public void enviarCodigoResetSenha(String destino, String nome, String codigo) {
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, "utf-8");
+        try {
+            helper.setTo(destino);
+            helper.setSubject("Redefinição de Senha");
+            helper.setText(htmlContentResetSenha(nome, codigo), true);
+            mailSender.send(message);
+        } catch (MessagingException e) {
+            throw new RuntimeException("Erro ao enviar email", e);
+        }
+    }
+
     private String htmlContent(String nome, String codigo) {
         return """
                <!DOCTYPE html>
@@ -88,5 +101,35 @@ public class EmailService {
                </body>
                </html>
                """.formatted(nome, codigo);
+    }
+
+    private String htmlContentResetSenha(String nome, String codigo) {
+        return """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <style>
+                    /* Estilos similares ao anterior */
+                    .code { background-color: #e2e2e2; font-weight: bold; letter-spacing: 8px; 
+                            font-size: 30px; padding: 40px; text-align: center; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>ALUGAÍ.</h1>
+                    </div>
+                    <div class="content">
+                        <h2>Olá, %s!</h2>
+                        <p>Recebemos uma solicitação para redefinir sua senha. Use o código abaixo para prosseguir:</p>
+                        <p class="code">%s</p>
+                        <p><strong>Este código expira em 15 minutos.</strong></p>
+                        <p>Se você não solicitou esta alteração, ignore este email.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """.formatted(nome, codigo);
     }
 }
