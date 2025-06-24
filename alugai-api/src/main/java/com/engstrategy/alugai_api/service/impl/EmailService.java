@@ -105,31 +105,66 @@ public class EmailService {
 
     private String htmlContentResetSenha(String nome, String codigo) {
         return """
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <style>
-                    /* Estilos similares ao anterior */
-                    .code { background-color: #e2e2e2; font-weight: bold; letter-spacing: 8px; 
-                            font-size: 30px; padding: 40px; text-align: center; }
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <div class="header">
-                        <h1>ALUGAÍ.</h1>
-                    </div>
-                    <div class="content">
-                        <h2>Olá, %s!</h2>
-                        <p>Recebemos uma solicitação para redefinir sua senha. Use o código abaixo para prosseguir:</p>
-                        <p class="code">%s</p>
-                        <p><strong>Este código expira em 15 minutos.</strong></p>
-                        <p>Se você não solicitou esta alteração, ignore este email.</p>
-                    </div>
-                </div>
-            </body>
-            </html>
-            """.formatted(nome, codigo);
+           <!DOCTYPE html>
+           <html>
+           <head>
+               <meta charset="UTF-8">
+               <meta name="viewport" content="width=device-width, initial-scale=1.0">
+               <meta name="author" content="rian-lima">
+               <title>Reset de Senha</title>
+               <style>
+                   body {\s
+                       font-family: Arial, sans-serif; line-height: 1.6; color: #333;\s
+                   }
+                  \s
+                   .container {\s
+                       max-width: 600px; margin: 0 auto; padding: 20px;\s
+                   }
+
+                   .header {\s
+                       background-color: #15A01A; color: white; padding: 20px; text-align: center;\s
+                   }
+                  \s
+                   .content {\s
+                       padding: 30px 20px; background-color: #f9f9f9;\s
+                   }
+
+                   .code {
+                       background-color: #e2e2e2;
+                       font-weight: bold;
+                       letter-spacing: 8px;
+                       font-size: 30px;
+                       padding: 40px;
+                       text-align: center;
+                   }
+                  \s
+                   .footer {\s
+                       padding: 20px; text-align: center; color: #666; font-size: 12px;\s
+                   }
+
+               </style>
+           </head>
+           <body>
+               <div class="container">
+                   <div class="header">
+                       <h1>ALUGAÍ.</h1>
+                   </div>
+                   <div class="content">
+                       <h2>Olá, %s!</h2>
+                       <p>Recebemos uma solicitação para redefinir sua senha. Use o código abaixo para prosseguir:</p>
+                      \s
+                       <p class="code">
+                           %s
+                       </p>
+
+                       <p><strong>Este código expira em 15 minutos.</strong></p>
+                   </div>
+                   <div class="footer">
+                       <p>Se você não solicitou esta alteração, ignore este email.</p>
+                   </div>
+               </div>
+           </body>
+           </html>
+           """.formatted(nome, codigo);
     }
 }
