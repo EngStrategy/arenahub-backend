@@ -19,6 +19,9 @@ import java.util.List;
 @Schema(description = "Resposta com dados da quadra")
 public class QuadraResponseDTO {
 
+    @Schema(description = "ID da quadra", example = "1")
+    private Long id;
+
     @Schema(description = "Nome da quadra", example = "Quadra 1")
     private String nomeQuadra;
 

@@ -3,6 +3,7 @@ package com.engstrategy.alugai_api.controller;
 import com.engstrategy.alugai_api.dto.quadra.QuadraCreateDTO;
 import com.engstrategy.alugai_api.dto.quadra.QuadraResponseDTO;
 import com.engstrategy.alugai_api.dto.quadra.QuadraUpdateDTO;
+import com.engstrategy.alugai_api.jwt.CustomUserDetails;
 import com.engstrategy.alugai_api.mapper.QuadraMapper;
 import com.engstrategy.alugai_api.model.Quadra;
 import com.engstrategy.alugai_api.service.QuadraService;
@@ -21,6 +22,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -111,12 +113,14 @@ public class QuadraController {
     @Operation(summary = "Excluir quadra", description = "Remove uma quadra do sistema")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "204", description = "Quadra excluída com sucesso"),
+            @ApiResponse(responseCode = "403", description = "Usuário não autorizado para excluir esta quadra"),
             @ApiResponse(responseCode = "404", description = "Quadra não encontrada")
     })
     public ResponseEntity<Void> excluirQuadra(
             @Parameter(description = "ID da quadra", required = true)
-            @PathVariable Long id) {
-        quadraService.excluir(id);
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        quadraService.excluir(id, userDetails.getUserId());
         return ResponseEntity.noContent().build();
     }
 }

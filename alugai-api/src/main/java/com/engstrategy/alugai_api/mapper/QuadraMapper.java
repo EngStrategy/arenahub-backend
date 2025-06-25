@@ -59,6 +59,7 @@ public class QuadraMapper {
                 .collect(Collectors.toList());
 
         return QuadraResponseDTO.builder()
+                .id(quadra.getId())
                 .nomeQuadra(quadra.getNomeQuadra())
                 .urlFotoQuadra(quadra.getUrlFotoQuadra())
                 .tipoQuadra(quadra.getTipoQuadra())

@@ -1,10 +1,7 @@
 package com.engstrategy.alugai_api.service.impl;
 
 import com.engstrategy.alugai_api.dto.quadra.QuadraUpdateDTO;
-import com.engstrategy.alugai_api.exceptions.DuplicateHorarioFuncionamentoException;
-import com.engstrategy.alugai_api.exceptions.InvalidIntervaloHorarioException;
-import com.engstrategy.alugai_api.exceptions.UniqueConstraintViolationException;
-import com.engstrategy.alugai_api.exceptions.UserNotFoundException;
+import com.engstrategy.alugai_api.exceptions.*;
 import com.engstrategy.alugai_api.model.Arena;
 import com.engstrategy.alugai_api.model.HorarioFuncionamento;
 import com.engstrategy.alugai_api.model.IntervaloHorario;
@@ -97,6 +94,9 @@ public class QuadraServiceImpl implements QuadraService {
         if (quadraUpdateDTO.getMateriaisFornecidos() != null) {
             savedQuadra.setMateriaisFornecidos(quadraUpdateDTO.getMateriaisFornecidos());
         }
+        if(quadraUpdateDTO.getUrlFotoQuadra() == null) {
+            savedQuadra.setUrlFotoQuadra(null);
+        }
 
         return quadraRepository.save(savedQuadra);
     }
@@ -159,9 +159,14 @@ public class QuadraServiceImpl implements QuadraService {
 
     @Override
     @Transactional
-    public void excluir(Long id) {
+    public void excluir(Long id, Long userId) {
         Quadra quadra = quadraRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("Quadra não encontrada com ID: " + id));
+
+        if (!quadra.getArena().getId().equals(userId)) {
+            throw new AccessDeniedException("Usuário não autorizado para excluir esta quadra");
+        }
+
         quadraRepository.delete(quadra);
     }
 }
