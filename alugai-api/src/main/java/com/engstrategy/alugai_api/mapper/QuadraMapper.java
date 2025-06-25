@@ -44,6 +44,7 @@ public class QuadraMapper {
                         .fim(intervaloDto.getFim())
                         .valor(intervaloDto.getValor())
                         .horarioFuncionamento(horario)
+                        .status(intervaloDto.getStatus())
                         .build())
                 .collect(Collectors.toList());
 
@@ -79,6 +80,7 @@ public class QuadraMapper {
                         .inicio(intervalo.getInicio())
                         .fim(intervalo.getFim())
                         .valor(intervalo.getValor())
+                        .status(intervalo.getStatus())
                         .build())
                 .collect(Collectors.toList());
 

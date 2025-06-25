@@ -1,5 +1,6 @@
 package com.engstrategy.alugai_api.model;
 
+import com.engstrategy.alugai_api.model.enums.StatusIntervalo;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -25,6 +26,10 @@ public class IntervaloHorario {
     private LocalTime fim;
 
     private BigDecimal valor;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private StatusIntervalo status;
 
     @ManyToOne
     @JoinColumn(name = "horario_funcionamento_id", nullable = false)

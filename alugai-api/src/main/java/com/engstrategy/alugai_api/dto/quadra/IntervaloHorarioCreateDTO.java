@@ -1,5 +1,6 @@
 package com.engstrategy.alugai_api.dto.quadra;
 
+import com.engstrategy.alugai_api.model.enums.StatusIntervalo;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
@@ -30,4 +31,8 @@ public class IntervaloHorarioCreateDTO {
     @NotNull(message = "Valor é obrigatório")
     @DecimalMin(value = "0.0", inclusive = false, message = "Valor deve ser maior que zero")
     private BigDecimal valor;
+
+    @Schema(description = "Status do intervalo", example = "DISPONIVEL", required = true)
+    @NotNull(message = "Status é obrigatório")
+    private StatusIntervalo status;
 }

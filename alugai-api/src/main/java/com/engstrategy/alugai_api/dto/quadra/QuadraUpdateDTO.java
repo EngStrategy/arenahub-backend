@@ -46,5 +46,4 @@ public class QuadraUpdateDTO {
 
     @Schema(description = "Materiais esportivos fornecidos", example = "[\"BOLA\", \"COLETE\"]")
     private List<MaterialEsportivo> materiaisFornecidos;
-
 }
