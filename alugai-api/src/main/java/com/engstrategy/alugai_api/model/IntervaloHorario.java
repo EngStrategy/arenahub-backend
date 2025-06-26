@@ -1,10 +1,8 @@
 package com.engstrategy.alugai_api.model;
 
+import com.engstrategy.alugai_api.model.enums.StatusIntervalo;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalTime;
@@ -14,6 +12,7 @@ import java.time.LocalTime;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class IntervaloHorario {
 
     @Id
@@ -28,8 +27,11 @@ public class IntervaloHorario {
 
     private BigDecimal valor;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private StatusIntervalo status;
+
     @ManyToOne
     @JoinColumn(name = "horario_funcionamento_id", nullable = false)
     private HorarioFuncionamento horarioFuncionamento;
-
 }

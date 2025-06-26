@@ -1,5 +1,7 @@
 package com.engstrategy.alugai_api.dto.arena;
 
+import com.engstrategy.alugai_api.dto.quadra.QuadraResponseDTO;
+import com.engstrategy.alugai_api.model.Quadra;
 import com.engstrategy.alugai_api.model.enums.Role;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
@@ -8,6 +10,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Schema(description = "Resposta com dados da arena")
 @Data
@@ -42,4 +45,7 @@ public class ArenaResponseDTO {
 
     @Schema(description = "Role do usuário", example = "ARENA")
     private Role role;
+
+    @Schema(description = "Quadras da arena")
+    private List<QuadraResponseDTO> quadras;
 }
