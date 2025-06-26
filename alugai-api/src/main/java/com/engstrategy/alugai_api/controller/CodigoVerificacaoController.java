@@ -3,10 +3,9 @@ package com.engstrategy.alugai_api.controller;
 import com.engstrategy.alugai_api.exceptions.AlreadyConfirmedEmailException;
 import com.engstrategy.alugai_api.exceptions.ExpiredConfirmationCodeException;
 import com.engstrategy.alugai_api.exceptions.InvalidConfirmationCodeException;
-import com.engstrategy.alugai_api.model.CodigoVerificacao;
-import com.engstrategy.alugai_api.model.ResendVerificationRequest;
-import com.engstrategy.alugai_api.model.VerificacaoRequest;
+import com.engstrategy.alugai_api.model.*;
 import com.engstrategy.alugai_api.service.impl.CodigoVerificacaoService;
+import com.engstrategy.alugai_api.service.impl.ResetSenhaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -25,6 +24,7 @@ import java.time.LocalDateTime;
 @Tag(name = "Verificação", description = "Endpoints para verificação de email")
 public class CodigoVerificacaoController {
     private final CodigoVerificacaoService codigoVerificacaoService;
+    private final ResetSenhaService resetSenhaService;
 
     @Operation(summary = "Verificar código de confirmação")
     @ApiResponses(value = {
@@ -61,5 +61,39 @@ public class CodigoVerificacaoController {
     public ResponseEntity<String> resendVerificationCode(@RequestBody @Valid ResendVerificationRequest request) {
         codigoVerificacaoService.resendVerificationCode(request.getEmail());
         return ResponseEntity.ok("Código reenviado com sucesso");
+    }
+
+    @Operation(summary = "Solicitar reset de senha")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Código enviado com sucesso"),
+            @ApiResponse(responseCode = "400", description = "Limite de reenvios excedido ou cooldown ativo")
+    })
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Void> solicitarResetSenha(@RequestBody @Valid ForgotPasswordRequest request) {
+        resetSenhaService.solicitarResetSenha(request.getEmail());
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "Verificar código de reset de senha")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Código válido"),
+            @ApiResponse(responseCode = "400", description = "Código inválido ou expirado")
+    })
+    @PostMapping("/verify-reset-code")
+    public ResponseEntity<Void> verificarResetCode(@RequestBody @Valid VerifyResetCodeRequest request) {
+        resetSenhaService.verificarCodigoReset(request.getEmail(), request.getCode());
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "Redefinir senha")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Senha redefinida com sucesso"),
+            @ApiResponse(responseCode = "400", description = "Dados inválidos fornecidos"),
+            @ApiResponse(responseCode = "404", description = "Usuário não encontrado")
+    })
+    @PostMapping("/reset-password")
+    public ResponseEntity<Void> resetPassword(@RequestBody @Valid ResetPasswordRequest request) {
+        resetSenhaService.redefinirSenha(request.getEmail(), request.getNewPassword());
+        return ResponseEntity.ok().build();
     }
 }
