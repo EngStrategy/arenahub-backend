@@ -73,6 +73,30 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
     }
 
+    @ExceptionHandler(DuplicateHorarioFuncionamentoException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateHorarioFuncionamento(DuplicateHorarioFuncionamentoException ex) {
+        ErrorResponse error = new ErrorResponse("DUPLICATE_HORARIO_FUNCIONAMENTO", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    @ExceptionHandler(InvalidIntervaloHorarioException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidIntervaloHorario(InvalidIntervaloHorarioException ex) {
+        ErrorResponse error = new ErrorResponse("INVALID_INTERVALO_HORARIO", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex) {
+        ErrorResponse error = new ErrorResponse("ACCESS_DENIED", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
+        ErrorResponse error = new ErrorResponse("INVALID_ARGUMENT", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
     // Tratamento genérico para validações do @Valid
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
