@@ -2,6 +2,8 @@ package com.engstrategy.alugai_api.dto.quadra;
 
 import com.engstrategy.alugai_api.model.enums.DiaDaSemana;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -13,15 +15,14 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Schema(description = "Dados de um horário de funcionamento na resposta")
-public class HorarioFuncionamentoResponseDTO {
+@Schema(description = "Dados para atualização de horários de funcionamento")
+public class HorarioFuncionamentoUpdateDTO {
 
-    @Schema(description = "ID do horario de funcionamento", example = "1")
-    private Long id;
-
-    @Schema(description = "Dia da semana", example = "SEGUNDA")
+    @Schema(description = "Dia da semana", example = "SEGUNDA", required = true)
+    @NotNull(message = "Dia da semana é obrigatório")
     private DiaDaSemana diaDaSemana;
 
     @Schema(description = "Lista de intervalos de horário")
-    private List<IntervaloHorarioResponseDTO> intervalosDeHorario;
+    @Valid
+    private List<IntervaloHorarioUpdateDTO> intervalosDeHorario;
 }

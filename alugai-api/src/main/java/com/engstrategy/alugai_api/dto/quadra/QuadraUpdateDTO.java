@@ -4,6 +4,7 @@ import com.engstrategy.alugai_api.model.enums.DuracaoReserva;
 import com.engstrategy.alugai_api.model.enums.MaterialEsportivo;
 import com.engstrategy.alugai_api.model.enums.TipoEsporte;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -46,4 +47,8 @@ public class QuadraUpdateDTO {
 
     @Schema(description = "Materiais esportivos fornecidos", example = "[\"BOLA\", \"COLETE\"]")
     private List<MaterialEsportivo> materiaisFornecidos;
+
+    @Schema(description = "Horários de funcionamento da quadra")
+    @Valid
+    private List<HorarioFuncionamentoUpdateDTO> horariosFuncionamento;
 }

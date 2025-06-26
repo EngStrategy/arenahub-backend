@@ -1,7 +1,10 @@
 package com.engstrategy.alugai_api.service.impl;
 
+import com.engstrategy.alugai_api.dto.quadra.HorarioFuncionamentoUpdateDTO;
+import com.engstrategy.alugai_api.dto.quadra.IntervaloHorarioUpdateDTO;
 import com.engstrategy.alugai_api.dto.quadra.QuadraUpdateDTO;
 import com.engstrategy.alugai_api.exceptions.*;
+import com.engstrategy.alugai_api.mapper.QuadraMapper;
 import com.engstrategy.alugai_api.model.Arena;
 import com.engstrategy.alugai_api.model.HorarioFuncionamento;
 import com.engstrategy.alugai_api.model.IntervaloHorario;
@@ -18,9 +21,9 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalTime;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -28,18 +31,89 @@ public class QuadraServiceImpl implements QuadraService {
 
     private final QuadraRepository quadraRepository;
     private final ArenaRepository arenaRepository;
+    private final QuadraMapper quadraMapper;
 
     @Override
     @Transactional
     public Quadra criarQuadra(Quadra quadra, Long arenaId) {
+        // As implemented previously
         validarDadosUnicos(quadra.getNomeQuadra());
         validarHorariosFuncionamento(quadra.getHorariosFuncionamento());
+
+        if (quadra.getHorariosFuncionamento().size() != 7) {
+            throw new IllegalArgumentException("A quadra deve ter exatamente 7 horários de funcionamento, um para cada dia da semana.");
+        }
 
         Arena arena = arenaRepository.findById(arenaId)
                 .orElseThrow(() -> new UserNotFoundException("Arena não encontrada com ID: " + arenaId));
 
         quadra.getHorariosFuncionamento().forEach(horario -> horario.setQuadra(quadra));
         quadra.setArena(arena);
+        return quadraRepository.save(quadra);
+    }
+
+    @Override
+    @Transactional
+    public Quadra atualizar(Long quadraId, QuadraUpdateDTO updateDTO, Long arenaId) {
+        Quadra quadra = quadraRepository.findById(quadraId)
+                .orElseThrow(() -> new UserNotFoundException("Quadra não encontrada com ID: " + quadraId));
+
+        if (!quadra.getArena().getId().equals(arenaId)) {
+            throw new AccessDeniedException("Usuário não autorizado para atualizar esta quadra");
+        }
+
+        // Validate unique constraints for nomeQuadra if updated
+        if (updateDTO.getNomeQuadra() != null && !updateDTO.getNomeQuadra().equals(quadra.getNomeQuadra())) {
+            validarDadosUnicos(updateDTO.getNomeQuadra());
+        }
+
+        // Validate HorarioFuncionamento if updated
+        if (updateDTO.getHorariosFuncionamento() != null && !updateDTO.getHorariosFuncionamento().isEmpty()) {
+            // Map existing HorarioFuncionamento by day for validation
+            Map<DiaDaSemana, HorarioFuncionamento> existingHorarios = quadra.getHorariosFuncionamento()
+                    .stream()
+                    .collect(Collectors.toMap(HorarioFuncionamento::getDiaDaSemana, Function.identity()));
+
+            // Check for duplicate days and validate intervals
+            Set<DiaDaSemana> dias = new HashSet<>();
+            for (HorarioFuncionamentoUpdateDTO horarioDTO : updateDTO.getHorariosFuncionamento()) {
+                DiaDaSemana dia = horarioDTO.getDiaDaSemana();
+                if (!dias.add(dia)) {
+                    throw new DuplicateHorarioFuncionamentoException(
+                            "Horário de funcionamento duplicado para o dia: " + dia);
+                }
+                if (!existingHorarios.containsKey(dia)) {
+                    throw new IllegalArgumentException("Horário de funcionamento não encontrado para o dia: " + dia);
+                }
+
+                // Validate intervals if provided
+                if (horarioDTO.getIntervalosDeHorario() != null && !horarioDTO.getIntervalosDeHorario().isEmpty()) {
+                    // Map existing intervals for ID validation
+                    Map<Long, IntervaloHorario> existingIntervals = existingHorarios.get(dia).getIntervalosDeHorario()
+                            .stream()
+                            .collect(Collectors.toMap(IntervaloHorario::getId, Function.identity()));
+
+                    // Validate interval IDs and collect intervals for validation
+                    List<IntervaloHorario> tempIntervals = new ArrayList<>();
+                    for (IntervaloHorarioUpdateDTO intervalDTO : horarioDTO.getIntervalosDeHorario()) {
+                        if (intervalDTO.getId() != null && !existingIntervals.containsKey(intervalDTO.getId())) {
+                            throw new IllegalArgumentException("Intervalo de horário com ID " + intervalDTO.getId() + " não encontrado para o dia: " + dia);
+                        }
+                        tempIntervals.add(IntervaloHorario.builder()
+                                .inicio(intervalDTO.getInicio())
+                                .fim(intervalDTO.getFim())
+                                .valor(intervalDTO.getValor())
+                                .status(intervalDTO.getStatus())
+                                .build());
+                    }
+                    validarIntervalosDeHorario(tempIntervals);
+                }
+            }
+        }
+
+        // Apply updates
+        quadraMapper.updateQuadraFromDto(updateDTO, quadra);
+
         return quadraRepository.save(quadra);
     }
 
@@ -64,43 +138,6 @@ public class QuadraServiceImpl implements QuadraService {
         return quadraRepository.findAll(spec, pageable);
     }
 
-    @Override
-    @Transactional
-    public Quadra atualizar(Long id, QuadraUpdateDTO quadraUpdateDTO) {
-        Quadra savedQuadra = quadraRepository.findById(id)
-                .orElseThrow(() -> new UserNotFoundException("Quadra não encontrada com ID: " + id));
-
-        if (quadraUpdateDTO.getNomeQuadra() != null) {
-            savedQuadra.setNomeQuadra(quadraUpdateDTO.getNomeQuadra());
-        }
-        if (quadraUpdateDTO.getUrlFotoQuadra() != null) {
-            savedQuadra.setUrlFotoQuadra(quadraUpdateDTO.getUrlFotoQuadra());
-        }
-        if (quadraUpdateDTO.getTipoQuadra() != null) {
-            savedQuadra.setTipoQuadra(quadraUpdateDTO.getTipoQuadra());
-        }
-        if (quadraUpdateDTO.getDescricao() != null) {
-            savedQuadra.setDescricao(quadraUpdateDTO.getDescricao());
-        }
-        if (quadraUpdateDTO.getDuracaoReserva() != null) {
-            savedQuadra.setDuracaoReserva(quadraUpdateDTO.getDuracaoReserva());
-        }
-        if (quadraUpdateDTO.getCobertura() != null) {
-            savedQuadra.setCobertura(quadraUpdateDTO.getCobertura());
-        }
-        if (quadraUpdateDTO.getIluminacaoNoturna() != null) {
-            savedQuadra.setIluminacaoNoturna(quadraUpdateDTO.getIluminacaoNoturna());
-        }
-        if (quadraUpdateDTO.getMateriaisFornecidos() != null) {
-            savedQuadra.setMateriaisFornecidos(quadraUpdateDTO.getMateriaisFornecidos());
-        }
-        if(quadraUpdateDTO.getUrlFotoQuadra() == null) {
-            savedQuadra.setUrlFotoQuadra(null);
-        }
-
-        return quadraRepository.save(savedQuadra);
-    }
-
     private void validarDadosUnicos(String nome) {
         if (quadraRepository.existsByNomeQuadra(nome)) {
             throw new UniqueConstraintViolationException("Nome já está em uso.");
@@ -108,37 +145,32 @@ public class QuadraServiceImpl implements QuadraService {
     }
 
     private void validarHorariosFuncionamento(List<HorarioFuncionamento> horarios) {
-        // Verificar unicidade de dia da semana
         Set<DiaDaSemana> dias = new HashSet<>();
         for (HorarioFuncionamento horario : horarios) {
             if (!dias.add(horario.getDiaDaSemana())) {
                 throw new DuplicateHorarioFuncionamentoException(
                         "Horário de funcionamento duplicado para o dia: " + horario.getDiaDaSemana());
             }
-            validarIntervalosDeHorario(horario.getIntervalosDeHorario());
+            if (!horario.getIntervalosDeHorario().isEmpty()) {
+                validarIntervalosDeHorario(horario.getIntervalosDeHorario());
+            }
         }
     }
 
     private void validarIntervalosDeHorario(List<IntervaloHorario> intervalos) {
         for (IntervaloHorario intervalo : intervalos) {
-            // Verificar se início é antes de fim
             if (intervalo.getInicio() == null || intervalo.getFim() == null) {
                 throw new InvalidIntervaloHorarioException("Horário de início e fim devem ser informados.");
             }
-
-            // Verificar se início vem antes do fim
             if (!intervalo.getInicio().isBefore(intervalo.getFim())) {
                 throw new InvalidIntervaloHorarioException(
                         "Horário de início (" + intervalo.getInicio() + ") deve ser anterior ao horário de fim (" + intervalo.getFim() + ").");
             }
-
-            // Verificar se o intervalo está dentro de limites realistas
             if (intervalo.getInicio().isBefore(LocalTime.of(0, 0)) || intervalo.getFim().isAfter(LocalTime.of(23, 59))) {
                 throw new InvalidIntervaloHorarioException("Os horários devem estar entre 00:00 e 23:59.");
             }
         }
 
-        // Verificar sobreposições ou intervalos repetidos
         for (int i = 0; i < intervalos.size(); i++) {
             IntervaloHorario intervalo1 = intervalos.get(i);
             for (int j = i + 1; j < intervalos.size(); j++) {
@@ -153,17 +185,16 @@ public class QuadraServiceImpl implements QuadraService {
     }
 
     private boolean isSobrepostoOuRepetido(IntervaloHorario intervalo1, IntervaloHorario intervalo2) {
-        // Intervalos são sobrepostos se um começa antes ou no mesmo momento que o outro termina
         return !(intervalo1.getFim().compareTo(intervalo2.getInicio()) <= 0 || intervalo2.getFim().compareTo(intervalo1.getInicio()) <= 0);
     }
 
     @Override
     @Transactional
-    public void excluir(Long id, Long userId) {
+    public void excluir(Long id, Long arenaId) {
         Quadra quadra = quadraRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("Quadra não encontrada com ID: " + id));
 
-        if (!quadra.getArena().getId().equals(userId)) {
+        if (!quadra.getArena().getId().equals(arenaId)) {
             throw new AccessDeniedException("Usuário não autorizado para excluir esta quadra");
         }
 

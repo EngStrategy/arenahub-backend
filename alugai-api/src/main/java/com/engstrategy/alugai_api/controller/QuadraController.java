@@ -101,10 +101,10 @@ public class QuadraController {
             @ApiResponse(responseCode = "404", description = "Quadra não encontrada")
     })
     public ResponseEntity<QuadraResponseDTO> atualizarQuadra(
-            @Parameter(description = "ID da quadra", required = true)
             @PathVariable Long id,
-            @Valid @RequestBody QuadraUpdateDTO quadraUpdateDTO) {
-        Quadra updatedQuadra = quadraService.atualizar(id, quadraUpdateDTO);
+            @Valid @RequestBody QuadraUpdateDTO updateDTO,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Quadra updatedQuadra = quadraService.atualizar(id, updateDTO, userDetails.getUserId());
         QuadraResponseDTO response = quadraMapper.mapQuadraToQuadraResponseDTO(updatedQuadra);
         return ResponseEntity.ok(response);
     }

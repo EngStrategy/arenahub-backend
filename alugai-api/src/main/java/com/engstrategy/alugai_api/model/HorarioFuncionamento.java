@@ -23,7 +23,7 @@ public class HorarioFuncionamento {
     @Enumerated(EnumType.STRING)
     private DiaDaSemana diaDaSemana;
 
-    @OneToMany(mappedBy = "horarioFuncionamento", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "horarioFuncionamento", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<IntervaloHorario> intervalosDeHorario = new ArrayList<>();
 
     @ManyToOne
