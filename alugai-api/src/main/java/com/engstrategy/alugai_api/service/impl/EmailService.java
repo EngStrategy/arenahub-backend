@@ -25,6 +25,19 @@ public class EmailService {
         }
     }
 
+    public void enviarCodigoResetSenha(String destino, String nome, String codigo) {
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, "utf-8");
+        try {
+            helper.setTo(destino);
+            helper.setSubject("Redefinição de Senha");
+            helper.setText(htmlContentResetSenha(nome, codigo), true);
+            mailSender.send(message);
+        } catch (MessagingException e) {
+            throw new RuntimeException("Erro ao enviar email", e);
+        }
+    }
+
     private String htmlContent(String nome, String codigo) {
         return """
                <!DOCTYPE html>
@@ -88,5 +101,70 @@ public class EmailService {
                </body>
                </html>
                """.formatted(nome, codigo);
+    }
+
+    private String htmlContentResetSenha(String nome, String codigo) {
+        return """
+           <!DOCTYPE html>
+           <html>
+           <head>
+               <meta charset="UTF-8">
+               <meta name="viewport" content="width=device-width, initial-scale=1.0">
+               <meta name="author" content="rian-lima">
+               <title>Reset de Senha</title>
+               <style>
+                   body {\s
+                       font-family: Arial, sans-serif; line-height: 1.6; color: #333;\s
+                   }
+                  \s
+                   .container {\s
+                       max-width: 600px; margin: 0 auto; padding: 20px;\s
+                   }
+
+                   .header {\s
+                       background-color: #15A01A; color: white; padding: 20px; text-align: center;\s
+                   }
+                  \s
+                   .content {\s
+                       padding: 30px 20px; background-color: #f9f9f9;\s
+                   }
+
+                   .code {
+                       background-color: #e2e2e2;
+                       font-weight: bold;
+                       letter-spacing: 8px;
+                       font-size: 30px;
+                       padding: 40px;
+                       text-align: center;
+                   }
+                  \s
+                   .footer {\s
+                       padding: 20px; text-align: center; color: #666; font-size: 12px;\s
+                   }
+
+               </style>
+           </head>
+           <body>
+               <div class="container">
+                   <div class="header">
+                       <h1>ALUGAÍ.</h1>
+                   </div>
+                   <div class="content">
+                       <h2>Olá, %s!</h2>
+                       <p>Recebemos uma solicitação para redefinir sua senha. Use o código abaixo para prosseguir:</p>
+                      \s
+                       <p class="code">
+                           %s
+                       </p>
+
+                       <p><strong>Este código expira em 15 minutos.</strong></p>
+                   </div>
+                   <div class="footer">
+                       <p>Se você não solicitou esta alteração, ignore este email.</p>
+                   </div>
+               </div>
+           </body>
+           </html>
+           """.formatted(nome, codigo);
     }
 }

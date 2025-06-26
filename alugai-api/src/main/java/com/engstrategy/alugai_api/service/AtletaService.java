@@ -2,6 +2,7 @@ package com.engstrategy.alugai_api.service;
 
 import com.engstrategy.alugai_api.dto.atleta.AtletaUpdateDTO;
 import com.engstrategy.alugai_api.model.Atleta;
+import com.engstrategy.alugai_api.model.Usuario;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -11,4 +12,5 @@ public interface AtletaService {
     Page<Atleta> listarTodos(Pageable pageable);
     Atleta atualizar(Long id, AtletaUpdateDTO atletaUpdateDTO);
     void excluir(Long id);
+    void redefinirSenha(Usuario usuario, String novaSenha);
 }
