@@ -1,6 +1,7 @@
 package com.engstrategy.alugai_api.exceptions;
 
 import com.engstrategy.alugai_api.exceptions.response.ErrorResponse;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -97,6 +98,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleEntityNotFound(EntityNotFoundException ex) {
+        ErrorResponse error = new ErrorResponse("ENTITY_NOT_FOUND", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+  
     // Tratamento genérico para validações do @Valid
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
