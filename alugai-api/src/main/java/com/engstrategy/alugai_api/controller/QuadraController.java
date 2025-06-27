@@ -26,6 +26,9 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @RestController
 @RequestMapping("/api/v1/quadras")
 @Tag(name = "Quadras", description = "Endpoints para gerenciamento de quadras")
@@ -123,4 +126,23 @@ public class QuadraController {
         quadraService.excluir(id, userDetails.getUserId());
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/arena/{arenaId}")
+    @Operation(summary = "Buscar quadras por ID da arena", description = "Retorna uma lista de quadras associadas a uma arena específica")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Quadras encontradas",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = QuadraResponseDTO.class))),
+            @ApiResponse(responseCode = "404", description = "Nenhuma quadra encontrada para a arena especificada")
+    })
+    public ResponseEntity<List<QuadraResponseDTO>> buscarQuadrasPorArenaId(
+            @Parameter(description = "ID da arena", required = true)
+            @PathVariable Long arenaId) {
+        List<Quadra> quadras = quadraService.buscarPorArenaId(arenaId);
+        List<QuadraResponseDTO> response = quadras.stream()
+                .map(quadraMapper::mapQuadraToQuadraResponseDTO)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(response);
+    }
+
 }
