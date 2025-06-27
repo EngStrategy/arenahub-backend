@@ -3,6 +3,7 @@ package com.engstrategy.alugai_api.dto.arena;
 import com.engstrategy.alugai_api.dto.quadra.QuadraResponseDTO;
 import com.engstrategy.alugai_api.model.Quadra;
 import com.engstrategy.alugai_api.model.enums.Role;
+import com.engstrategy.alugai_api.model.enums.TipoEsporte;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -46,6 +47,6 @@ public class ArenaResponseDTO {
     @Schema(description = "Role do usuário", example = "ARENA")
     private Role role;
 
-    @Schema(description = "Quadras da arena")
-    private List<QuadraResponseDTO> quadras;
+    @Schema(description = "Esportes", example = "FUTEBOL_SOCIETY")
+    private List<TipoEsporte> esportes;
 }

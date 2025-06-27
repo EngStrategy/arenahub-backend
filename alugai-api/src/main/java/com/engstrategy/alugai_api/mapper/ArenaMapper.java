@@ -9,6 +9,7 @@ import com.engstrategy.alugai_api.model.Arena;
 import com.engstrategy.alugai_api.model.HorarioFuncionamento;
 import com.engstrategy.alugai_api.model.Quadra;
 import com.engstrategy.alugai_api.model.enums.Role;
+import com.engstrategy.alugai_api.model.enums.TipoEsporte;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -44,12 +45,20 @@ public class ArenaMapper {
 
         List<QuadraResponseDTO> quadras = new ArrayList<>();
 
-        if(arena.getQuadras() != null) {
-             quadras = arena.getQuadras()
+        if (arena.getQuadras() != null) {
+            quadras = arena.getQuadras()
                     .stream()
                     .map(this::mapQuadraToQuadraResponseDTO)
                     .toList();
         }
+
+        List<TipoEsporte> esportes = arena.getQuadras() != null
+                ? arena.getQuadras()
+                .stream()
+                .flatMap(quadra -> quadra.getTipoQuadra().stream())
+                .distinct()
+                .toList()
+                : new ArrayList<>();
 
         return ArenaResponseDTO.builder()
                 .id(arena.getId())
@@ -61,7 +70,7 @@ public class ArenaMapper {
                 .endereco(enderecoMapper.mapEnderecoToEnderecoDTO(arena.getEndereco()))
                 .dataCriacao(arena.getDataCriacao())
                 .role(arena.getRole())
-                .quadras(quadras)
+                .esportes(esportes)
                 .build();
     }
 

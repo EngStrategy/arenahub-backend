@@ -13,7 +13,7 @@ spring:
   jpa:
     database: POSTGRESQL
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: update
     show-sql: true
   mail:
     host: smtp.gmail.com

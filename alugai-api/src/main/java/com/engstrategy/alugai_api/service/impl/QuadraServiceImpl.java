@@ -13,6 +13,7 @@ import com.engstrategy.alugai_api.model.enums.DiaDaSemana;
 import com.engstrategy.alugai_api.repository.ArenaRepository;
 import com.engstrategy.alugai_api.repository.QuadraRepository;
 import com.engstrategy.alugai_api.service.QuadraService;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -199,5 +200,14 @@ public class QuadraServiceImpl implements QuadraService {
         }
 
         quadraRepository.delete(quadra);
+    }
+
+    @Override
+    public List<Quadra> buscarPorArenaId(Long arenaId) {
+        List<Quadra> quadras = quadraRepository.findByArenaId(arenaId);
+        if (quadras.isEmpty()) {
+            throw new EntityNotFoundException("Nenhuma quadra encontrada para a arena com ID: " + arenaId);
+        }
+        return quadras;
     }
 }

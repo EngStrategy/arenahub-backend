@@ -48,6 +48,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/arenas/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/quadras").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/quadras/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/esportes").permitAll()
                         .requestMatchers("/api/v1/verify").permitAll()
                         .requestMatchers("/api/v1/resend-verification").permitAll()
                         // endpoints com autorização
