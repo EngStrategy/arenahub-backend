@@ -5,6 +5,7 @@ import com.engstrategy.alugai_api.exceptions.UniqueConstraintViolationException;
 import com.engstrategy.alugai_api.exceptions.UserNotFoundException;
 import com.engstrategy.alugai_api.model.Atleta;
 import com.engstrategy.alugai_api.model.CodigoVerificacao;
+import com.engstrategy.alugai_api.model.Usuario;
 import com.engstrategy.alugai_api.repository.AtletaRepository;
 import com.engstrategy.alugai_api.repository.CodigoVerificacaoRepository;
 import com.engstrategy.alugai_api.service.AtletaService;
@@ -100,5 +101,16 @@ public class AtletaServiceImpl implements AtletaService {
     private void encodePassword(Atleta atleta) {
         String encodedPassword = passwordEncoder.encode(atleta.getSenha());
         atleta.setSenha(encodedPassword);
+    }
+
+    @Override
+    @Transactional
+    public void redefinirSenha(Usuario usuario, String novaSenha) {
+        if (!(usuario instanceof Atleta)) {
+            throw new IllegalArgumentException("Usuário não é um Atleta");
+        }
+        Atleta atleta = (Atleta) usuario;
+        atleta.setSenha(passwordEncoder.encode(novaSenha));
+        atletaRepository.save(atleta);
     }
 }

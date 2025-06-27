@@ -144,4 +144,5 @@ public class QuadraController {
                 .collect(Collectors.toList());
         return ResponseEntity.ok(response);
     }
+
 }

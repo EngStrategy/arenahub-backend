@@ -45,8 +45,8 @@ public class ArenaMapper {
 
         List<QuadraResponseDTO> quadras = new ArrayList<>();
 
-        if (arena.getQuadras() != null) {
-            quadras = arena.getQuadras()
+        if(arena.getQuadras() != null) {
+             quadras = arena.getQuadras()
                     .stream()
                     .map(this::mapQuadraToQuadraResponseDTO)
                     .toList();

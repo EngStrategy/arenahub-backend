@@ -49,4 +49,7 @@ public class ArenaResponseDTO {
 
     @Schema(description = "Esportes", example = "FUTEBOL_SOCIETY")
     private List<TipoEsporte> esportes;
+
+    @Schema(description = "Quadras da arena")
+    private List<QuadraResponseDTO> quadras;
 }

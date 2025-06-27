@@ -6,6 +6,7 @@ import com.engstrategy.alugai_api.exceptions.UserNotFoundException;
 import com.engstrategy.alugai_api.mapper.EnderecoMapper;
 import com.engstrategy.alugai_api.model.Arena;
 import com.engstrategy.alugai_api.model.CodigoVerificacao;
+import com.engstrategy.alugai_api.model.Usuario;
 import com.engstrategy.alugai_api.repository.ArenaRepository;
 import com.engstrategy.alugai_api.repository.CodigoVerificacaoRepository;
 import com.engstrategy.alugai_api.repository.specs.ArenaSpecs;
@@ -129,5 +130,16 @@ public class ArenaServiceImpl implements ArenaService {
     private void encodePassword(Arena arena) {
         String encodedPassword = passwordEncoder.encode(arena.getSenha());
         arena.setSenha(encodedPassword);
+    }
+
+    @Override
+    @Transactional
+    public void redefinirSenha(Usuario usuario, String novaSenha) {
+        if (!(usuario instanceof Arena)) {
+            throw new IllegalArgumentException("Usuário não é uma Arena");
+        }
+        Arena arena = (Arena) usuario;
+        arena.setSenha(passwordEncoder.encode(novaSenha));
+        arenaRepository.save(arena);
     }
 }

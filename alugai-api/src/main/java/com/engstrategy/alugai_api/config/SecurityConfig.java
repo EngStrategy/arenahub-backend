@@ -51,6 +51,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/esportes").permitAll()
                         .requestMatchers("/api/v1/verify").permitAll()
                         .requestMatchers("/api/v1/resend-verification").permitAll()
+                        .requestMatchers("/api/v1/forgot-password").permitAll()
+                        .requestMatchers("/api/v1/verify-reset-code").permitAll()
+                        .requestMatchers( "/api/v1/reset-password").permitAll()
                         // endpoints com autorização
                         .requestMatchers("/api/v1/atletas/**").hasRole("ATLETA")
                         .requestMatchers("/api/v1/arenas/**").hasRole("ARENA")
