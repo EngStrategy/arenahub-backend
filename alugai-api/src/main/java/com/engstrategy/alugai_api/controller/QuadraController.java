@@ -1,5 +1,6 @@
 package com.engstrategy.alugai_api.controller;
 
+import com.engstrategy.alugai_api.dto.quadra.HorarioDisponivelDTO;
 import com.engstrategy.alugai_api.dto.quadra.QuadraCreateDTO;
 import com.engstrategy.alugai_api.dto.quadra.QuadraResponseDTO;
 import com.engstrategy.alugai_api.dto.quadra.QuadraUpdateDTO;
@@ -20,12 +21,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -143,6 +146,25 @@ public class QuadraController {
                 .map(quadraMapper::mapQuadraToQuadraResponseDTO)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(response);
+    }
+
+    // NOVO ENDPOINT:
+    @GetMapping("/{id}/horarios-disponiveis")
+    @Operation(summary = "Listar horários disponíveis para uma quadra em uma data específica",
+            description = "Retorna os slots de horário de uma quadra, indicando se estão disponíveis ou não para agendamento.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Horários retornados com sucesso"),
+            @ApiResponse(responseCode = "404", description = "Quadra não encontrada")
+    })
+    public ResponseEntity<List<HorarioDisponivelDTO>> getHorariosDisponiveis(
+            @Parameter(description = "ID da quadra", required = true)
+            @PathVariable("id") Long quadraId,
+
+            @Parameter(description = "Data para consulta no formato YYYY-MM-DD", required = true, example = "2025-07-20")
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data) {
+
+        List<HorarioDisponivelDTO> horarios = quadraService.listarHorariosDisponiveis(quadraId, data);
+        return ResponseEntity.ok(horarios);
     }
 
 }

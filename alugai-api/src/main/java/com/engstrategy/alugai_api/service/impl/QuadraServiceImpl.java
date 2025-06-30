@@ -1,15 +1,15 @@
 package com.engstrategy.alugai_api.service.impl;
 
+import com.engstrategy.alugai_api.dto.quadra.HorarioDisponivelDTO;
 import com.engstrategy.alugai_api.dto.quadra.HorarioFuncionamentoUpdateDTO;
 import com.engstrategy.alugai_api.dto.quadra.IntervaloHorarioUpdateDTO;
 import com.engstrategy.alugai_api.dto.quadra.QuadraUpdateDTO;
 import com.engstrategy.alugai_api.exceptions.*;
 import com.engstrategy.alugai_api.mapper.QuadraMapper;
-import com.engstrategy.alugai_api.model.Arena;
-import com.engstrategy.alugai_api.model.HorarioFuncionamento;
-import com.engstrategy.alugai_api.model.IntervaloHorario;
-import com.engstrategy.alugai_api.model.Quadra;
+import com.engstrategy.alugai_api.model.*;
 import com.engstrategy.alugai_api.model.enums.DiaDaSemana;
+import com.engstrategy.alugai_api.model.enums.StatusIntervalo;
+import com.engstrategy.alugai_api.repository.AgendamentoRepository;
 import com.engstrategy.alugai_api.repository.ArenaRepository;
 import com.engstrategy.alugai_api.repository.QuadraRepository;
 import com.engstrategy.alugai_api.service.QuadraService;
@@ -21,6 +21,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.*;
 import java.util.function.Function;
@@ -33,6 +34,7 @@ public class QuadraServiceImpl implements QuadraService {
     private final QuadraRepository quadraRepository;
     private final ArenaRepository arenaRepository;
     private final QuadraMapper quadraMapper;
+    private final AgendamentoRepository agendamentoRepository;
 
     @Override
     @Transactional
@@ -165,9 +167,11 @@ public class QuadraServiceImpl implements QuadraService {
             }
             if (!intervalo.getInicio().isBefore(intervalo.getFim())) {
                 throw new InvalidIntervaloHorarioException(
-                        "Horário de início (" + intervalo.getInicio() + ") deve ser anterior ao horário de fim (" + intervalo.getFim() + ").");
+                        "Horário de início (" + intervalo.getInicio() + ") deve ser anterior ao horário de fim ("
+                                + intervalo.getFim() + ").");
             }
-            if (intervalo.getInicio().isBefore(LocalTime.of(0, 0)) || intervalo.getFim().isAfter(LocalTime.of(23, 59))) {
+            if (intervalo.getInicio().isBefore(LocalTime.of(0, 0)) || intervalo.getFim().isAfter(
+                    LocalTime.of(23, 59))) {
                 throw new InvalidIntervaloHorarioException("Os horários devem estar entre 00:00 e 23:59.");
             }
         }
@@ -178,15 +182,18 @@ public class QuadraServiceImpl implements QuadraService {
                 IntervaloHorario intervalo2 = intervalos.get(j);
                 if (isSobrepostoOuRepetido(intervalo1, intervalo2)) {
                     throw new InvalidIntervaloHorarioException(
-                            "Intervalos de horário sobrepostos ou repetidos: [" + intervalo1.getInicio() + "-" + intervalo1.getFim() + "] e [" +
-                                    intervalo2.getInicio() + "-" + intervalo2.getFim() + "]");
+                            "Intervalos de horário sobrepostos ou repetidos: [" + intervalo1.getInicio() + "-"
+                                    + intervalo1.getFim() + "] e ["
+                                    + intervalo2.getInicio() + "-"
+                                    + intervalo2.getFim() + "]");
                 }
             }
         }
     }
 
     private boolean isSobrepostoOuRepetido(IntervaloHorario intervalo1, IntervaloHorario intervalo2) {
-        return !(intervalo1.getFim().compareTo(intervalo2.getInicio()) <= 0 || intervalo2.getFim().compareTo(intervalo1.getInicio()) <= 0);
+        return !(intervalo1.getFim().compareTo(intervalo2.getInicio()) <= 0 ||
+                intervalo2.getFim().compareTo(intervalo1.getInicio()) <= 0);
     }
 
     @Override
@@ -209,5 +216,61 @@ public class QuadraServiceImpl implements QuadraService {
             throw new EntityNotFoundException("Nenhuma quadra encontrada para a arena com ID: " + arenaId);
         }
         return quadras;
+    }
+
+    @Override
+    @Transactional
+    public List<HorarioDisponivelDTO> listarHorariosDisponiveis(Long quadraId, LocalDate data) {
+        Quadra quadra = quadraRepository.findById(quadraId)
+                .orElseThrow(() -> new EntityNotFoundException("Quadra não encontrada com ID: " + quadraId));
+
+        Map<java.time.DayOfWeek, DiaDaSemana> mapaDias = Map.of(
+                java.time.DayOfWeek.MONDAY, DiaDaSemana.SEGUNDA,
+                java.time.DayOfWeek.TUESDAY, DiaDaSemana.TERCA,
+                java.time.DayOfWeek.WEDNESDAY, DiaDaSemana.QUARTA,
+                java.time.DayOfWeek.THURSDAY, DiaDaSemana.QUINTA,
+                java.time.DayOfWeek.FRIDAY, DiaDaSemana.SEXTA,
+                java.time.DayOfWeek.SATURDAY, DiaDaSemana.SABADO,
+                java.time.DayOfWeek.SUNDAY, DiaDaSemana.DOMINGO
+        );
+        DiaDaSemana diaDaSemanaEnum = mapaDias.get(data.getDayOfWeek());
+
+        HorarioFuncionamento horarioDoDia = quadra.getHorariosFuncionamento().stream()
+                .filter(hf -> hf.getDiaDaSemana() == diaDaSemanaEnum)
+                .findFirst()
+                .orElse(null);
+
+        if (horarioDoDia == null || horarioDoDia.getIntervalosDeHorario().isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Agendamento> agendamentosDoDia = agendamentoRepository
+                .findByQuadraIdAndDataAgendamento(quadraId, data);
+
+        Set<LocalTime> horariosAgendados = agendamentosDoDia.stream()
+                .map(Agendamento::getInicio)
+                .collect(Collectors.toSet());
+
+        final LocalTime agora = LocalTime.now();
+        final boolean isHoje = data.isEqual(LocalDate.now());
+
+        return horarioDoDia.getIntervalosDeHorario().stream()
+                .map(intervalo -> {
+
+                    boolean jaPassou = isHoje && agora.isAfter(intervalo.getFim());
+
+                    boolean ocupadoPorAgendamento = intervalo.getStatus() != StatusIntervalo.DISPONIVEL ||
+                            horariosAgendados.contains(intervalo.getInicio());
+
+                    return HorarioDisponivelDTO.builder()
+                            .intervaloId(intervalo.getId())
+                            .inicio(intervalo.getInicio())
+                            .fim(intervalo.getFim())
+                            .valor(intervalo.getValor())
+                            .disponivel(!jaPassou && !ocupadoPorAgendamento)
+                            .build();
+                })
+                .collect(Collectors.toList());
+
     }
 }

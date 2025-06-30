@@ -29,6 +29,7 @@ public class ArenaServiceImpl implements ArenaService {
     private final EnderecoMapper enderecoMapper;
     private final CodigoVerificacaoRepository codigoVerificacaoRepository;
     private final EmailService emailService;
+    private final UserService userService;
 
     @Override
     @Transactional
@@ -113,10 +114,10 @@ public class ArenaServiceImpl implements ArenaService {
     }
 
     private void validarDadosUnicos(String email, String telefone, String cpfProprietario, String cnpj) {
-        if (arenaRepository.existsByEmail(email)) {
+        if (userService.existsByEmail(email)) {
             throw new UniqueConstraintViolationException("Email já está em uso.");
         }
-        if (arenaRepository.existsByTelefone(telefone)) {
+        if (userService.existsByTelefone(telefone)) {
             throw new UniqueConstraintViolationException("Telefone já está em uso.");
         }
         if (arenaRepository.existsByCpfProprietario(cpfProprietario)) {

@@ -25,6 +25,7 @@ public class AtletaServiceImpl implements AtletaService {
     private final PasswordEncoder passwordEncoder;
     private final CodigoVerificacaoRepository codigoVerificacaoRepository;
     private final EmailService emailService;
+    private final UserService userService;
 
     @Override
     @Transactional
@@ -90,10 +91,10 @@ public class AtletaServiceImpl implements AtletaService {
     }
 
     private void validarDadosUnicos(String email, String telefone) {
-        if (atletaRepository.existsByEmail(email)) {
+        if (userService.existsByEmail(email)) {
             throw new UniqueConstraintViolationException("Email já está em uso.");
         }
-        if (atletaRepository.existsByTelefone(telefone)) {
+        if (userService.existsByTelefone(telefone)) {
             throw new UniqueConstraintViolationException("Telefone já está em uso.");
         }
     }
