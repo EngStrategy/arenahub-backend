@@ -18,6 +18,14 @@ public class UserService {
     private final ArenaRepository arenaRepository;
     private final AtletaRepository atletaRepository;
 
+    public boolean existsByEmail(String email) {
+        return arenaRepository.existsByEmail(email) | atletaRepository.existsByEmail(email);
+    }
+
+    public boolean existsByTelefone(String telefone) {
+        return arenaRepository.existsByTelefone(telefone) | atletaRepository.existsByTelefone(telefone);
+    }
+
     public Usuario findUserByEmail(String email) {
         // Primeiro tenta buscar na tabela Arena
         Optional<Arena> arena = arenaRepository.findByEmail(email);

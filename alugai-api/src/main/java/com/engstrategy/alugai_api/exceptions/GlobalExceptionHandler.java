@@ -1,6 +1,7 @@
 package com.engstrategy.alugai_api.exceptions;
 
 import com.engstrategy.alugai_api.exceptions.response.ErrorResponse;
+import jakarta.mail.MessagingException;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.HttpStatus;
@@ -103,7 +104,19 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse("ENTITY_NOT_FOUND", ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
-  
+
+    @ExceptionHandler(UnavailableDateTimeException.class)
+    public ResponseEntity<ErrorResponse> handleUnavailableDateTime(UnavailableDateTimeException ex){
+        ErrorResponse error = new ErrorResponse("UNAVAILABLE_DATE_TIME", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
+    @ExceptionHandler(MessagingException.class)
+    public ResponseEntity<ErrorResponse> handleMessagingException(MessagingException ex) {
+        ErrorResponse error = new ErrorResponse("Messaging Exception", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+    }
+
     // Tratamento genérico para validações do @Valid
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
