@@ -3,6 +3,8 @@ package com.engstrategy.alugai_api.controller;
 import com.engstrategy.alugai_api.dto.arena.ArenaCreateDTO;
 import com.engstrategy.alugai_api.dto.arena.ArenaResponseDTO;
 import com.engstrategy.alugai_api.dto.arena.ArenaUpdateDTO;
+import com.engstrategy.alugai_api.dto.usuario.AlterarSenhaRequest;
+import com.engstrategy.alugai_api.jwt.CustomUserDetails;
 import com.engstrategy.alugai_api.mapper.ArenaMapper;
 import com.engstrategy.alugai_api.model.Arena;
 import com.engstrategy.alugai_api.service.ArenaService;
@@ -12,6 +14,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
@@ -21,6 +24,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -122,5 +126,22 @@ public class ArenaController {
             @PathVariable Long id) {
         arenaService.excluir(id);
         return ResponseEntity.noContent().build();
+    }
+
+
+    @PatchMapping("/me/alterar-senha")
+    @Operation(summary = "Alterar a senha da arena logada", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Senha alterada com sucesso"),
+            @ApiResponse(responseCode = "400", description = "Dados inválidos, senhas não coincidem ou senha atual incorreta"),
+            @ApiResponse(responseCode = "404", description = "Arena não encontrada")
+    })
+    public ResponseEntity<String> alterarSenha(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody AlterarSenhaRequest request) {
+
+        arenaService.alterarSenha(userDetails.getUserId(), request.getSenhaAtual(), request.getNovaSenha());
+
+        return ResponseEntity.ok("Senha alterada com sucesso.");
     }
 }

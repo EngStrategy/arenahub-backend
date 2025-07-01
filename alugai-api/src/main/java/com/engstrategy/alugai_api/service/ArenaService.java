@@ -13,4 +13,5 @@ public interface ArenaService {
     Arena atualizar(Long id, ArenaUpdateDTO arenaUpdateDTO);
     void excluir(Long id);
     void redefinirSenha(Usuario usuario, String novaSenha);
+    void alterarSenha(Long arenaId, String senhaAtual, String novaSenha);
 }
