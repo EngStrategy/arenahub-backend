@@ -1,6 +1,7 @@
 package com.engstrategy.alugai_api.service.impl;
 
 import com.engstrategy.alugai_api.dto.atleta.AtletaUpdateDTO;
+import com.engstrategy.alugai_api.exceptions.InvalidCredentialsException;
 import com.engstrategy.alugai_api.exceptions.UniqueConstraintViolationException;
 import com.engstrategy.alugai_api.exceptions.UserNotFoundException;
 import com.engstrategy.alugai_api.model.Atleta;
@@ -111,6 +112,20 @@ public class AtletaServiceImpl implements AtletaService {
             throw new IllegalArgumentException("Usuário não é um Atleta");
         }
         Atleta atleta = (Atleta) usuario;
+        atleta.setSenha(passwordEncoder.encode(novaSenha));
+        atletaRepository.save(atleta);
+    }
+
+    @Override
+    @Transactional
+    public void alterarSenha(Long atletaId, String senhaAtual, String novaSenha) {
+        Atleta atleta = atletaRepository.findById(atletaId)
+                .orElseThrow(() -> new UserNotFoundException("Atleta não encontrado"));
+
+        if (!passwordEncoder.matches(senhaAtual, atleta.getSenha())) {
+            throw new IllegalArgumentException("A senha atual está incorreta.");
+        }
+
         atleta.setSenha(passwordEncoder.encode(novaSenha));
         atletaRepository.save(atleta);
     }

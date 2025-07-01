@@ -13,4 +13,5 @@ public interface AtletaService {
     Atleta atualizar(Long id, AtletaUpdateDTO atletaUpdateDTO);
     void excluir(Long id);
     void redefinirSenha(Usuario usuario, String novaSenha);
+    void alterarSenha(Long atletaId, String senhaAtual, String novaSenha);
 }

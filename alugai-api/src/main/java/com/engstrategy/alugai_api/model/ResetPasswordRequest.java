@@ -1,5 +1,6 @@
 package com.engstrategy.alugai_api.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -19,6 +20,7 @@ public class ResetPasswordRequest {
     @NotBlank
     private String confirmation;
 
+    @JsonIgnore
     @AssertTrue(message = "As senhas não coincidem")
     public boolean isPasswordMatch() {
         return newPassword != null && newPassword.equals(confirmation);
