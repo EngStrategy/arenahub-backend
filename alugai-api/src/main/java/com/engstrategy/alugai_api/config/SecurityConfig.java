@@ -60,6 +60,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/atletas/**").hasRole("ATLETA")
                         .requestMatchers("/api/v1/arenas/**").hasRole("ARENA")
                         .requestMatchers("/api/v1/quadras/**").hasRole("ARENA")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/atletas/me/alterar-senha").hasRole("ATLETA")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/arenas/me/alterar-senha").hasRole("ARENA")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

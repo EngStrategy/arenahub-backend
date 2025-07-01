@@ -1,6 +1,7 @@
 package com.engstrategy.alugai_api.service.impl;
 
 import com.engstrategy.alugai_api.dto.arena.ArenaUpdateDTO;
+import com.engstrategy.alugai_api.exceptions.InvalidCredentialsException;
 import com.engstrategy.alugai_api.exceptions.UniqueConstraintViolationException;
 import com.engstrategy.alugai_api.exceptions.UserNotFoundException;
 import com.engstrategy.alugai_api.mapper.EnderecoMapper;
@@ -140,6 +141,20 @@ public class ArenaServiceImpl implements ArenaService {
             throw new IllegalArgumentException("Usuário não é uma Arena");
         }
         Arena arena = (Arena) usuario;
+        arena.setSenha(passwordEncoder.encode(novaSenha));
+        arenaRepository.save(arena);
+    }
+
+    @Override
+    @Transactional
+    public void alterarSenha(Long arenaId, String senhaAtual, String novaSenha) {
+        Arena arena = arenaRepository.findById(arenaId)
+                .orElseThrow(() -> new UserNotFoundException("Arena não encontrada"));
+
+        if (!passwordEncoder.matches(senhaAtual, arena.getSenha())) {
+            throw new IllegalArgumentException("A senha atual está incorreta.");
+        }
+
         arena.setSenha(passwordEncoder.encode(novaSenha));
         arenaRepository.save(arena);
     }

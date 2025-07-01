@@ -3,6 +3,8 @@ package com.engstrategy.alugai_api.controller;
 import com.engstrategy.alugai_api.dto.atleta.AtletaCreateDTO;
 import com.engstrategy.alugai_api.dto.atleta.AtletaResponseDTO;
 import com.engstrategy.alugai_api.dto.atleta.AtletaUpdateDTO;
+import com.engstrategy.alugai_api.dto.usuario.AlterarSenhaRequest;
+import com.engstrategy.alugai_api.jwt.CustomUserDetails;
 import com.engstrategy.alugai_api.mapper.AtletaMapper;
 import com.engstrategy.alugai_api.model.Atleta;
 import com.engstrategy.alugai_api.service.AtletaService;
@@ -12,6 +14,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +24,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -118,5 +122,22 @@ public class AtletaController {
             @PathVariable Long id) {
         atletaService.excluir(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/me/alterar-senha")
+    @Operation(summary = "Alterar a senha do atleta logado", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Senha alterada com sucesso"),
+            // A mensagem de erro 401 foi removida e a descrição do 400 foi atualizada
+            @ApiResponse(responseCode = "400", description = "Dados inválidos, senhas não coincidem ou senha atual incorreta"),
+            @ApiResponse(responseCode = "404", description = "Atleta não encontrado")
+    })
+    public ResponseEntity<String> alterarSenha(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody AlterarSenhaRequest request) {
+
+        atletaService.alterarSenha(userDetails.getUserId(), request.getSenhaAtual(), request.getNovaSenha());
+
+        return ResponseEntity.ok("Senha alterada com sucesso.");
     }
 }
