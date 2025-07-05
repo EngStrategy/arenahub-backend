@@ -1,9 +1,9 @@
 package com.engstrategy.alugai_api.controller;
 
-import com.engstrategy.alugai_api.dto.quadra.HorarioDisponivelDTO;
 import com.engstrategy.alugai_api.dto.quadra.QuadraCreateDTO;
 import com.engstrategy.alugai_api.dto.quadra.QuadraResponseDTO;
 import com.engstrategy.alugai_api.dto.quadra.QuadraUpdateDTO;
+import com.engstrategy.alugai_api.dto.quadra.SlotHorarioResponseDTO;
 import com.engstrategy.alugai_api.jwt.CustomUserDetails;
 import com.engstrategy.alugai_api.mapper.QuadraMapper;
 import com.engstrategy.alugai_api.model.Quadra;
@@ -148,7 +148,6 @@ public class QuadraController {
         return ResponseEntity.ok(response);
     }
 
-    // NOVO ENDPOINT:
     @GetMapping("/{id}/horarios-disponiveis")
     @Operation(summary = "Listar horários disponíveis para uma quadra em uma data específica",
             description = "Retorna os slots de horário de uma quadra, indicando se estão disponíveis ou não para agendamento.")
@@ -156,14 +155,14 @@ public class QuadraController {
             @ApiResponse(responseCode = "200", description = "Horários retornados com sucesso"),
             @ApiResponse(responseCode = "404", description = "Quadra não encontrada")
     })
-    public ResponseEntity<List<HorarioDisponivelDTO>> getHorariosDisponiveis(
+    public ResponseEntity<List<SlotHorarioResponseDTO>> getHorariosDisponiveis(
             @Parameter(description = "ID da quadra", required = true)
             @PathVariable("id") Long quadraId,
 
             @Parameter(description = "Data para consulta no formato YYYY-MM-DD", required = true, example = "2025-07-20")
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data) {
 
-        List<HorarioDisponivelDTO> horarios = quadraService.listarHorariosDisponiveis(quadraId, data);
+        List<SlotHorarioResponseDTO> horarios = quadraService.consultarDisponibilidade(quadraId, data);
         return ResponseEntity.ok(horarios);
     }
 

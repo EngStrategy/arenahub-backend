@@ -92,7 +92,6 @@ public class ArenaMapper {
                 .materiaisFornecidos(quadra.getMateriaisFornecidos())
                 .arenaId(quadra.getArena().getId())
                 .nomeArena(quadra.getArena().getNome())
-                .horariosFuncionamento(horariosFuncionamento)
                 .build();
     }
 

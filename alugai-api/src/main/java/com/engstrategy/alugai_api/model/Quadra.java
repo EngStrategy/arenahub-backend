@@ -55,4 +55,11 @@ public class Quadra {
 
     @OneToMany(mappedBy = "quadra", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Agendamento> agendamentos = new ArrayList<>();
+
+    public List<SlotHorario> getAllSlotHorarios() {
+        return horariosFuncionamento.stream()
+                .flatMap(horario -> horario.getIntervalosDeHorario().stream())
+                .flatMap(intervalo -> intervalo.getSlotsHorario().stream())
+                .toList();
+    }
 }

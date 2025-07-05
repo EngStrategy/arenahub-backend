@@ -7,6 +7,6 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import java.util.List;
 
 public interface QuadraRepository extends JpaRepository<Quadra, Long>, JpaSpecificationExecutor<Quadra> {
-    boolean existsByNomeQuadra(String nome);
+    boolean existsByNomeQuadraIgnoreCase(String nome);
     List<Quadra> findByArenaId(Long arenaId);
 }

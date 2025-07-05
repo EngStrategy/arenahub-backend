@@ -2,32 +2,30 @@ package com.engstrategy.alugai_api.dto.agendamento;
 
 import com.engstrategy.alugai_api.model.enums.PeriodoAgendamento;
 import com.engstrategy.alugai_api.model.enums.TipoEsporte;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotNull;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDate;
+import java.util.List;
 
-
-@Getter
-@Setter
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class AgendamentoCreateDTO {
-
     @NotNull
     private Long quadraId;
     @NotNull
     private LocalDate dataAgendamento;
     @NotNull
-    private Long intervaloHorarioId;
+    private List<Long> slotHorarioIds;
     @NotNull
     private TipoEsporte esporte;
-    private boolean isFixo = false;
-    private PeriodoAgendamento periodoAgendamentoFixo;
-    private boolean isPublico = false;
+    @JsonProperty("isFixo")
+    private boolean isFixo;
+    @JsonProperty("isPublico")
+    private boolean isPublico;
+    private PeriodoAgendamento periodoFixo;
     private Integer numeroJogadoresNecessarios;
-    /*
-        Lógica de isFixo e isPublico foram as seguintes, como vai ter um checkbox para essas duas opções, se ele
-        não marcar, o padrão é que ambos são falsos, caso ele marque, o front vai enviar um JSON com true nesse campo
-        e aí a classe de serviço vai lidar com isso (logica)
-     */
 }

@@ -1,17 +1,22 @@
 package com.engstrategy.alugai_api.controller;
 
 import com.engstrategy.alugai_api.dto.agendamento.AgendamentoCreateDTO;
+import com.engstrategy.alugai_api.dto.agendamento.AgendamentoFixoResponseDTO;
 import com.engstrategy.alugai_api.dto.agendamento.AgendamentoResponseDTO;
 import com.engstrategy.alugai_api.jwt.CustomUserDetails;
 import com.engstrategy.alugai_api.mapper.AgendamentoMapper;
 import com.engstrategy.alugai_api.model.Agendamento;
+import com.engstrategy.alugai_api.model.AgendamentoFixo;
+import com.engstrategy.alugai_api.service.AgendamentoFixoService;
 import com.engstrategy.alugai_api.service.AgendamentoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -22,31 +27,90 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @RestController
 @RequestMapping("/api/v1/agendamentos")
 @Tag(name = "Agendamentos", description = "Endpoints para gerenciamento de agendamentos")
 @Validated
 @RequiredArgsConstructor
+@Slf4j
 public class AgendamentoController {
 
     private final AgendamentoService agendamentoService;
     private final AgendamentoMapper agendamentoMapper;
+    private final AgendamentoFixoService agendamentoFixoService;
 
     @PostMapping
-    @Operation(summary = "Criar um novo agendamento", security = @SecurityRequirement(name = "bearerAuth"))
+    @Operation(summary = "Criar novo agendamento", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<AgendamentoResponseDTO> criarAgendamento(
-            @Valid @RequestBody AgendamentoCreateDTO agendamentoCreateDTO,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
+            @RequestBody @Valid AgendamentoCreateDTO dto,
+            @AuthenticationPrincipal CustomUserDetails customUserDetails) {
 
-        Agendamento agendamento = agendamentoService.criarAgendamento(agendamentoCreateDTO, userDetails.getUserId());
+        Long atletaId = customUserDetails.getUserId();
 
-        AgendamentoResponseDTO response = agendamentoMapper.toResponseDTO(agendamento);
+        try {
+            Agendamento agendamento = agendamentoService.criarAgendamento(dto, atletaId);
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+            // Se for agendamento fixo, criar os recorrentes
+            if (dto.isFixo()) {
+                AgendamentoFixo agendamentoFixo = agendamentoFixoService.criarAgendamentosFixos(agendamento);
+                log.info("Agendamento fixo criado com ID: {}", agendamentoFixo.getId());
+            }
+
+            AgendamentoResponseDTO response = agendamentoMapper.fromAgendamentoToResponseDTO(agendamento);
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Erro ao criar agendamento: {}", e.getMessage(), e);
+            throw e;
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Cancelar agendamento normal", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<Void> cancelarAgendamento(@PathVariable(name = "id") Long id,
+                                                    @AuthenticationPrincipal CustomUserDetails customUserDetails) {
+        agendamentoService.cancelarAgendamento(id, customUserDetails.getUserId());
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/fixo/{agendamentoFixoId}")
+    @Operation(summary = "Cancelar agendamento fixo", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<Void> cancelarAgendamentoFixo(
+            @PathVariable Long agendamentoFixoId,
+            @AuthenticationPrincipal CustomUserDetails customUserDetails) {
+
+        try {
+            agendamentoFixoService.cancelarAgendamentoFixo(agendamentoFixoId, customUserDetails.getUserId());
+            return ResponseEntity.noContent().build();
+
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("Erro ao cancelar agendamento fixo: {}", e.getMessage(), e);
+            throw e;
+        }
+    }
+
+    @GetMapping("/fixos")
+    @Operation(summary = "Listar meus agendamentos fixos", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<List<AgendamentoFixoResponseDTO>> listarAgendamentosFixos(
+            @AuthenticationPrincipal CustomUserDetails customUserDetails) {
+
+        Long atletaId = customUserDetails.getUserId();
+        List<AgendamentoFixo> agendamentosFixos = agendamentoFixoService.listarAgendamentosFixosAtivos(atletaId);
+
+        List<AgendamentoFixoResponseDTO> response = agendamentosFixos.stream()
+                .map(this.agendamentoMapper::fromAgendamentoFixoToResponseDTO)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/meus-agendamentos")
-    @Operation(summary = "Listar meus agendamentos (Atleta)", security = @SecurityRequirement(name = "bearerAuth"))
+    @Operation(summary = "Listar meus agendamentos", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<Page<AgendamentoResponseDTO>> getMeusAgendamentos(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Parameter(description = "Número da página (iniciando em 0)")
@@ -59,10 +123,8 @@ public class AgendamentoController {
             @RequestParam(defaultValue = "desc") String direction) {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(direction), sort));
-
         Page<Agendamento> agendamentosPage = agendamentoService.buscarPorAtletaId(userDetails.getUserId(), pageable);
-
-        Page<AgendamentoResponseDTO> response = agendamentosPage.map(agendamentoMapper::toResponseDTO);
+        Page<AgendamentoResponseDTO> response = agendamentosPage.map(agendamentoMapper::fromAgendamentoToResponseDTO);
 
         return ResponseEntity.ok(response);
     }

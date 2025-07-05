@@ -3,20 +3,17 @@ package com.engstrategy.alugai_api.service.impl;
 import com.engstrategy.alugai_api.dto.agendamento.AgendamentoCreateDTO;
 import com.engstrategy.alugai_api.exceptions.UnavailableDateTimeException;
 import com.engstrategy.alugai_api.exceptions.UserNotFoundException;
-import com.engstrategy.alugai_api.model.Agendamento;
-import com.engstrategy.alugai_api.model.Atleta;
-import com.engstrategy.alugai_api.model.IntervaloHorario;
-import com.engstrategy.alugai_api.model.Quadra;
+import com.engstrategy.alugai_api.mapper.AgendamentoMapper;
+import com.engstrategy.alugai_api.model.*;
 import com.engstrategy.alugai_api.model.enums.DiaDaSemana;
 import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
+import com.engstrategy.alugai_api.model.enums.StatusDisponibilidade;
 import com.engstrategy.alugai_api.model.enums.StatusIntervalo;
-import com.engstrategy.alugai_api.repository.AgendamentoRepository;
-import com.engstrategy.alugai_api.repository.AtletaRepository;
-import com.engstrategy.alugai_api.repository.IntervaloHorarioRepository;
-import com.engstrategy.alugai_api.repository.QuadraRepository;
+import com.engstrategy.alugai_api.repository.*;
 import com.engstrategy.alugai_api.service.AgendamentoService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -25,108 +22,225 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 
+import java.time.LocalTime;
+import java.util.List;
 import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AgendamentoServiceImpl implements AgendamentoService {
 
     private final AgendamentoRepository agendamentoRepository;
     private final AtletaRepository atletaRepository;
-    private final QuadraRepository quadraRepository;
-    private final IntervaloHorarioRepository intervaloHorarioRepository; // Adicionar o repositório
-    private final EmailService emailService;
+    private final SlotHorarioService slotHorarioService;
+    private final SlotHorarioRepository slotHorarioRepository;
+    private final AgendamentoMapper agendamentoMapper;
 
     @Override
     @Transactional
     public Agendamento criarAgendamento(AgendamentoCreateDTO dto, Long atletaId) {
+        log.info("Iniciando criação de agendamento para atleta ID: {} na data: {}",
+                atletaId, dto.getDataAgendamento());
 
+        // Validações de regras de negócio
+        validarRegrasNegocio(dto);
+
+        // Validar se a data não é no passado
+        validarDataAgendamento(dto.getDataAgendamento());
+
+        // Buscar e validar slots
+        List<SlotHorario> slots = buscarEValidarSlots(dto.getSlotHorarioIds());
+
+        // Verifica se slots são subsequentes
+        if (!slotHorarioService.saoSlotsSubsequentes(dto.getSlotHorarioIds())) {
+            throw new IllegalArgumentException("Os horários selecionados devem ser subsequentes");
+        }
+
+        // Verificar disponibilidade dos slots na data específica
+        verificarDisponibilidadeSlotsParaData(slots, dto.getDataAgendamento(), dto.getQuadraId());
+
+        // Recuperar atleta que deseja realizar o agendamento
         Atleta atleta = atletaRepository.findById(atletaId)
-                .orElseThrow(() -> new UserNotFoundException("Atleta não encontrado com ID: " + atletaId));
+                .orElseThrow(() -> new EntityNotFoundException("Atleta não encontrado com ID: " + atletaId));
 
-        IntervaloHorario intervalo = intervaloHorarioRepository.findById(dto.getIntervaloHorarioId())
-                .orElseThrow(() -> new EntityNotFoundException("Intervalo de horário não encontrado com ID: " +
-                        dto.getIntervaloHorarioId()));
+        // Converter DTO para entidade
+        Agendamento agendamento = agendamentoMapper.fromCreateToAgendamento(dto, slots, atleta);
 
-        Quadra quadra = quadraRepository.findById(dto.getQuadraId())
-                .orElseThrow(() -> new EntityNotFoundException("Quadra não encontrada com ID: " + dto.getQuadraId()));
+        // Salvar o agendamento
+        agendamento = agendamentoRepository.save(agendamento);
 
-        // Validar que o intervalo pertence mesmo à quadra informada
-        if (!intervalo.getHorarioFuncionamento().getQuadra().getId().equals(quadra.getId())) {
-            throw new IllegalArgumentException("O intervalo de horário informado não pertence à quadra selecionada.");
+        // Marcar slots como ocupados (não fisicamente, mas logicamente através do agendamento)
+        // Os slots permanecem com seu status original, mas são considerados ocupados
+        // através da existência do agendamento
+
+        log.info("Agendamento criado com sucesso. ID: {}", agendamento.getId());
+        return agendamento;
+    }
+
+    private void validarRegrasNegocio(AgendamentoCreateDTO dto) {
+        if (dto.isFixo() && dto.isPublico()) {
+            throw new IllegalArgumentException("Um agendamento não pode ser fixo e público simultaneamente");
         }
 
-        // Validação de data: Não permitir agendamentos em datas passadas
-        if (dto.getDataAgendamento().isBefore(LocalDate.now())) {
-            throw new UnavailableDateTimeException("Não é possível agendar em uma data passada.");
+        if (dto.isPublico() && dto.getNumeroJogadoresNecessarios() == null) {
+            throw new IllegalArgumentException("Agendamentos públicos devem informar o número de jogadores necessários");
         }
 
-        // Validação de Dia da Semana: A data do agendamento corresponde ao dia do HorarioFuncionamento?
-        Map<DayOfWeek, DiaDaSemana> mapaDias = Map.of(
-                java.time.DayOfWeek.MONDAY, DiaDaSemana.SEGUNDA,
-                java.time.DayOfWeek.TUESDAY, DiaDaSemana.TERCA,
-                java.time.DayOfWeek.WEDNESDAY, DiaDaSemana.QUARTA,
-                java.time.DayOfWeek.THURSDAY, DiaDaSemana.QUINTA,
-                java.time.DayOfWeek.FRIDAY, DiaDaSemana.SEXTA,
-                java.time.DayOfWeek.SATURDAY, DiaDaSemana.SABADO,
-                java.time.DayOfWeek.SUNDAY, DiaDaSemana.DOMINGO
-        );
-
-        DiaDaSemana diaDaSemanaEsperado = mapaDias.get(dto.getDataAgendamento().getDayOfWeek());
-        DiaDaSemana diaDaSemanaDoIntervalo = intervalo.getHorarioFuncionamento().getDiaDaSemana();
-
-        if (diaDaSemanaDoIntervalo != diaDaSemanaEsperado) {
-            throw new UnavailableDateTimeException("A data do agendamento (" + diaDaSemanaEsperado +
-                    ") não corresponde ao dia da semana do horário de funcionamento selecionado ("
-                    + diaDaSemanaDoIntervalo + ").");
+        if (dto.isFixo() && dto.getPeriodoFixo() == null) {
+            throw new IllegalArgumentException("Agendamentos fixos devem informar o período");
         }
 
-        // Validar se o intervalo tá disponível
-        if (intervalo.getStatus() != StatusIntervalo.DISPONIVEL) {
-            throw new UnavailableDateTimeException("Este horário não está disponível para agendamento");
+        if (dto.isPublico() && (dto.getNumeroJogadoresNecessarios() == null || dto.getNumeroJogadoresNecessarios() <= 0)) {
+            throw new IllegalArgumentException("Agendamentos públicos devem ter número de jogadores maior que zero");
+        }
+    }
+
+    private void validarDataAgendamento(LocalDate dataAgendamento) {
+        if (dataAgendamento.isBefore(LocalDate.now())) {
+            throw new IllegalArgumentException("Não é possível criar agendamentos para datas passadas");
         }
 
-        // Validação de Conflito
-        boolean jaExisteAgendamento = agendamentoRepository.existsByQuadraAndDataAgendamentoAndInicioAndFim(
-                quadra, dto.getDataAgendamento(), intervalo.getInicio(), intervalo.getFim()
-        );
+        // Opcional: limitar agendamentos muito distantes no futuro
+        if (dataAgendamento.isAfter(LocalDate.now().plusYears(1))) {
+            throw new IllegalArgumentException("Não é possível criar agendamentos com mais de 1 ano de antecedência");
+        }
+    }
 
-        if (jaExisteAgendamento) {
-            throw new UnavailableDateTimeException("Horário já reservado.");
+    private List<SlotHorario> buscarEValidarSlots(List<Long> slotIds) {
+        if (slotIds == null || slotIds.isEmpty()) {
+            throw new IllegalArgumentException("Deve ser informado pelo menos um slot de horário");
         }
 
-        // Criar e salvar o novo agendamento
-        Agendamento agendamento = new Agendamento();
-        agendamento.setAtleta(atleta);
-        agendamento.setQuadra(quadra);
-        agendamento.setDataAgendamento(dto.getDataAgendamento());
-        agendamento.setInicio(intervalo.getInicio());
-        agendamento.setFim(intervalo.getFim());
-        agendamento.setStatus(StatusAgendamento.PENDENTE);
-        agendamento.setEsporte(dto.getEsporte());
-        agendamento.setPrivado(!dto.isPublico());
-        agendamento.setFixo(dto.isFixo());
+        List<SlotHorario> slots = slotHorarioRepository.findAllById(slotIds);
 
-
-        if (dto.isPublico()) {
-            agendamento.setNumeroJogadoresNecessarios(dto.getNumeroJogadoresNecessarios());
+        if (slots.size() != slotIds.size()) {
+            throw new IllegalArgumentException("Um ou mais slots informados não foram encontrados");
         }
 
-        if (dto.isFixo()) {
-            agendamento.setPeriodoAgendamentoFixo(dto.getPeriodoAgendamentoFixo());
+        return slots;
+    }
+
+    /**
+     * Verifica se os slots estão disponíveis na data específica do agendamento
+     */
+    protected void verificarDisponibilidadeSlotsParaData(List<SlotHorario> slots, LocalDate dataAgendamento, Long quadraId) {
+        for (SlotHorario slot : slots) {
+            // 1. Verificar se o slot está fisicamente disponível (não em manutenção)
+            if (slot.getStatusDisponibilidade() == StatusDisponibilidade.MANUTENCAO ||
+                    slot.getStatusDisponibilidade() == StatusDisponibilidade.INDISPONIVEL) {
+                throw new IllegalArgumentException(
+                        String.format("Slot %d (%s às %s) não está disponível - Status: %s",
+                                slot.getId(),
+                                slot.getHorarioInicio(),
+                                slot.getHorarioFim(),
+                                slot.getStatusDisponibilidade())
+                );
+            }
+
+            // 2. Verificar se já existe agendamento para este slot na data específica
+            boolean jaAgendado = agendamentoRepository.existeConflito(
+                    dataAgendamento,
+                    quadraId,
+                    slot.getHorarioInicio(),
+                    slot.getHorarioFim()
+            );
+
+            if (jaAgendado) {
+                throw new IllegalArgumentException(
+                        String.format("Slot %d (%s às %s) já está ocupado na data %s",
+                                slot.getId(),
+                                slot.getHorarioInicio(),
+                                slot.getHorarioFim(),
+                                dataAgendamento)
+                );
+            }
+        }
+    }
+
+    /**
+     * Verifica se todos os slots pertencem à mesma quadra
+     */
+    private void validarQuadraSlots(List<SlotHorario> slots, Long quadraId) {
+        boolean todosSlotsDaMesmaQuadra = slots.stream()
+                .allMatch(slot -> slot.getIntervaloHorario()
+                        .getHorarioFuncionamento()
+                        .getQuadra()
+                        .getId()
+                        .equals(quadraId));
+
+        if (!todosSlotsDaMesmaQuadra) {
+            throw new IllegalArgumentException("Todos os slots devem pertencer à mesma quadra");
+        }
+    }
+
+    @Override
+    @Transactional
+    public void cancelarAgendamento(Long agendamentoId, Long atletaId) {
+        log.info("Cancelando agendamento ID: {} para atleta ID: {}", agendamentoId, atletaId);
+
+        Agendamento agendamento = agendamentoRepository.findById(agendamentoId)
+                .orElseThrow(() -> new EntityNotFoundException("Agendamento não encontrado"));
+
+        // Verificar se o agendamento pertence ao atleta
+        if (!agendamento.getAtleta().getId().equals(atletaId)) {
+            throw new IllegalArgumentException("Agendamento não pertence ao atleta informado");
         }
 
-        Agendamento savedAgendamento = agendamentoRepository.save(agendamento);
+        // Verificar se o agendamento pode ser cancelado (não está no passado)
+        if (agendamento.getDataAgendamento().isBefore(LocalDate.now())) {
+            throw new IllegalArgumentException("Não é possível cancelar agendamentos de datas passadas");
+        }
 
+        // Verificar se já não está cancelado
+        if (agendamento.getStatus() == StatusAgendamento.CANCELADO) {
+            throw new IllegalArgumentException("Agendamento já está cancelado");
+        }
 
-        emailService.enviarEmailAgendamento(atleta.getEmail(), atleta.getNome(), savedAgendamento);
-        emailService.enviarEmailAgendamento(quadra.getArena().getEmail(), quadra.getArena().getNome(), savedAgendamento);
+        // Cancelar o agendamento
+        agendamento.setStatus(StatusAgendamento.CANCELADO);
+        agendamentoRepository.save(agendamento);
 
-        return savedAgendamento;
+        // Liberar slots se necessário (dependendo da sua lógica de negócio)
+        // Como os slots não são fisicamente marcados como ocupados,
+        // não há necessidade de liberá-los
+
+        log.info("Agendamento cancelado com sucesso");
     }
 
     @Override
     public Page<Agendamento> buscarPorAtletaId(Long atletaId, Pageable pageable) {
         return agendamentoRepository.findByAtletaId(atletaId, pageable);
+    }
+
+    @Override
+    public List<Agendamento> buscarAgendamentosPublicos(LocalDate dataInicio) {
+        return agendamentoRepository.findAgendamentosPublicos(dataInicio);
+    }
+
+    @Override
+    public Agendamento buscarPorId(Long agendamentoId) {
+        return agendamentoRepository.findById(agendamentoId)
+                .orElseThrow(() -> new EntityNotFoundException("Agendamento não encontrado"));
+    }
+
+    /**
+     * Busca agendamentos para uma quadra em uma data específica
+     * Útil para visualizar ocupação
+     */
+    @Override
+    public List<Agendamento> buscarPorQuadraEData(Long quadraId, LocalDate data) {
+        Quadra quadra = new Quadra();
+        quadra.setId(quadraId);
+        return agendamentoRepository.findByDataAgendamentoAndQuadra(data, quadra);
+    }
+
+    /**
+     * Verifica se um horário específico está disponível para agendamento
+     */
+    @Override
+    public boolean verificarDisponibilidadeHorario(Long quadraId, LocalDate data,
+                                                   LocalTime inicio, LocalTime fim) {
+        return !agendamentoRepository.existeConflito(data, quadraId, inicio, fim);
     }
 }
