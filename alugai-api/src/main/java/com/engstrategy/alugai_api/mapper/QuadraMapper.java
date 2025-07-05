@@ -5,8 +5,10 @@ import com.engstrategy.alugai_api.model.HorarioFuncionamento;
 import com.engstrategy.alugai_api.model.IntervaloHorario;
 import com.engstrategy.alugai_api.model.Quadra;
 
+import com.engstrategy.alugai_api.model.SlotHorario;
 import com.engstrategy.alugai_api.model.enums.DiaDaSemana;
 import com.engstrategy.alugai_api.repository.HorarioFuncionamentoRepository;
+import com.engstrategy.alugai_api.service.impl.SlotHorarioService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -21,6 +23,7 @@ import java.util.stream.Collectors;
 public class QuadraMapper {
 
     private final HorarioFuncionamentoRepository horarioFuncionamentoRepository;
+    private final SlotHorarioService slotHorarioService;
 
     public Quadra mapQuadraCreateDtoToQuadra(QuadraCreateDTO quadraCreateDTO) {
         // Map provided HorarioFuncionamento
@@ -74,11 +77,31 @@ public class QuadraMapper {
         return horario;
     }
 
+    private HorarioFuncionamento mapHorarioFuncionamentoUpdateDtoToEntity(HorarioFuncionamentoUpdateDTO dto) {
+        HorarioFuncionamento horario = HorarioFuncionamento.builder()
+                .diaDaSemana(dto.getDiaDaSemana())
+                .build();
+
+        List<IntervaloHorario> intervalos = dto.getIntervalosDeHorario()
+                .stream()
+                .map(intervaloDto -> IntervaloHorario.builder()
+                        .inicio(intervaloDto.getInicio())
+                        .fim(intervaloDto.getFim())
+                        .valor(intervaloDto.getValor())
+                        .horarioFuncionamento(horario)
+                        .status(intervaloDto.getStatus())
+                        .build())
+                .collect(Collectors.toList());
+
+        horario.setIntervalosDeHorario(intervalos);
+        return horario;
+    }
+
     public QuadraResponseDTO mapQuadraToQuadraResponseDTO(Quadra quadra) {
         List<HorarioFuncionamentoResponseDTO> horariosFuncionamento = quadra.getHorariosFuncionamento()
                 .stream()
                 .map(this::mapHorarioFuncionamentoToResponseDto)
-                .collect(Collectors.toList());
+                .toList();
 
         return QuadraResponseDTO.builder()
                 .id(quadra.getId())
@@ -92,7 +115,6 @@ public class QuadraMapper {
                 .materiaisFornecidos(quadra.getMateriaisFornecidos())
                 .arenaId(quadra.getArena().getId())
                 .nomeArena(quadra.getArena().getNome())
-                .horariosFuncionamento(horariosFuncionamento)
                 .build();
     }
 
@@ -105,6 +127,9 @@ public class QuadraMapper {
                         .fim(intervalo.getFim())
                         .valor(intervalo.getValor())
                         .status(intervalo.getStatus())
+                        .slotsDisponiveis(intervalo.getSlotsHorario() != null ? intervalo.getSlotsHorario().stream()
+                                .map(this::mapearSlotParaResponse)
+                                .collect(Collectors.toList()) : new ArrayList<>())
                         .build())
                 .collect(Collectors.toList());
 
@@ -115,95 +140,13 @@ public class QuadraMapper {
                 .build();
     }
 
-    public void updateQuadraFromDto(QuadraUpdateDTO updateDTO, Quadra quadra) {
-        // Update simple attributes if provided
-        if (updateDTO.getNomeQuadra() != null) {
-            quadra.setNomeQuadra(updateDTO.getNomeQuadra());
-        }
-        if (updateDTO.getUrlFotoQuadra() != null) {
-            quadra.setUrlFotoQuadra(updateDTO.getUrlFotoQuadra());
-        }
-        if (updateDTO.getTipoQuadra() != null) {
-            quadra.setTipoQuadra(updateDTO.getTipoQuadra());
-        }
-        if (updateDTO.getDescricao() != null) {
-            quadra.setDescricao(updateDTO.getDescricao());
-        }
-        if (updateDTO.getDuracaoReserva() != null) {
-            quadra.setDuracaoReserva(updateDTO.getDuracaoReserva());
-        }
-        if (updateDTO.getCobertura() != null) {
-            quadra.setCobertura(updateDTO.getCobertura());
-        }
-        if (updateDTO.getIluminacaoNoturna() != null) {
-            quadra.setIluminacaoNoturna(updateDTO.getIluminacaoNoturna());
-        }
-        if (updateDTO.getMateriaisFornecidos() != null) {
-            quadra.setMateriaisFornecidos(updateDTO.getMateriaisFornecidos());
-        }
-
-        // Update HorarioFuncionamento if provided
-        if (updateDTO.getHorariosFuncionamento() != null && !updateDTO.getHorariosFuncionamento().isEmpty()) {
-            // Map existing HorarioFuncionamento by day
-            Map<DiaDaSemana, HorarioFuncionamento> existingHorarios = quadra.getHorariosFuncionamento()
-                    .stream()
-                    .collect(Collectors.toMap(HorarioFuncionamento::getDiaDaSemana, Function.identity()));
-
-            // Process updated HorarioFuncionamento
-            for (HorarioFuncionamentoUpdateDTO updateHorarioDTO : updateDTO.getHorariosFuncionamento()) {
-                DiaDaSemana dia = updateHorarioDTO.getDiaDaSemana();
-                HorarioFuncionamento horario = existingHorarios.get(dia);
-                if (horario == null) {
-                    throw new IllegalArgumentException("Horário de funcionamento não encontrado para o dia: " + dia);
-                }
-
-                // Map existing IntervaloHorario by ID
-                Map<Long, IntervaloHorario> existingIntervals = horario.getIntervalosDeHorario()
-                        .stream()
-                        .collect(Collectors.toMap(IntervaloHorario::getId, Function.identity()));
-
-                // Clear existing intervals to ensure removals are detected
-                horario.getIntervalosDeHorario().clear();
-
-                // Process provided intervals
-                if (updateHorarioDTO.getIntervalosDeHorario() != null && !updateHorarioDTO.getIntervalosDeHorario().isEmpty()) {
-                    List<IntervaloHorario> updatedIntervals = new ArrayList<>();
-                    for (IntervaloHorarioUpdateDTO intervalDTO : updateHorarioDTO.getIntervalosDeHorario()) {
-                        IntervaloHorario intervalo;
-                        if (intervalDTO.getId() != null && existingIntervals.containsKey(intervalDTO.getId())) {
-                            // Update existing interval
-                            intervalo = existingIntervals.get(intervalDTO.getId());
-                            if (intervalDTO.getInicio() != null) {
-                                intervalo.setInicio(intervalDTO.getInicio());
-                            }
-                            if (intervalDTO.getFim() != null) {
-                                intervalo.setFim(intervalDTO.getFim());
-                            }
-                            if (intervalDTO.getValor() != null) {
-                                intervalo.setValor(intervalDTO.getValor());
-                            }
-                            if (intervalDTO.getStatus() != null) {
-                                intervalo.setStatus(intervalDTO.getStatus());
-                            }
-                        } else {
-                            // Create new interval
-                            intervalo = IntervaloHorario.builder()
-                                    .inicio(intervalDTO.getInicio())
-                                    .fim(intervalDTO.getFim())
-                                    .valor(intervalDTO.getValor())
-                                    .status(intervalDTO.getStatus())
-                                    .horarioFuncionamento(horario)
-                                    .build();
-                        }
-                        updatedIntervals.add(intervalo);
-                    }
-                    // Add updated intervals
-                    horario.getIntervalosDeHorario().addAll(updatedIntervals);
-                }
-
-                // Save HorarioFuncionamento to ensure changes are persisted
-                horarioFuncionamentoRepository.save(horario);
-            }
-        }
+    public SlotHorarioResponseDTO mapearSlotParaResponse(SlotHorario slot) {
+        return SlotHorarioResponseDTO.builder()
+                .id(slot.getId())
+                .horarioInicio(slot.getHorarioInicio())
+                .horarioFim(slot.getHorarioFim())
+                .valor(slot.getValor())
+                .statusDisponibilidade(slot.getStatusDisponibilidade())
+                .build();
     }
 }

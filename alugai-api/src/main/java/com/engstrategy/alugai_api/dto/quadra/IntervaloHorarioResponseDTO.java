@@ -11,6 +11,8 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -35,4 +37,7 @@ public class IntervaloHorarioResponseDTO {
 
     @Schema(description = "Status do intervalo", example = "DISPONIVEL")
     private StatusIntervalo status;
+
+    @Schema(description = "Slots de horário", example = "08:00 - 09:00")
+    private List<SlotHorarioResponseDTO> slotsDisponiveis = new ArrayList<>();
 }

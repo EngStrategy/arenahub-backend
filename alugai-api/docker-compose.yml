@@ -32,11 +32,13 @@ services:
       dockerfile: Dockerfile
     container_name: alugai_app
     environment:
+      JAVA_TOOL_OPTIONS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/alugai
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
     ports:
       - '8080:8080'
+      - '5005:5005'
     depends_on:
       - db
     networks:

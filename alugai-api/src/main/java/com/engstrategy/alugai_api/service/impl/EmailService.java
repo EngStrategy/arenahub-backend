@@ -43,26 +43,26 @@ public class EmailService {
         }
     }
 
-    @Async
-    public void enviarEmailAgendamento(String destino, String nome, Agendamento agendamento) {
-        MimeMessage message = mailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(message, "utf-8");
-        try {
-            helper.setTo(destino);
-            helper.setSubject("Confirmação de Agendamento - Alugaí");
-            String content = "Olá, " + nome + "!<br>" +
-                    "Seu agendamento foi confirmado com sucesso.<br><br>" +
-                    "<b>Detalhes:</b><br>" +
-                    "<b>Quadra:</b> " + agendamento.getQuadra().getNomeQuadra() + "<br>" +
-                    "<b>Data:</b> " + agendamento.getDataAgendamento().toString() + "<br>" +
-                    "<b>Horário:</b> " + agendamento.getInicio().toString() + " - " + agendamento.getFim().toString() + "<br><br>" +
-                    "Obrigado por usar o Alugaí!";
-            helper.setText(content, true);
-            mailSender.send(message);
-        } catch (MessagingException e) {
-            throw new RuntimeException("Erro ao enviar email de agendamento", e);
-        }
-    }
+//    @Async
+//    public void enviarEmailAgendamento(String destino, String nome, Agendamento agendamento) {
+//        MimeMessage message = mailSender.createMimeMessage();
+//        MimeMessageHelper helper = new MimeMessageHelper(message, "utf-8");
+//        try {
+//            helper.setTo(destino);
+//            helper.setSubject("Confirmação de Agendamento - Alugaí");
+//            String content = "Olá, " + nome + "!<br>" +
+//                    "Seu agendamento foi confirmado com sucesso.<br><br>" +
+//                    "<b>Detalhes:</b><br>" +
+//                    "<b>Quadra:</b> " + agendamento.getQuadra().getNomeQuadra() + "<br>" +
+//                    "<b>Data:</b> " + agendamento.getDataAgendamento().toString() + "<br>" +
+//                    "<b>Horário:</b> " + agendamento.getInicio().toString() + " - " + agendamento.getFim().toString() + "<br><br>" +
+//                    "Obrigado por usar o Alugaí!";
+//            helper.setText(content, true);
+//            mailSender.send(message);
+//        } catch (MessagingException e) {
+//            throw new RuntimeException("Erro ao enviar email de agendamento", e);
+//        }
+//    }
 
     private String htmlContent(String nome, String codigo) {
         return """
