@@ -1,5 +1,6 @@
 package com.engstrategy.alugai_api.model;
 
+import jakarta.mail.MessagingException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import lombok.*;
@@ -31,4 +32,18 @@ public class Endereco {
 
     @Column(length = 100)
     private String complemento;
+
+    public String toStringFormatado() {
+        StringBuilder endereco = new StringBuilder();
+        endereco.append(rua).append(", ").append(numero);
+
+        if (complemento != null && !complemento.trim().isEmpty()) {
+            endereco.append(" - ").append(complemento);
+        }
+
+        endereco.append("<br>").append(bairro).append(", ").append(cidade).append(" - ").append(estado);
+        endereco.append("<br>CEP: ").append(cep);
+
+        return endereco.toString();
+    }
 }

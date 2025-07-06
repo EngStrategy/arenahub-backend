@@ -86,5 +86,4 @@ public class Agendamento {
                 .map(SlotHorario::getValor)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
-
 }
