@@ -1,15 +1,18 @@
 package com.engstrategy.alugai_api.service.impl;
 
 import com.engstrategy.alugai_api.dto.agendamento.AgendamentoCreateDTO;
-import com.engstrategy.alugai_api.exceptions.UnavailableDateTimeException;
-import com.engstrategy.alugai_api.exceptions.UserNotFoundException;
 import com.engstrategy.alugai_api.mapper.AgendamentoMapper;
-import com.engstrategy.alugai_api.model.*;
-import com.engstrategy.alugai_api.model.enums.DiaDaSemana;
+import com.engstrategy.alugai_api.model.Agendamento;
+import com.engstrategy.alugai_api.model.Atleta;
+import com.engstrategy.alugai_api.model.Quadra;
+import com.engstrategy.alugai_api.model.SlotHorario;
+import com.engstrategy.alugai_api.model.enums.Role;
 import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
 import com.engstrategy.alugai_api.model.enums.StatusDisponibilidade;
-import com.engstrategy.alugai_api.model.enums.StatusIntervalo;
-import com.engstrategy.alugai_api.repository.*;
+import com.engstrategy.alugai_api.repository.AgendamentoRepository;
+import com.engstrategy.alugai_api.repository.AtletaRepository;
+import com.engstrategy.alugai_api.repository.QuadraRepository;
+import com.engstrategy.alugai_api.repository.SlotHorarioRepository;
 import com.engstrategy.alugai_api.service.AgendamentoService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -19,12 +22,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.DayOfWeek;
 import java.time.LocalDate;
-
 import java.time.LocalTime;
 import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -36,6 +36,8 @@ public class AgendamentoServiceImpl implements AgendamentoService {
     private final SlotHorarioService slotHorarioService;
     private final SlotHorarioRepository slotHorarioRepository;
     private final AgendamentoMapper agendamentoMapper;
+    private final EmailService emailService;
+    private final QuadraRepository quadraRepository;
 
     @Override
     @Transactional
@@ -64,17 +66,21 @@ public class AgendamentoServiceImpl implements AgendamentoService {
         Atleta atleta = atletaRepository.findById(atletaId)
                 .orElseThrow(() -> new EntityNotFoundException("Atleta não encontrado com ID: " + atletaId));
 
+        // Recuperar quadra
+        Quadra quadra = quadraRepository.findById(dto.getQuadraId())
+                .orElseThrow(() -> new EntityNotFoundException("Quadra não encontrada com ID: " + dto.getQuadraId()));
+
         // Converter DTO para entidade
         Agendamento agendamento = agendamentoMapper.fromCreateToAgendamento(dto, slots, atleta);
 
         // Salvar o agendamento
         agendamento = agendamentoRepository.save(agendamento);
 
-        // Marcar slots como ocupados (não fisicamente, mas logicamente através do agendamento)
-        // Os slots permanecem com seu status original, mas são considerados ocupados
-        // através da existência do agendamento
-
         log.info("Agendamento criado com sucesso. ID: {}", agendamento.getId());
+
+        emailService.enviarEmailAgendamento(atleta.getEmail(), atleta.getNome(), agendamento, Role.ATLETA);
+        emailService.enviarEmailAgendamento(quadra.getArena().getEmail(), quadra.getArena().getNome(), agendamento, Role.ARENA);
+
         return agendamento;
     }
 
