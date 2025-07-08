@@ -1,28 +1,37 @@
 package com.engstrategy.alugai_api.dto.agendamento;
 
+import com.engstrategy.alugai_api.dto.quadra.SlotHorarioResponseDTO;
 import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
+import com.engstrategy.alugai_api.model.enums.TipoEsporte;
+import com.engstrategy.alugai_api.util.LocalTimeSerializer;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 
-@Getter
-@Setter
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class AgendamentoResponseDTO {
 
     private Long id;
     private LocalDate dataAgendamento;
-    private LocalTime inicio;
-    private LocalTime fim;
-    private StatusAgendamento status;
-    private Long quadraId;
-    private String nomeQuadra;
-    private Long atletaId;
-    private String nomeAtleta;
-    private boolean isPublico;
-    private Integer numeroJogadoresNecessarios;
 
+    @JsonSerialize(using = LocalTimeSerializer.class)
+    private LocalTime horarioInicio;
+
+    @JsonSerialize(using = LocalTimeSerializer.class)
+    private LocalTime horarioFim;
+
+    private BigDecimal valorTotal;
+    private TipoEsporte esporte;
+    private boolean isFixo;
+    private boolean isPublico;
+    private StatusAgendamento status;
+    private Integer numeroJogadoresNecessarios;
+    private List<SlotHorarioResponseDTO> slotsHorario;
 }

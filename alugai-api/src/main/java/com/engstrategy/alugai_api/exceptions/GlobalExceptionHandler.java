@@ -10,6 +10,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.time.format.DateTimeParseException;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
@@ -115,6 +116,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleMessagingException(MessagingException ex) {
         ErrorResponse error = new ErrorResponse("Messaging Exception", ex.getMessage());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+    }
+
+    @ExceptionHandler(DateTimeParseException.class)
+    public ResponseEntity<ErrorResponse> handleDateTimeParseException(DateTimeParseException ex) {
+        ErrorResponse error = new ErrorResponse("INVALID_DATETIME", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
     // Tratamento genérico para validações do @Valid
