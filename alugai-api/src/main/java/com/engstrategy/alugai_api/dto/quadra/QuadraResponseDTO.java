@@ -51,4 +51,7 @@ public class QuadraResponseDTO {
 
     @Schema(description = "Nome da arena associada", example = "Arena Sports Center")
     private String nomeArena;
+
+    @Schema(description = "Horários de reserva da quadra")
+    private List<HorarioFuncionamentoResponseDTO> horariosFuncionamento;
 }
