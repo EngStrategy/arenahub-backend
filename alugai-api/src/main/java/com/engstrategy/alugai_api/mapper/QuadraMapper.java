@@ -22,9 +22,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class QuadraMapper {
 
-    private final HorarioFuncionamentoRepository horarioFuncionamentoRepository;
-    private final SlotHorarioService slotHorarioService;
-
     public Quadra mapQuadraCreateDtoToQuadra(QuadraCreateDTO quadraCreateDTO) {
         // Map provided HorarioFuncionamento
         Map<DiaDaSemana, HorarioFuncionamento> horarioMap = quadraCreateDTO.getHorariosFuncionamento()
@@ -77,32 +74,7 @@ public class QuadraMapper {
         return horario;
     }
 
-    private HorarioFuncionamento mapHorarioFuncionamentoUpdateDtoToEntity(HorarioFuncionamentoUpdateDTO dto) {
-        HorarioFuncionamento horario = HorarioFuncionamento.builder()
-                .diaDaSemana(dto.getDiaDaSemana())
-                .build();
-
-        List<IntervaloHorario> intervalos = dto.getIntervalosDeHorario()
-                .stream()
-                .map(intervaloDto -> IntervaloHorario.builder()
-                        .inicio(intervaloDto.getInicio())
-                        .fim(intervaloDto.getFim())
-                        .valor(intervaloDto.getValor())
-                        .horarioFuncionamento(horario)
-                        .status(intervaloDto.getStatus())
-                        .build())
-                .collect(Collectors.toList());
-
-        horario.setIntervalosDeHorario(intervalos);
-        return horario;
-    }
-
     public QuadraResponseDTO mapQuadraToQuadraResponseDTO(Quadra quadra) {
-        List<HorarioFuncionamentoResponseDTO> horariosFuncionamento = quadra.getHorariosFuncionamento()
-                .stream()
-                .map(this::mapHorarioFuncionamentoToResponseDto)
-                .toList();
-
         return QuadraResponseDTO.builder()
                 .id(quadra.getId())
                 .nomeQuadra(quadra.getNomeQuadra())
@@ -115,29 +87,6 @@ public class QuadraMapper {
                 .materiaisFornecidos(quadra.getMateriaisFornecidos())
                 .arenaId(quadra.getArena().getId())
                 .nomeArena(quadra.getArena().getNome())
-                .horariosFuncionamento(horariosFuncionamento)
-                .build();
-    }
-
-    private HorarioFuncionamentoResponseDTO mapHorarioFuncionamentoToResponseDto(HorarioFuncionamento horario) {
-        List<IntervaloHorarioResponseDTO> intervalos = horario.getIntervalosDeHorario()
-                .stream()
-                .map(intervalo -> IntervaloHorarioResponseDTO.builder()
-                        .id(intervalo.getId())
-                        .inicio(intervalo.getInicio())
-                        .fim(intervalo.getFim())
-                        .valor(intervalo.getValor())
-                        .status(intervalo.getStatus())
-                        .slotsDisponiveis(intervalo.getSlotsHorario() != null ? intervalo.getSlotsHorario().stream()
-                                .map(this::mapearSlotParaResponse)
-                                .collect(Collectors.toList()) : new ArrayList<>())
-                        .build())
-                .collect(Collectors.toList());
-
-        return HorarioFuncionamentoResponseDTO.builder()
-                .id(horario.getId())
-                .diaDaSemana(horario.getDiaDaSemana())
-                .intervalosDeHorario(intervalos)
                 .build();
     }
 

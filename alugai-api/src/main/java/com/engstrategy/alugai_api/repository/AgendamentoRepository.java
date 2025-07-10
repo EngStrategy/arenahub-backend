@@ -15,12 +15,6 @@ import java.util.List;
 
 public interface AgendamentoRepository extends JpaRepository<Agendamento, Long> {
 
-    boolean existsByDataAgendamentoAndSlotsHorario(LocalDate data, SlotHorario slot);
-
-    boolean existsByDataAgendamentoAndSlotsHorario_HorarioInicioAndSlotsHorario_HorarioFim(
-            LocalDate data, LocalTime inicio, LocalTime fim
-    );
-
     List<Agendamento> findByDataAgendamentoAndQuadra(LocalDate data, Quadra quadra);
 
     @Query("SELECT a FROM Agendamento a WHERE a.isPublico = true AND a.status = 'CONFIRMADO' " +

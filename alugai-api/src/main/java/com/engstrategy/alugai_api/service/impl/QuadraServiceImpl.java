@@ -1,13 +1,18 @@
 package com.engstrategy.alugai_api.service.impl;
 
-import com.engstrategy.alugai_api.dto.quadra.*;
+import com.engstrategy.alugai_api.dto.quadra.HorarioFuncionamentoUpdateDTO;
+import com.engstrategy.alugai_api.dto.quadra.IntervaloHorarioUpdateDTO;
+import com.engstrategy.alugai_api.dto.quadra.QuadraUpdateDTO;
+import com.engstrategy.alugai_api.dto.quadra.SlotHorarioResponseDTO;
 import com.engstrategy.alugai_api.exceptions.*;
 import com.engstrategy.alugai_api.mapper.QuadraMapper;
 import com.engstrategy.alugai_api.model.*;
 import com.engstrategy.alugai_api.model.enums.DiaDaSemana;
 import com.engstrategy.alugai_api.model.enums.StatusDisponibilidade;
-import com.engstrategy.alugai_api.repository.*;
-import com.engstrategy.alugai_api.service.AgendamentoService;
+import com.engstrategy.alugai_api.repository.AgendamentoRepository;
+import com.engstrategy.alugai_api.repository.ArenaRepository;
+import com.engstrategy.alugai_api.repository.HorarioFuncionamentoRepository;
+import com.engstrategy.alugai_api.repository.QuadraRepository;
 import com.engstrategy.alugai_api.service.QuadraService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
@@ -317,7 +322,31 @@ public class QuadraServiceImpl implements QuadraService {
         Quadra quadra = quadraRepository.findById(quadraId)
                 .orElseThrow(() -> new EntityNotFoundException("Quadra não encontrada com ID: " + quadraId));
 
-        List<SlotHorario> slotHorarios = quadra.getAllSlotHorarios();
+        // Determinar o dia da semana
+        DiaDaSemana diaDaSemana = DiaDaSemana.fromLocalDate(data);
+
+        // Buscar horário de funcionamento específico para o dia
+        Optional<HorarioFuncionamento> horarioFuncionamento = quadra.getHorariosFuncionamento()
+                .stream()
+                .filter(h -> h.getDiaDaSemana() == diaDaSemana)
+                .findFirst();
+
+        // Se não há horário de funcionamento para o dia, retorna lista vazia
+        if (horarioFuncionamento.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // Buscar todos os slots do dia específico
+        List<SlotHorario> slotHorarios = horarioFuncionamento.get()
+                .getIntervalosDeHorario()
+                .stream()
+                .flatMap(intervalo -> intervalo.getSlotsHorario().stream())
+                .toList();
+
+        // Se não há slots para o dia, retorna lista vazia
+        if (slotHorarios.isEmpty()) {
+            return new ArrayList<>();
+        }
 
         return verificarDisponibilidadeSlotsParaData(slotHorarios, data, quadraId)
                 .stream()
