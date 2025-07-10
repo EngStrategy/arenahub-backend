@@ -34,4 +34,5 @@ public class AgendamentoResponseDTO {
     private StatusAgendamento status;
     private Integer numeroJogadoresNecessarios;
     private List<SlotHorarioResponseDTO> slotsHorario;
+    private Long quadraId;
 }

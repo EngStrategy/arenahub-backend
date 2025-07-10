@@ -42,6 +42,7 @@ public class AgendamentoMapper {
     public AgendamentoResponseDTO fromAgendamentoToResponseDTO(Agendamento agendamento) {
         return AgendamentoResponseDTO.builder()
                 .id(agendamento.getId())
+                .quadraId(agendamento.getQuadra().getId())
                 .dataAgendamento(agendamento.getDataAgendamento())
                 .horarioInicio(agendamento.getHorarioInicio())
                 .horarioFim(agendamento.getHorarioFim())
