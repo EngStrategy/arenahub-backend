@@ -8,6 +8,10 @@ import org.springframework.data.jpa.domain.Specification;
 
 public class ArenaSpecs {
 
+    public static Specification<Arena> isAtivo() {
+        return (root, query, builder) -> builder.isTrue(root.get("ativo"));
+    }
+
     public static Specification<Arena> hasCidade(String cidade) {
         return (root, query, criteriaBuilder) -> {
             if (cidade == null || cidade.trim().isEmpty()) {

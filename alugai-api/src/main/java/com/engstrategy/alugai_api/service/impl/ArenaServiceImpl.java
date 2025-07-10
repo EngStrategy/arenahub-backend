@@ -1,7 +1,6 @@
 package com.engstrategy.alugai_api.service.impl;
 
 import com.engstrategy.alugai_api.dto.arena.ArenaUpdateDTO;
-import com.engstrategy.alugai_api.exceptions.InvalidCredentialsException;
 import com.engstrategy.alugai_api.exceptions.UniqueConstraintViolationException;
 import com.engstrategy.alugai_api.exceptions.UserNotFoundException;
 import com.engstrategy.alugai_api.mapper.EnderecoMapper;
@@ -58,7 +57,7 @@ public class ArenaServiceImpl implements ArenaService {
     @Override
     public Page<Arena> listarTodos(Pageable pageable, String cidade, String esporte) {
         // Criar Specification base
-        Specification<Arena> spec = (root, query, builder) -> null;
+        Specification<Arena> spec = ArenaSpecs.isAtivo();
 
         // Adicionar filtro de cidade se fornecido
         if (cidade != null && !cidade.trim().isEmpty()) {

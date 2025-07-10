@@ -27,5 +27,4 @@ public class Arena extends Usuario {
 
     @OneToMany(mappedBy = "arena", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Quadra> quadras = new ArrayList<>();
-
 }
