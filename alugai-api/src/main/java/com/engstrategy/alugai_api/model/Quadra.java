@@ -1,10 +1,13 @@
 package com.engstrategy.alugai_api.model;
 
+import com.engstrategy.alugai_api.model.enums.DiaDaSemana;
 import com.engstrategy.alugai_api.model.enums.DuracaoReserva;
 import com.engstrategy.alugai_api.model.enums.MaterialEsportivo;
 import com.engstrategy.alugai_api.model.enums.TipoEsporte;
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -55,11 +58,4 @@ public class Quadra {
 
     @OneToMany(mappedBy = "quadra", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Agendamento> agendamentos = new ArrayList<>();
-
-    public List<SlotHorario> getAllSlotHorarios() {
-        return horariosFuncionamento.stream()
-                .flatMap(horario -> horario.getIntervalosDeHorario().stream())
-                .flatMap(intervalo -> intervalo.getSlotsHorario().stream())
-                .toList();
-    }
 }
