@@ -23,4 +23,7 @@ public class Atleta extends Usuario {
     @OneToMany(mappedBy = "atleta", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Agendamento> agendamentos = new ArrayList<>();
 
+    @OneToMany(mappedBy = "solicitante", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<SolicitacaoEntrada> solicitacoes = new ArrayList<>();
+
 }

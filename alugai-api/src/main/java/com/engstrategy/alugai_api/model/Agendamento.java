@@ -10,7 +10,9 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Getter
@@ -29,7 +31,7 @@ public class Agendamento {
 
     private boolean isFixo;
 
-    private boolean isPublico; // Alterado de isPrivado para isPublico para clareza
+    private boolean isPublico;
 
     @Enumerated(EnumType.STRING)
     private PeriodoAgendamento periodoAgendamentoFixo;
@@ -37,8 +39,8 @@ public class Agendamento {
     @Enumerated(EnumType.STRING)
     private StatusAgendamento status;
 
-    @Column(name = "jogadores_necessarios")
-    private Integer numeroJogadoresNecessarios;
+    @Column(name = "vagas_disponiveis") // Renomeado de jogadoresNecessarios -> vagasDisponiveis para clareza
+    private Integer vagasDisponiveis;
 
     @Enumerated(EnumType.STRING)
     private TipoEsporte esporte;
@@ -65,6 +67,14 @@ public class Agendamento {
 
     @OneToMany(mappedBy = "agendamento", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SolicitacaoEntrada> solicitacoes = new ArrayList<>();
+
+    @ManyToMany
+    @JoinTable(
+            name = "agendamento_participantes",
+            joinColumns = @JoinColumn(name = "agendamento_id"),
+            inverseJoinColumns = @JoinColumn(name = "atleta_id")
+    )
+    private Set<Atleta> participantes = new HashSet<>();
 
     // Métodos utilitários
     public LocalTime getHorarioInicio() {
