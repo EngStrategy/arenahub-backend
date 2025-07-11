@@ -124,6 +124,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
+    @ExceptionHandler(IntervaloComAgendamentosException.class)
+    public ResponseEntity<ErrorResponse> handleIntervaloComAgendamentosException(IntervaloComAgendamentosException ex) {
+        ErrorResponse error = new ErrorResponse("INTERVALO_COM_AGENDA", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    @ExceptionHandler(IntervaloNaoEncontradoException.class)
+    public ResponseEntity<ErrorResponse> handleIntervaloNaoEncontradoException(IntervaloNaoEncontradoException ex) {
+        ErrorResponse error = new ErrorResponse("INTERVALO_NAO_ENCONTRADO", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
     // Tratamento genérico para validações do @Valid
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
