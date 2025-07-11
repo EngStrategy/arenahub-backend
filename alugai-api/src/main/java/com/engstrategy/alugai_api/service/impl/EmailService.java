@@ -123,11 +123,14 @@ public class EmailService {
                       }
                       \s
                        .valor-total {
-                           font-size: 18px;
-                           font-weight: bold;
-                           color: #15A01A;
-                           text-align: center;
-                           margin: 15px 0;
+                          font-size: 18px;
+                          font-weight: bold;
+                          color: #15A01A;
+                          text-align: center;
+                          margin-top: 15px;
+                          background-color: white;
+                          padding: 12px;
+                          border-radius: 5px;
                        }
                      \s
                        .footer {
@@ -145,6 +148,9 @@ public class EmailService {
                            <p>Seu agendamento foi confirmado com sucesso! Abaixo estão os detalhes da sua reserva:</p>
                          \s
                            <div class="agendamento-info">
+                               <div class="detail-item">
+                                   <span class="detail-label">Arena:</span> %s
+                               </div>
                                <div class="detail-item">
                                    <span class="detail-label">Quadra:</span> %s
                                </div>
@@ -166,7 +172,7 @@ public class EmailService {
                                </div>
                            </div>
                           \s
-                           <p>Chegue com alguns minutos de antecedência e tenha uma excelente partida!</p>
+                           <h4>Chegue com alguns minutos de antecedência e tenha uma excelente partida!</h4>
                        </div>
                        <div class="footer">
                            <p>Em caso de dúvidas, entre em contato conosco.</p>
@@ -176,6 +182,7 @@ public class EmailService {
                </body>
                </html>
               \s""".formatted(nome,
+                    agendamento.getQuadra().getArena().getNome(),
                     agendamento.getQuadra().getNomeQuadra(),
                     dataFormatada,
                     agendamento.getHorarioInicio().toString(),
@@ -233,7 +240,10 @@ public class EmailService {
                            font-weight: bold;
                            color: #15A01A;
                            text-align: center;
-                           margin: 15px 0;
+                           margin-top: 15px;
+                           background-color: white;
+                           padding: 12px;
+                           border-radius: 5px;
                        }
                       \s
                        .footer {
@@ -272,7 +282,7 @@ public class EmailService {
                                </div>
                            </div>
                           \s
-                           <p>Prepare a quadra e garanta que tudo esteja pronto para receber o atleta!</p>
+                           <h4>Prepare a quadra e garanta que tudo esteja pronto para receber o atleta!</h4>
                        </div>
                        <div class="footer">
                            <p>Gerencie seus agendamentos através da plataforma Alugaí.</p>
