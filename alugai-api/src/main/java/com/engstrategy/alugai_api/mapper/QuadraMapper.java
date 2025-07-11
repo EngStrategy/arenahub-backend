@@ -90,6 +90,47 @@ public class QuadraMapper {
                 .build();
     }
 
+    public QuadraResponseDTO mapQuadraToQuadraResponseDTOPreEdit(Quadra quadra) {
+        List<HorarioFuncionamentoResponseDTO> horariosFuncionamento = quadra.getHorariosFuncionamento()
+                .stream()
+                .map(this::mapHorarioFuncionamentoToResponseDto)
+                .collect(Collectors.toList());
+
+        return QuadraResponseDTO.builder()
+                .id(quadra.getId())
+                .nomeQuadra(quadra.getNomeQuadra())
+                .urlFotoQuadra(quadra.getUrlFotoQuadra())
+                .tipoQuadra(quadra.getTipoQuadra())
+                .descricao(quadra.getDescricao())
+                .duracaoReserva(quadra.getDuracaoReserva())
+                .cobertura(quadra.isCobertura())
+                .iluminacaoNoturna(quadra.isIluminacaoNoturna())
+                .materiaisFornecidos(quadra.getMateriaisFornecidos())
+                .arenaId(quadra.getArena().getId())
+                .nomeArena(quadra.getArena().getNome())
+                .horariosFuncionamento(horariosFuncionamento)
+                .build();
+    }
+
+    private HorarioFuncionamentoResponseDTO mapHorarioFuncionamentoToResponseDto(HorarioFuncionamento horario) {
+        List<IntervaloHorarioResponseDTO> intervalos = horario.getIntervalosDeHorario()
+                .stream()
+                .map(intervalo -> IntervaloHorarioResponseDTO.builder()
+                        .id(intervalo.getId())
+                        .inicio(intervalo.getInicio())
+                        .fim(intervalo.getFim())
+                        .valor(intervalo.getValor())
+                        .status(intervalo.getStatus())
+                        .build())
+                .collect(Collectors.toList());
+
+        return HorarioFuncionamentoResponseDTO.builder()
+                .id(horario.getId())
+                .diaDaSemana(horario.getDiaDaSemana())
+                .intervalosDeHorario(intervalos)
+                .build();
+    }
+
     public SlotHorarioResponseDTO mapearSlotParaResponse(SlotHorario slot) {
         return SlotHorarioResponseDTO.builder()
                 .id(slot.getId())

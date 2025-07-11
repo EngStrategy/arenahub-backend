@@ -4,6 +4,7 @@ import com.engstrategy.alugai_api.model.IntervaloHorario;
 import com.engstrategy.alugai_api.model.Quadra;
 import com.engstrategy.alugai_api.model.SlotHorario;
 import com.engstrategy.alugai_api.model.enums.DuracaoReserva;
+import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
 import com.engstrategy.alugai_api.model.enums.StatusDisponibilidade;
 import com.engstrategy.alugai_api.model.enums.StatusIntervalo;
 import com.engstrategy.alugai_api.repository.AgendamentoRepository;
@@ -91,25 +92,20 @@ public class SlotHorarioService {
         return true;
     }
 
-    /**
-     * Verifica se um slot está disponível para agendamento em uma data específica
-     */
-    public boolean isSlotDisponivelParaData(Long slotId, LocalDate data, Long quadraId) {
-        SlotHorario slot = slotHorarioRepository.findById(slotId)
-                .orElseThrow(() -> new EntityNotFoundException("Slot não encontrado"));
+    public boolean verificarSlotOcupado(SlotHorario slot, LocalDate data) {
+        return slot.getAgendamentos().stream()
+                .anyMatch(agendamento ->
+                        agendamento.getDataAgendamento().equals(data) &&
+                                !agendamento.getStatus().equals(StatusAgendamento.CANCELADO));
+    }
 
-        // Verificar status físico do slot
-        if (slot.getStatusDisponibilidade() != StatusDisponibilidade.DISPONIVEL) {
-            return false;
-        }
-
-        // Verificar se já há agendamento para este slot na data
-        return !agendamentoRepository.existeConflito(
-                data,
-                quadraId,
-                slot.getHorarioInicio(),
-                slot.getHorarioFim()
-        );
+    public boolean verificarIntervaloTemSlotsOcupados(IntervaloHorario intervalo) {
+        LocalDate hoje = LocalDate.now();
+        return intervalo.getSlotsHorario().stream()
+                .anyMatch(slot -> slot.getAgendamentos().stream()
+                        .anyMatch(agendamento ->
+                                agendamento.getDataAgendamento().isAfter(hoje) &&
+                                        !agendamento.getStatus().equals(StatusAgendamento.CANCELADO)));
     }
 
     // Métodos auxiliares privados
