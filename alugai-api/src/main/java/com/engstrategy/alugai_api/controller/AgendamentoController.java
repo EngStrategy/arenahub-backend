@@ -7,6 +7,7 @@ import com.engstrategy.alugai_api.jwt.CustomUserDetails;
 import com.engstrategy.alugai_api.mapper.AgendamentoMapper;
 import com.engstrategy.alugai_api.model.Agendamento;
 import com.engstrategy.alugai_api.model.AgendamentoFixo;
+import com.engstrategy.alugai_api.model.enums.TipoAgendamento;
 import com.engstrategy.alugai_api.service.AgendamentoFixoService;
 import com.engstrategy.alugai_api.service.AgendamentoService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -21,12 +22,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -94,21 +97,6 @@ public class AgendamentoController {
         }
     }
 
-    @GetMapping("/fixos")
-    @Operation(summary = "Listar meus agendamentos fixos", security = @SecurityRequirement(name = "bearerAuth"))
-    public ResponseEntity<List<AgendamentoFixoResponseDTO>> listarAgendamentosFixos(
-            @AuthenticationPrincipal CustomUserDetails customUserDetails) {
-
-        Long atletaId = customUserDetails.getUserId();
-        List<AgendamentoFixo> agendamentosFixos = agendamentoFixoService.listarAgendamentosFixosAtivos(atletaId);
-
-        List<AgendamentoFixoResponseDTO> response = agendamentosFixos.stream()
-                .map(this.agendamentoMapper::fromAgendamentoFixoToResponseDTO)
-                .collect(Collectors.toList());
-
-        return ResponseEntity.ok(response);
-    }
-
     @GetMapping("/meus-agendamentos")
     @Operation(summary = "Listar meus agendamentos", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<Page<AgendamentoResponseDTO>> getMeusAgendamentos(
@@ -120,10 +108,17 @@ public class AgendamentoController {
             @Parameter(description = "Campo para ordenação (ex: dataAgendamento)")
             @RequestParam(defaultValue = "dataAgendamento") String sort,
             @Parameter(description = "Direção da ordenação (asc/desc)")
-            @RequestParam(defaultValue = "desc") String direction) {
+            @RequestParam(defaultValue = "desc") String direction,
+            @Parameter(description = "Data de início do filtro (opcional, formato: yyyy-MM-dd)")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
+            @Parameter(description = "Data de fim do filtro (opcional, formato: yyyy-MM-dd)")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim,
+            @Parameter(description = "Tipo de agendamento (NORMAL, FIXO, AMBOS)")
+            @RequestParam(defaultValue = "AMBOS") TipoAgendamento tipoAgendamento) {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(direction), sort));
-        Page<Agendamento> agendamentosPage = agendamentoService.buscarPorAtletaId(userDetails.getUserId(), pageable);
+        Page<Agendamento> agendamentosPage = agendamentoService.buscarPorAtletaId(
+                userDetails.getUserId(), dataInicio, dataFim, tipoAgendamento, pageable);
         Page<AgendamentoResponseDTO> response = agendamentosPage.map(agendamentoMapper::fromAgendamentoToResponseDTO);
 
         return ResponseEntity.ok(response);
