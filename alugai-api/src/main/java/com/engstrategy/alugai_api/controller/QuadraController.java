@@ -69,7 +69,7 @@ public class QuadraController {
             @Parameter(description = "ID da quadra", required = true)
             @PathVariable Long id) {
         Quadra quadra = quadraService.buscarPorId(id);
-        QuadraResponseDTO response = quadraMapper.mapQuadraToQuadraResponseDTO(quadra);
+        QuadraResponseDTO response = quadraMapper.mapQuadraToQuadraResponseDTOPreEdit(quadra);
         return ResponseEntity.ok(response);
     }
 
