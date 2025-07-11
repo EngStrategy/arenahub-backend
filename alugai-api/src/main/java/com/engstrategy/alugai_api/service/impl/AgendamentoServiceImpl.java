@@ -210,6 +210,13 @@ public class AgendamentoServiceImpl implements AgendamentoService {
         agendamento.setStatus(StatusAgendamento.CANCELADO);
         agendamentoRepository.save(agendamento);
 
+        // Se o jogo for público e tiver participantes, notifique-os do cancelamento.
+        if (agendamento.isPublico() && agendamento.getParticipantes() != null) {
+            for (Atleta participante : agendamento.getParticipantes()) {
+                emailService.enviarEmailJogoCancelado(participante.getEmail(), participante.getNome(), agendamento);
+            }
+        }
+
         log.info("Agendamento cancelado com sucesso");
     }
 
