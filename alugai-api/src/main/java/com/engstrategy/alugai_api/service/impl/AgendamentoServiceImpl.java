@@ -9,16 +9,19 @@ import com.engstrategy.alugai_api.model.SlotHorario;
 import com.engstrategy.alugai_api.model.enums.Role;
 import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
 import com.engstrategy.alugai_api.model.enums.StatusDisponibilidade;
+import com.engstrategy.alugai_api.model.enums.TipoAgendamento;
 import com.engstrategy.alugai_api.repository.AgendamentoRepository;
 import com.engstrategy.alugai_api.repository.AtletaRepository;
 import com.engstrategy.alugai_api.repository.QuadraRepository;
 import com.engstrategy.alugai_api.repository.SlotHorarioRepository;
+import com.engstrategy.alugai_api.repository.specs.AgendamentoSpecs;
 import com.engstrategy.alugai_api.service.AgendamentoService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -207,16 +210,25 @@ public class AgendamentoServiceImpl implements AgendamentoService {
         agendamento.setStatus(StatusAgendamento.CANCELADO);
         agendamentoRepository.save(agendamento);
 
-        // Liberar slots se necessário (dependendo da sua lógica de negócio)
-        // Como os slots não são fisicamente marcados como ocupados,
-        // não há necessidade de liberá-los
-
         log.info("Agendamento cancelado com sucesso");
     }
 
     @Override
-    public Page<Agendamento> buscarPorAtletaId(Long atletaId, Pageable pageable) {
-        return agendamentoRepository.findByAtletaId(atletaId, pageable);
+    public Page<Agendamento> buscarPorAtletaId(Long atletaId, LocalDate dataInicio, LocalDate dataFim,
+                                               TipoAgendamento tipoAgendamento, Pageable pageable) {
+        Specification<Agendamento> spec = AgendamentoSpecs.hasAtletaId(atletaId);
+
+        if (dataInicio != null) {
+            spec = Specification.allOf(spec, AgendamentoSpecs.dataInicioAfterOrEqual(dataInicio));
+        }
+        if (dataFim != null) {
+            spec = Specification.allOf(spec, AgendamentoSpecs.dataFimBeforeOrEqual(dataFim));
+        }
+        if (tipoAgendamento != null && tipoAgendamento != TipoAgendamento.AMBOS) {
+            spec = Specification.allOf(spec, AgendamentoSpecs.isTipoAgendamento(tipoAgendamento));
+        }
+
+        return agendamentoRepository.findAll(spec, pageable);
     }
 
     @Override
