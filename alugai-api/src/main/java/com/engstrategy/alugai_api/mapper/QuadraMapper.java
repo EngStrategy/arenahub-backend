@@ -90,7 +90,7 @@ public class QuadraMapper {
                 .build();
     }
 
-    public QuadraResponseDTO mapQuadraToQuadraResponseDTOPreEdit(Quadra quadra) {
+    public QuadraResponseDTO mapQuadraToQuadraResponseDTOComHorarioFuncionamento(Quadra quadra) {
         List<HorarioFuncionamentoResponseDTO> horariosFuncionamento = quadra.getHorariosFuncionamento()
                 .stream()
                 .map(this::mapHorarioFuncionamentoToResponseDto)
