@@ -69,7 +69,7 @@ public class QuadraController {
             @Parameter(description = "ID da quadra", required = true)
             @PathVariable Long id) {
         Quadra quadra = quadraService.buscarPorId(id);
-        QuadraResponseDTO response = quadraMapper.mapQuadraToQuadraResponseDTOPreEdit(quadra);
+        QuadraResponseDTO response = quadraMapper.mapQuadraToQuadraResponseDTOComHorarioFuncionamento(quadra);
         return ResponseEntity.ok(response);
     }
 
@@ -143,7 +143,7 @@ public class QuadraController {
             @PathVariable Long arenaId) {
         List<Quadra> quadras = quadraService.buscarPorArenaId(arenaId);
         List<QuadraResponseDTO> response = quadras.stream()
-                .map(quadraMapper::mapQuadraToQuadraResponseDTO)
+                .map(quadraMapper::mapQuadraToQuadraResponseDTOComHorarioFuncionamento)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(response);
     }
