@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -45,6 +46,11 @@ public class JogoAbertoServiceImpl implements JogoAbertoService {
     public SolicitacaoEntradaDTO solicitarEntrada(Long agendamentoId, Long atletaId) {
         Agendamento agendamento = agendamentoRepository.findById(agendamentoId)
                 .orElseThrow(() -> new EntityNotFoundException("Jogo aberto não encontrado."));
+
+        LocalDateTime dataHoraDoJogo = LocalDateTime.of(agendamento.getDataAgendamento(), agendamento.getHorarioInicio());
+        if (LocalDateTime.now().isAfter(dataHoraDoJogo.minusHours(2))) {
+            throw new IllegalStateException("Não é possível solicitar entrada em um jogo que começa em menos de 2 horas.");
+        }
 
         if (!agendamento.isPublico() || agendamento.getVagasDisponiveis() <= 0) {
             throw new IllegalArgumentException("Este jogo não está mais aberto a solicitações.");
@@ -127,6 +133,14 @@ public class JogoAbertoServiceImpl implements JogoAbertoService {
         SolicitacaoEntrada solicitacao = solicitacaoRepository.findById(solicitacaoId)
                 .orElseThrow(() -> new EntityNotFoundException("Solicitação não encontrada."));
 
+        Agendamento agendamento = solicitacao.getAgendamento();
+
+        // --- INÍCIO DA NOVA VALIDAÇÃO ---
+        LocalDateTime dataHoraDoJogo = LocalDateTime.of(agendamento.getDataAgendamento(), agendamento.getHorarioInicio());
+        if (LocalDateTime.now().isAfter(dataHoraDoJogo.minusHours(24))) { // Exemplo: 24 horas de antecedência
+            throw new IllegalStateException("Você não pode sair de um jogo com menos de 24 horas de antecedência.");
+        }
+
         if (!solicitacao.getSolicitante().getId().equals(atletaId)) {
             throw new AccessDeniedException("Você não tem permissão para cancelar esta participação.");
         }
@@ -135,7 +149,6 @@ public class JogoAbertoServiceImpl implements JogoAbertoService {
             throw new IllegalStateException("Sua participação precisa estar aceita para que você possa sair.");
         }
 
-        Agendamento agendamento = solicitacao.getAgendamento();
         agendamento.getParticipantes().remove(solicitacao.getSolicitante());
         agendamento.setVagasDisponiveis(agendamento.getVagasDisponiveis() + 1);
 
