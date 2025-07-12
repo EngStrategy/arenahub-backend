@@ -8,6 +8,7 @@ import com.engstrategy.alugai_api.exceptions.*;
 import com.engstrategy.alugai_api.mapper.QuadraMapper;
 import com.engstrategy.alugai_api.model.*;
 import com.engstrategy.alugai_api.model.enums.DiaDaSemana;
+import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
 import com.engstrategy.alugai_api.model.enums.StatusDisponibilidade;
 import com.engstrategy.alugai_api.repository.*;
 import com.engstrategy.alugai_api.service.QuadraService;
@@ -37,6 +38,7 @@ public class QuadraServiceImpl implements QuadraService {
     private final EntityManager entityManager;
     private final SlotHorarioRepository slotHorarioRepository;
     private final IntervaloHorarioRepository intervaloHorarioRepository;
+    private final AgendamentoSnapshotService agendamentoSnapshotService;
 
     @Override
     @Transactional
@@ -157,35 +159,50 @@ public class QuadraServiceImpl implements QuadraService {
     }
 
     private void removerTodosIntervalosExistentes(HorarioFuncionamento horarioFuncionamento) {
-        // Coletar IDs de todos os slots para remoção
-        List<Long> todosSlotIds = horarioFuncionamento.getIntervalosDeHorario().stream()
+        // Coletar todos os slots que serão removidos
+        List<SlotHorario> todosSlots = horarioFuncionamento.getIntervalosDeHorario().stream()
                 .flatMap(intervalo -> intervalo.getSlotsHorario().stream())
+                .toList();
+
+        // Criar snapshots para agendamentos que precisam preservar informações
+        agendamentoSnapshotService.criarSnapshotsParaSlots(todosSlots);
+
+        // Remover associações dos agendamentos antes de deletar os slots
+        for (SlotHorario slot : todosSlots) {
+            for (Agendamento agendamento : new ArrayList<>(slot.getAgendamentos())) {
+                agendamento.getSlotsHorario().remove(slot);
+                slot.getAgendamentos().remove(agendamento);
+            }
+        }
+
+        // Flush para garantir que as associações sejam removidas
+        entityManager.flush();
+
+        // Coletar IDs para remoção
+        List<Long> todosSlotIds = todosSlots.stream()
                 .map(SlotHorario::getId)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
-        // Coletar IDs de todos os intervalos para remoção
         List<Long> todosIntervaloIds = horarioFuncionamento.getIntervalosDeHorario().stream()
                 .map(IntervaloHorario::getId)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
-        // Limpar as coleções primeiro
+        // Limpar as coleções
         horarioFuncionamento.getIntervalosDeHorario().forEach(intervalo ->
                 intervalo.getSlotsHorario().clear()
         );
         horarioFuncionamento.getIntervalosDeHorario().clear();
 
-        // Flush para garantir que as mudanças sejam persistidas
         entityManager.flush();
 
-        // Remover slots pelo repositório se necessário
+        // Remover slots e intervalos
         if (!todosSlotIds.isEmpty()) {
             slotHorarioRepository.deleteAllById(todosSlotIds);
             entityManager.flush();
         }
 
-        // Remover intervalos pelo repositório se necessário
         if (!todosIntervaloIds.isEmpty()) {
             intervaloHorarioRepository.deleteAllById(todosIntervaloIds);
             entityManager.flush();
@@ -234,10 +251,14 @@ public class QuadraServiceImpl implements QuadraService {
     private void verificarAgendamentosPendentes(IntervaloHorario intervalo) {
         boolean temAgendamentosPendentes = intervalo.getSlotsHorario().stream()
                 .anyMatch(slot -> slot.getAgendamentos().stream()
-                        .anyMatch(agendamento ->
-                                agendamento.getDataAgendamento().isAfter(LocalDate.now()) ||
-                                        (agendamento.getDataAgendamento().isEqual(LocalDate.now()) &&
-                                                slot.getHorarioInicio().isAfter(LocalTime.now()))));
+                        .anyMatch(agendamento -> {
+                            boolean isPendente = agendamento.getStatus().equals(StatusAgendamento.PENDENTE);
+                            boolean isDataFutura = agendamento.getDataAgendamento().isAfter(LocalDate.now());
+                            boolean isHoje = agendamento.getDataAgendamento().isEqual(LocalDate.now());
+                            boolean isHorarioFuturo = slot.getHorarioInicio().isAfter(LocalTime.now());
+
+                            return isPendente && (isDataFutura || (isHoje && isHorarioFuturo));
+                        }));
 
         if (temAgendamentosPendentes) {
             throw new IntervaloComAgendamentosException(
