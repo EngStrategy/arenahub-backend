@@ -42,19 +42,25 @@ public class AgendamentoMapper {
     public AgendamentoResponseDTO fromAgendamentoToResponseDTO(Agendamento agendamento) {
         return AgendamentoResponseDTO.builder()
                 .id(agendamento.getId())
-                .quadraId(agendamento.getQuadra().getId())
                 .dataAgendamento(agendamento.getDataAgendamento())
                 .horarioInicio(agendamento.getHorarioInicio())
                 .horarioFim(agendamento.getHorarioFim())
                 .valorTotal(agendamento.getValorTotal())
                 .esporte(agendamento.getEsporte())
-                .isFixo(agendamento.isFixo())
-                .isPublico(agendamento.isPublico())
                 .status(agendamento.getStatus())
                 .numeroJogadoresNecessarios(agendamento.getVagasDisponiveis())
                 .slotsHorario(agendamento.getSlotsHorario().stream()
                         .map(this::mapearSlotParaResponse)
                         .collect(Collectors.toList()))
+                .quadraId(agendamento.getQuadra().getId())
+                .nomeQuadra(agendamento.getQuadra().getNomeQuadra())
+                .nomeArena(agendamento.getQuadra().getArena().getNome())
+                .urlFotoQuadra(agendamento.getQuadra().getUrlFotoQuadra())
+                .urlFotoArena(agendamento.getQuadra().getArena().getUrlFoto())
+                .nomeQuadra(agendamento.getQuadra().getNomeQuadra())
+                .fixo(agendamento.isFixo())
+                .publico(agendamento.isPublico())
+                .informacoesPreservadas(agendamento.getHorarioInicioSnapshot() != null)
                 .build();
     }
 
