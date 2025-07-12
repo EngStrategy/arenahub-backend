@@ -8,6 +8,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,9 +28,21 @@ public class Agendamento {
     @Column(name = "data_agendamento")
     private LocalDate dataAgendamento;
 
-    private boolean isFixo;
+    // Campos desnormalizados para preservar informações históricas
+    @Column(name = "horario_inicio_snapshot")
+    private LocalTime horarioInicioSnapshot;
 
-    private boolean isPublico; // Alterado de isPrivado para isPublico para clareza
+    @Column(name = "horario_fim_snapshot")
+    private LocalTime horarioFimSnapshot;
+
+    @Column(name = "valor_total_snapshot")
+    private BigDecimal valorTotalSnapshot;
+
+    @Column(name = "data_snapshot")
+    private LocalDateTime dataSnapshot;
+
+    private boolean isFixo;
+    private boolean isPublico;
 
     @Enumerated(EnumType.STRING)
     private PeriodoAgendamento periodoAgendamentoFixo;
@@ -66,8 +79,11 @@ public class Agendamento {
     @OneToMany(mappedBy = "agendamento", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SolicitacaoEntrada> solicitacoes = new ArrayList<>();
 
-    // Métodos utilitários
     public LocalTime getHorarioInicio() {
+        // Prioriza snapshot se disponível, senão calcula dos slots
+        if (horarioInicioSnapshot != null) {
+            return horarioInicioSnapshot;
+        }
         return slotsHorario.stream()
                 .map(SlotHorario::getHorarioInicio)
                 .min(LocalTime::compareTo)
@@ -75,6 +91,9 @@ public class Agendamento {
     }
 
     public LocalTime getHorarioFim() {
+        if (horarioFimSnapshot != null) {
+            return horarioFimSnapshot;
+        }
         return slotsHorario.stream()
                 .map(SlotHorario::getHorarioFim)
                 .max(LocalTime::compareTo)
@@ -82,8 +101,19 @@ public class Agendamento {
     }
 
     public BigDecimal getValorTotal() {
+        if (valorTotalSnapshot != null) {
+            return valorTotalSnapshot;
+        }
         return slotsHorario.stream()
                 .map(SlotHorario::getValor)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    // Método para criar snapshot dos dados
+    public void criarSnapshot() {
+        this.horarioInicioSnapshot = getHorarioInicio();
+        this.horarioFimSnapshot = getHorarioFim();
+        this.valorTotalSnapshot = getValorTotal();
+        this.dataSnapshot = LocalDateTime.now();
     }
 }
