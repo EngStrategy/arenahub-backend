@@ -68,6 +68,120 @@ public class EmailService {
         }
     }
 
+    @Async
+    public void enviarEmailNovaSolicitacao(String emailDono, String nomeDono, String nomeSolicitante, Agendamento agendamento) {
+        String dataFormatada = agendamento.getDataAgendamento().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        String titulo = "Nova solicitação para o seu jogo!";
+        String corpo = String.format("""
+            <p>Olá, %s!</p>
+            <p>O atleta <strong>%s</strong> quer participar do seu jogo de %s no dia %s.</p>
+            <p>Acesse o app para aprovar ou recusar a solicitação.</p>
+            """, nomeDono, nomeSolicitante, agendamento.getEsporte().getApelido(), dataFormatada);
+
+        enviarEmailGenerico(emailDono, titulo, corpo, nomeDono);
+    }
+
+    @Async
+    public void enviarEmailSolicitacaoAceita(String emailSolicitante, String nomeSolicitante, Agendamento agendamento) {
+        String dataFormatada = agendamento.getDataAgendamento().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        String titulo = "Você está dentro! Participação confirmada.";
+        String corpo = String.format("""
+            <p>Parabéns, %s!</p>
+            <p>Sua entrada no jogo de <strong>%s</strong> do dia <strong>%s</strong> na arena <strong>%s</strong> foi aceita.</p>
+            <p>Prepare o uniforme e tenha uma ótima partida!</p>
+            """, nomeSolicitante, agendamento.getEsporte().getApelido(), dataFormatada, agendamento.getQuadra().getArena().getNome());
+
+        enviarEmailGenerico(emailSolicitante, titulo, corpo, nomeSolicitante);
+    }
+
+    @Async
+    public void enviarEmailSolicitacaoRecusada(String emailSolicitante, String nomeSolicitante, Agendamento agendamento) {
+        String dataFormatada = agendamento.getDataAgendamento().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        String titulo = "Atualização sobre sua solicitação de jogo";
+        String corpo = String.format("""
+            <p>Olá, %s.</p>
+            <p>Infelizmente, sua solicitação para o jogo de <strong>%s</strong> no dia <strong>%s</strong> não foi aceita pelo organizador.</p>
+            <p>Mas não desanime, procure outros jogos abertos em nossa plataforma!</p>
+            """, nomeSolicitante, agendamento.getEsporte().getApelido(), dataFormatada);
+
+        enviarEmailGenerico(emailSolicitante, titulo, corpo, nomeSolicitante);
+    }
+
+    @Async
+    public void enviarEmailParticipanteSaiu(String emailDono, String nomeDono, String nomeParticipante, Agendamento agendamento) {
+        String dataFormatada = agendamento.getDataAgendamento().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        String titulo = "Um participante saiu do seu jogo";
+        String corpo = String.format("""
+            <p>Olá, %s.</p>
+            <p>O atleta <strong>%s</strong> cancelou a participação no seu jogo de <strong>%s</strong> do dia <strong>%s</strong>.</p>
+            <p>Uma nova vaga foi aberta.</p>
+            """, nomeDono, nomeParticipante, agendamento.getEsporte().getApelido(), dataFormatada);
+
+        enviarEmailGenerico(emailDono, titulo, corpo, nomeDono);
+    }
+
+    @Async
+    public void enviarEmailJogoCancelado(String emailParticipante, String nomeParticipante, Agendamento agendamento) {
+        String dataFormatada = agendamento.getDataAgendamento().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        String titulo = "Atenção: Jogo cancelado!";
+        String corpo = String.format("""
+            <p>Olá, %s.</p>
+            <p>O jogo de <strong>%s</strong> do dia <strong>%s</strong>, do qual você iria participar, foi <strong>cancelado</strong> pelo organizador.</p>
+            <p>Sentimos muito pelo inconveniente.</p>
+            """, nomeParticipante, agendamento.getEsporte().getApelido(), dataFormatada);
+
+        enviarEmailGenerico(emailParticipante, titulo, corpo, nomeParticipante);
+    }
+
+    private void enviarEmailGenerico(String destinatario, String titulo, String corpo, String nomeDestinatario) {
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, "utf-8");
+        try {
+            helper.setTo(destinatario);
+            helper.setSubject(titulo + " - Alugaí");
+            String htmlCompleto = htmlTemplateBase(titulo, corpo, nomeDestinatario);
+            helper.setText(htmlCompleto, true);
+            mailSender.send(message);
+            log.info("Email '{}' enviado para {}", titulo, destinatario);
+        } catch (MessagingException e) {
+            log.error("Erro ao enviar email '{}' para {}: {}", titulo, destinatario, e.getMessage());
+            throw new RuntimeException("Erro ao enviar email", e);
+        }
+    }
+
+    private String htmlTemplateBase(String titulo, String corpo, String nome) {
+        return String.format("""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>%s</title>
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                    .header { background-color: #15A01A; color: white; padding: 20px; text-align: center; }
+                    .content { padding: 30px 20px; background-color: #f9f9f9; }
+                    .footer { padding: 20px; text-align: center; color: #666; font-size: 12px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header"><h1>ALUGAÍ.</h1></div>
+                    <div class="content">
+                        <h2>%s</h2>
+                        %s
+                    </div>
+                    <div class="footer">
+                        <p>Obrigado por usar o Alugaí!</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """, titulo, titulo, corpo);
+    }
+
+
     private String htmlContentAgendamento(String nome, Agendamento agendamento, Role role) {
         String dataFormatada = agendamento.getDataAgendamento().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
 

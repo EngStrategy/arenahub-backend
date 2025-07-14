@@ -172,7 +172,7 @@ public class AgendamentoFixoServiceImpl implements AgendamentoFixoService {
                 .isFixo(true)
                 .isPublico(false) // Agendamentos fixos não podem ser públicos
                 .periodoAgendamentoFixo(agendamentoBase.getPeriodoAgendamentoFixo())
-                .numeroJogadoresNecessarios(agendamentoBase.getNumeroJogadoresNecessarios())
+                .vagasDisponiveis(agendamentoBase.getVagasDisponiveis())
                 .status(StatusAgendamento.PENDENTE)
                 .quadra(agendamentoBase.getQuadra())
                 .atleta(agendamentoBase.getAtleta())
