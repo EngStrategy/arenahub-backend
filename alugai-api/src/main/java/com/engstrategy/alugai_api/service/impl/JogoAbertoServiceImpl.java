@@ -8,6 +8,7 @@ import com.engstrategy.alugai_api.mapper.JogoAbertoMapper;
 import com.engstrategy.alugai_api.model.Agendamento;
 import com.engstrategy.alugai_api.model.Atleta;
 import com.engstrategy.alugai_api.model.SolicitacaoEntrada;
+import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
 import com.engstrategy.alugai_api.model.enums.StatusSolicitacao;
 import com.engstrategy.alugai_api.repository.AgendamentoRepository;
 import com.engstrategy.alugai_api.repository.AtletaRepository;
@@ -135,7 +136,10 @@ public class JogoAbertoServiceImpl implements JogoAbertoService {
 
         Agendamento agendamento = solicitacao.getAgendamento();
 
-        // --- INÍCIO DA NOVA VALIDAÇÃO ---
+        if(agendamento.getStatus() == StatusAgendamento.CANCELADO){
+            throw new IllegalStateException("Você não pode sair de um jogo que já foi cancelado");
+        }
+
         LocalDateTime dataHoraDoJogo = LocalDateTime.of(agendamento.getDataAgendamento(), agendamento.getHorarioInicio());
         if (LocalDateTime.now().isAfter(dataHoraDoJogo.minusHours(24))) { // Exemplo: 24 horas de antecedência
             throw new IllegalStateException("Você não pode sair de um jogo com menos de 24 horas de antecedência.");

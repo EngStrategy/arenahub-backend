@@ -27,5 +27,5 @@ public class MinhaParticipacaoResponseDTO {
     private LocalTime horarioFim;
 
     private TipoEsporte esporte;
-    private StatusSolicitacao status; // PENDENTE, ACEITO, RECUSADO
+    private StatusSolicitacao status;
 }

@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Builder;
 import lombok.Data;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
@@ -24,7 +23,6 @@ public class JogoAbertoResponseDTO {
 
     private Integer vagasDisponiveis;
     private TipoEsporte esporte;
-    private BigDecimal valorPorPessoa;
     private String nomeArena;
     private String nomeQuadra;
     private String cidade;

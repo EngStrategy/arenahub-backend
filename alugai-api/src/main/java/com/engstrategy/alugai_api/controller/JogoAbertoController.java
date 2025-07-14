@@ -69,10 +69,12 @@ public class JogoAbertoController {
     }
 
     @GetMapping("/minhas-participacoes")
-    @Operation(summary = "Lista todos os jogos abertos que o atleta logado solicitou para participar", security = @SecurityRequirement(name = "bearerAuth"))
+    @Operation(summary = "Lista todos os jogos abertos que o atleta logado solicitou para participar",
+            security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<List<MinhaParticipacaoResponseDTO>> listarMinhasParticipacoes(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        List<MinhaParticipacaoResponseDTO> participacoes = jogoAbertoService.listarMinhasParticipacoes(userDetails.getUserId());
+        List<MinhaParticipacaoResponseDTO> participacoes = jogoAbertoService.
+                listarMinhasParticipacoes(userDetails.getUserId());
         return ResponseEntity.ok(participacoes);
     }
 }
