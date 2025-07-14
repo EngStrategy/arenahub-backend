@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -410,6 +411,13 @@ public class QuadraServiceImpl implements QuadraService {
 
         List<SlotHorario> slotsDisponiveis = new ArrayList<>();
 
+        ZoneId fusoHorarioBrasilia = ZoneId.of("America/Sao_Paulo");
+        LocalDate dataAtual = LocalDate.now(fusoHorarioBrasilia);
+        LocalTime horaAtual = LocalTime.now(fusoHorarioBrasilia);
+
+        // Verificar se a data do agendamento é hoje
+        boolean isDataAtual = dataAgendamento.equals(dataAtual);
+
         for (SlotHorario slot : slots) {
             // 1. Verificar se o slot está fisicamente disponível
             if (slot.getStatusDisponibilidade() == StatusDisponibilidade.MANUTENCAO ||
@@ -417,7 +425,12 @@ public class QuadraServiceImpl implements QuadraService {
                 continue; // pula para o próximo slot
             }
 
-            // 2. Verificar se já existe agendamento para este slot na data específica
+            // 2. Se a data é hoje, verificar se o horário do slot já passou
+            if (isDataAtual && slot.getHorarioInicio().isBefore(horaAtual)) {
+                continue; // pula slots que já passaram do horário atual
+            }
+
+            // 3. Verificar se já existe agendamento para este slot na data específica
             boolean jaAgendado = agendamentoRepository.existeConflito(
                     dataAgendamento,
                     quadraId,

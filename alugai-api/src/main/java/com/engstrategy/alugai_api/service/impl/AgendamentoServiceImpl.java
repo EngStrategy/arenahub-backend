@@ -2,14 +2,8 @@ package com.engstrategy.alugai_api.service.impl;
 
 import com.engstrategy.alugai_api.dto.agendamento.AgendamentoCreateDTO;
 import com.engstrategy.alugai_api.mapper.AgendamentoMapper;
-import com.engstrategy.alugai_api.model.Agendamento;
-import com.engstrategy.alugai_api.model.Atleta;
-import com.engstrategy.alugai_api.model.Quadra;
-import com.engstrategy.alugai_api.model.SlotHorario;
-import com.engstrategy.alugai_api.model.enums.Role;
-import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
-import com.engstrategy.alugai_api.model.enums.StatusDisponibilidade;
-import com.engstrategy.alugai_api.model.enums.TipoAgendamento;
+import com.engstrategy.alugai_api.model.*;
+import com.engstrategy.alugai_api.model.enums.*;
 import com.engstrategy.alugai_api.repository.AgendamentoRepository;
 import com.engstrategy.alugai_api.repository.AtletaRepository;
 import com.engstrategy.alugai_api.repository.QuadraRepository;
@@ -206,9 +200,25 @@ public class AgendamentoServiceImpl implements AgendamentoService {
             throw new IllegalArgumentException("Agendamento já está cancelado");
         }
 
-        // Cancelar o agendamento
+        // 1. Atualiza o status do agendamento
         agendamento.setStatus(StatusAgendamento.CANCELADO);
+
+        // 2. Atualiza o status de todas as solicitações de entrada relacionadas
+        if (agendamento.getSolicitacoes() != null) {
+            for (SolicitacaoEntrada solicitacao : agendamento.getSolicitacoes()) {
+                solicitacao.setStatus(StatusSolicitacao.CANCELADO);
+            }
+        }
+
+        // 3. Salva o agendamento e, em cascata, as alterações nas solicitações
         agendamentoRepository.save(agendamento);
+
+        // Envio de email para os participantes
+        if (agendamento.isPublico() && agendamento.getParticipantes() != null) {
+            for (Atleta participante : agendamento.getParticipantes()) {
+                emailService.enviarEmailJogoCancelado(participante.getEmail(), participante.getNome(), agendamento);
+            }
+        }
 
         log.info("Agendamento cancelado com sucesso");
     }
