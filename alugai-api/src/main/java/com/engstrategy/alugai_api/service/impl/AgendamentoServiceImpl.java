@@ -2,14 +2,8 @@ package com.engstrategy.alugai_api.service.impl;
 
 import com.engstrategy.alugai_api.dto.agendamento.AgendamentoCreateDTO;
 import com.engstrategy.alugai_api.mapper.AgendamentoMapper;
-import com.engstrategy.alugai_api.model.Agendamento;
-import com.engstrategy.alugai_api.model.Atleta;
-import com.engstrategy.alugai_api.model.Quadra;
-import com.engstrategy.alugai_api.model.SlotHorario;
-import com.engstrategy.alugai_api.model.enums.Role;
-import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
-import com.engstrategy.alugai_api.model.enums.StatusDisponibilidade;
-import com.engstrategy.alugai_api.model.enums.TipoAgendamento;
+import com.engstrategy.alugai_api.model.*;
+import com.engstrategy.alugai_api.model.enums.*;
 import com.engstrategy.alugai_api.repository.AgendamentoRepository;
 import com.engstrategy.alugai_api.repository.AtletaRepository;
 import com.engstrategy.alugai_api.repository.QuadraRepository;
@@ -27,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Service
@@ -106,12 +102,16 @@ public class AgendamentoServiceImpl implements AgendamentoService {
     }
 
     private void validarDataAgendamento(LocalDate dataAgendamento) {
-        if (dataAgendamento.isBefore(LocalDate.now())) {
+        // Usar fuso horário de São Paulo para validação
+        ZoneId fusoHorarioBrasilia = ZoneId.of("America/Sao_Paulo");
+        LocalDate dataAtual = LocalDate.now(fusoHorarioBrasilia);
+
+        if (dataAgendamento.isBefore(dataAtual)) {
             throw new IllegalArgumentException("Não é possível criar agendamentos para datas passadas");
         }
 
         // Opcional: limitar agendamentos muito distantes no futuro
-        if (dataAgendamento.isAfter(LocalDate.now().plusYears(1))) {
+        if (dataAgendamento.isAfter(dataAtual.plusYears(1))) {
             throw new IllegalArgumentException("Não é possível criar agendamentos com mais de 1 ano de antecedência");
         }
     }
@@ -134,6 +134,14 @@ public class AgendamentoServiceImpl implements AgendamentoService {
      * Verifica se os slots estão disponíveis na data específica do agendamento
      */
     protected void verificarDisponibilidadeSlotsParaData(List<SlotHorario> slots, LocalDate dataAgendamento, Long quadraId) {
+        // Obter data e hora atual no fuso horário de São Paulo
+        ZoneId fusoHorarioBrasilia = ZoneId.of("America/Sao_Paulo");
+        LocalDate dataAtual = LocalDate.now(fusoHorarioBrasilia);
+        LocalTime horaAtual = LocalTime.now(fusoHorarioBrasilia);
+
+        // Verificar se a data do agendamento é hoje
+        boolean isDataAtual = dataAgendamento.equals(dataAtual);
+
         for (SlotHorario slot : slots) {
             // 1. Verificar se o slot está fisicamente disponível (não em manutenção)
             if (slot.getStatusDisponibilidade() == StatusDisponibilidade.MANUTENCAO ||
@@ -147,7 +155,18 @@ public class AgendamentoServiceImpl implements AgendamentoService {
                 );
             }
 
-            // 2. Verificar se já existe agendamento para este slot na data específica
+            // 2. Se a data é hoje, verificar se o horário do slot já passou
+            if (isDataAtual && slot.getHorarioInicio().isBefore(horaAtual)) {
+                throw new IllegalArgumentException(
+                        String.format("Slot %d (%s às %s) não pode ser agendado pois o horário já passou. Horário atual: %s",
+                                slot.getId(),
+                                slot.getHorarioInicio(),
+                                slot.getHorarioFim(),
+                                horaAtual.format(DateTimeFormatter.ofPattern("HH:mm")))
+                );
+            }
+
+            // 3. Verificar se já existe agendamento para este slot na data específica
             boolean jaAgendado = agendamentoRepository.existeConflito(
                     dataAgendamento,
                     quadraId,
@@ -196,9 +215,32 @@ public class AgendamentoServiceImpl implements AgendamentoService {
             throw new IllegalArgumentException("Agendamento não pertence ao atleta informado");
         }
 
-        // Verificar se o agendamento pode ser cancelado (não está no passado)
-        if (agendamento.getDataAgendamento().isBefore(LocalDate.now())) {
+        // Usar fuso horário de São Paulo para validação
+        ZoneId fusoHorarioBrasilia = ZoneId.of("America/Sao_Paulo");
+        LocalDate dataAtual = LocalDate.now(fusoHorarioBrasilia);
+        LocalTime horaAtual = LocalTime.now(fusoHorarioBrasilia);
+
+        // Verificar se o agendamento pode ser cancelado
+        if (agendamento.getDataAgendamento().isBefore(dataAtual)) {
             throw new IllegalArgumentException("Não é possível cancelar agendamentos de datas passadas");
+        }
+
+        // Se a data do agendamento é hoje, verificar se o primeiro slot já passou
+        if (agendamento.getDataAgendamento().equals(dataAtual)) {
+            // Buscar o primeiro slot (horário de início mais cedo)
+            LocalTime primeiroHorario = agendamento.getSlotsHorario().stream()
+                    .map(SlotHorario::getHorarioInicio)
+                    .min(LocalTime::compareTo)
+                    .orElseThrow(() -> new IllegalStateException("Agendamento sem slots de horário"));
+
+            if (primeiroHorario.isBefore(horaAtual)) {
+                throw new IllegalArgumentException(
+                        String.format("Não é possível cancelar agendamento pois o horário já passou. " +
+                                        "Horário do agendamento: %s, Horário atual: %s",
+                                primeiroHorario.format(DateTimeFormatter.ofPattern("HH:mm")),
+                                horaAtual.format(DateTimeFormatter.ofPattern("HH:mm")))
+                );
+            }
         }
 
         // Verificar se já não está cancelado
@@ -206,9 +248,25 @@ public class AgendamentoServiceImpl implements AgendamentoService {
             throw new IllegalArgumentException("Agendamento já está cancelado");
         }
 
-        // Cancelar o agendamento
+        // 1. Atualiza o status do agendamento
         agendamento.setStatus(StatusAgendamento.CANCELADO);
+
+        // 2. Atualiza o status de todas as solicitações de entrada relacionadas
+        if (agendamento.getSolicitacoes() != null) {
+            for (SolicitacaoEntrada solicitacao : agendamento.getSolicitacoes()) {
+                solicitacao.setStatus(StatusSolicitacao.CANCELADO);
+            }
+        }
+
+        // 3. Salva o agendamento e, em cascata, as alterações nas solicitações
         agendamentoRepository.save(agendamento);
+
+        // Envio de email para os participantes
+        if (agendamento.isPublico() && agendamento.getParticipantes() != null) {
+            for (Atleta participante : agendamento.getParticipantes()) {
+                emailService.enviarEmailJogoCancelado(participante.getEmail(), participante.getNome(), agendamento);
+            }
+        }
 
         log.info("Agendamento cancelado com sucesso");
     }

@@ -18,8 +18,8 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Long>,
 
     List<Agendamento> findByDataAgendamentoAndQuadra(LocalDate data, Quadra quadra);
 
-    @Query("SELECT a FROM Agendamento a WHERE a.isPublico = true AND a.status = 'CONFIRMADO' " +
-            "AND a.dataAgendamento >= :dataInicio")
+    @Query("SELECT a FROM Agendamento a WHERE a.isPublico = true AND a.status = 'PENDENTE' " +
+            "AND a.vagasDisponiveis > 0 AND a.dataAgendamento >= :dataInicio")
     List<Agendamento> findAgendamentosPublicos(@Param("dataInicio") LocalDate dataInicio);
 
     // Métodos para agendamentos fixos
