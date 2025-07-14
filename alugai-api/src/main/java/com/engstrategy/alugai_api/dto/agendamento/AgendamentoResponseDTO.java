@@ -17,22 +17,23 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class AgendamentoResponseDTO {
-
     private Long id;
     private LocalDate dataAgendamento;
-
     @JsonSerialize(using = LocalTimeSerializer.class)
     private LocalTime horarioInicio;
-
     @JsonSerialize(using = LocalTimeSerializer.class)
     private LocalTime horarioFim;
-
     private BigDecimal valorTotal;
     private TipoEsporte esporte;
-    private boolean isFixo;
-    private boolean isPublico;
     private StatusAgendamento status;
     private Integer numeroJogadoresNecessarios;
     private List<SlotHorarioResponseDTO> slotsHorario;
     private Long quadraId;
+    private String nomeQuadra;
+    private String nomeArena;
+    private String urlFotoQuadra;
+    private String urlFotoArena;
+    private boolean fixo;
+    private boolean publico;
+    private boolean informacoesPreservadas;
 }
