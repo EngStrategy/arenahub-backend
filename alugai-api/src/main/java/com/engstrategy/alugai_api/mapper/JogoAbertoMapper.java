@@ -18,11 +18,6 @@ public class JogoAbertoMapper {
             return null;
         }
 
-        int totalJogadores = agendamento.getParticipantes().size() + 1; // +1 para o criador
-        BigDecimal valorTotal = agendamento.getValorTotal();
-        BigDecimal valorPorPessoa = valorTotal.divide(BigDecimal.valueOf(totalJogadores), 2, RoundingMode.HALF_UP);
-
-
         return JogoAbertoResponseDTO.builder()
                 .agendamentoId(agendamento.getId())
                 .data(agendamento.getDataAgendamento())
@@ -30,7 +25,6 @@ public class JogoAbertoMapper {
                 .horarioFim(agendamento.getHorarioFim())
                 .vagasDisponiveis(agendamento.getVagasDisponiveis())
                 .esporte(agendamento.getEsporte())
-                .valorPorPessoa(valorPorPessoa)
                 .nomeArena(agendamento.getQuadra().getArena().getNome())
                 .nomeQuadra(agendamento.getQuadra().getNomeQuadra())
                 .cidade(agendamento.getQuadra().getArena().getEndereco().getCidade())
