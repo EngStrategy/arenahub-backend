@@ -17,7 +17,7 @@ public class MinhaParticipacaoResponseDTO {
     private Long agendamentoId; // ID do agendamento original
     private String nomeArena;
     private String nomeQuadra;
-    private String urlFotoQuadra;
+    private String urlFotoArena;
     private LocalDate data;
 
     @JsonSerialize(using = LocalTimeSerializer.class)

@@ -249,13 +249,15 @@ public class QuadraServiceImpl implements QuadraService {
     }
 
     private void verificarAgendamentosPendentes(IntervaloHorario intervalo) {
+        ZoneId fusoHorarioBrasilia = ZoneId.of("America/Sao_Paulo");
         boolean temAgendamentosPendentes = intervalo.getSlotsHorario().stream()
                 .anyMatch(slot -> slot.getAgendamentos().stream()
                         .anyMatch(agendamento -> {
                             boolean isPendente = agendamento.getStatus().equals(StatusAgendamento.PENDENTE);
-                            boolean isDataFutura = agendamento.getDataAgendamento().isAfter(LocalDate.now());
-                            boolean isHoje = agendamento.getDataAgendamento().isEqual(LocalDate.now());
-                            boolean isHorarioFuturo = slot.getHorarioInicio().isAfter(LocalTime.now());
+                            // Usando o fuso correto para todas as verificações de data e hora
+                            boolean isDataFutura = agendamento.getDataAgendamento().isAfter(LocalDate.now(fusoHorarioBrasilia));
+                            boolean isHoje = agendamento.getDataAgendamento().isEqual(LocalDate.now(fusoHorarioBrasilia));
+                            boolean isHorarioFuturo = slot.getHorarioInicio().isAfter(LocalTime.now(fusoHorarioBrasilia));
 
                             return isPendente && (isDataFutura || (isHoje && isHorarioFuturo));
                         }));

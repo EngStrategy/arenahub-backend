@@ -71,6 +71,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
         Agendamento agendamento = agendamentoMapper.fromCreateToAgendamento(dto, slots, atleta);
 
         // Salvar o agendamento
+        agendamento.criarSnapshot();
         agendamento = agendamentoRepository.save(agendamento);
 
         log.info("Agendamento criado com sucesso. ID: {}", agendamento.getId());
