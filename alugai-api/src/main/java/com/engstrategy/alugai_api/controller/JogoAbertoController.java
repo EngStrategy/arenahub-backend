@@ -7,10 +7,15 @@ import com.engstrategy.alugai_api.dto.jogosabertos.SolicitacaoEntradaDTO;
 import com.engstrategy.alugai_api.jwt.CustomUserDetails;
 import com.engstrategy.alugai_api.service.JogoAbertoService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -27,8 +32,23 @@ public class JogoAbertoController {
 
     @GetMapping
     @Operation(summary = "Listar todos os jogos abertos com vagas", security = @SecurityRequirement(name = "bearerAuth"))
-    public ResponseEntity<List<JogoAbertoResponseDTO>> listarJogosAbertos() {
-        return ResponseEntity.ok(jogoAbertoService.listarJogosAbertos());
+    public ResponseEntity<Page<JogoAbertoResponseDTO>> listarJogosAbertos(
+            @Parameter(description = "Número da página (iniciando em 0)")
+            @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Tamanho da página")
+            @RequestParam(defaultValue = "10") int size,
+            @Parameter(description = "Campo para ordenação (ex: dataAgendamento)")
+            @RequestParam(defaultValue = "dataAgendamento") String sort,
+            @Parameter(description = "Direção da ordenação (asc/desc)")
+            @RequestParam(defaultValue = "asc") String direction,
+            @Parameter(description = "Filtrar por cidade")
+            @RequestParam(required = false) String cidade,
+            @Parameter(description = "Filtrar por esporte (valores possíveis: FUTEBOL_SOCIETY, FUTSAL, BEACHTENNIS, etc.)")
+            @RequestParam(required = false) String esporte
+    ) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(direction), sort));
+        Page<JogoAbertoResponseDTO> jogosAbertos = jogoAbertoService.listarJogosAbertos(pageable, cidade, esporte);
+        return ResponseEntity.ok(jogosAbertos);
     }
 
     @PostMapping("/{agendamentoId}/solicitar-entrada")
