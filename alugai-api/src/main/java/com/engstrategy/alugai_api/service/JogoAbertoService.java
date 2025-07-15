@@ -3,12 +3,14 @@ package com.engstrategy.alugai_api.service;
 import com.engstrategy.alugai_api.dto.jogosabertos.JogoAbertoResponseDTO;
 import com.engstrategy.alugai_api.dto.jogosabertos.MinhaParticipacaoResponseDTO;
 import com.engstrategy.alugai_api.dto.jogosabertos.SolicitacaoEntradaDTO;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
 public interface JogoAbertoService {
 
-    List<JogoAbertoResponseDTO> listarJogosAbertos();
+    Page<JogoAbertoResponseDTO> listarJogosAbertos(Pageable pageable, String cidade, String esporte);
 
     SolicitacaoEntradaDTO solicitarEntrada(Long agendamentoId, Long atletaId);
 

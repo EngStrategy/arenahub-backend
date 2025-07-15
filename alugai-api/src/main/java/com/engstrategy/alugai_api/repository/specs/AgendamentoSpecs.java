@@ -1,15 +1,22 @@
 package com.engstrategy.alugai_api.repository.specs;
 
 import com.engstrategy.alugai_api.model.Agendamento;
+import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
 import com.engstrategy.alugai_api.model.enums.TipoAgendamento;
+import com.engstrategy.alugai_api.model.enums.TipoEsporte;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
 
 public class AgendamentoSpecs {
 
     public static Specification<Agendamento> hasAtletaId(Long atletaId) {
-        return (root, query, builder) -> builder.equal(root.get("atleta").get("id"), atletaId);
+        return (root, query, builder) ->
+                builder.equal(root.get("atleta").get("id"), atletaId);
     }
 
     public static Specification<Agendamento> dataInicioAfterOrEqual(LocalDate dataInicio) {
@@ -37,6 +44,74 @@ public class AgendamentoSpecs {
             }
             boolean isFixo = tipoAgendamento == TipoAgendamento.FIXO;
             return builder.equal(root.get("isFixo"), isFixo);
+        };
+    }
+
+    // Novas Specifications para Jogos Abertos
+    public static Specification<Agendamento> isPublico() {
+        return (root, query, builder) -> builder.isTrue(root.get("isPublico"));
+    }
+
+    public static Specification<Agendamento> isPendente() {
+        return (root, query, builder) -> builder.equal(root.get("status"), StatusAgendamento.PENDENTE);
+    }
+
+    public static Specification<Agendamento> hasVagas() {
+        return (root, query, builder) -> builder.greaterThan(root.get("vagasDisponiveis"), 0);
+    }
+
+    public static Specification<Agendamento> fromTodayOnwards() {
+        // Define o fuso horário do Brasil (America/Sao_Paulo)
+        ZoneId fusoHorarioBrasilia = ZoneId.of("America/Sao_Paulo");
+
+        // Usa o fuso para obter a data atual correta para a comparação
+        return (root, query, builder) -> builder.greaterThanOrEqualTo(root.get("dataAgendamento"), LocalDate.now(fusoHorarioBrasilia));
+    }
+
+    public static Specification<Agendamento> hasCidade(String cidade) {
+        return (root, query, builder) -> {
+            if (cidade == null || cidade.trim().isEmpty()) {
+                return null; // Nenhum filtro aplicado se a cidade for nula/vazia
+            }
+            // Join: Agendamento -> Quadra -> Arena -> Endereco
+            Join<Object, Object> quadraJoin = root.join("quadra");
+            Join<Object, Object> arenaJoin = quadraJoin.join("arena");
+            return builder.like(builder.lower(arenaJoin.get("endereco").get("cidade")), "%" + cidade.toLowerCase() + "%");
+        };
+    }
+
+    public static Specification<Agendamento> hasEsporte(String esporte) {
+        return (root, query, builder) -> {
+            if (esporte == null || esporte.trim().isEmpty()) {
+                return null; // Nenhum filtro aplicado se o esporte for nulo/vazio
+            }
+            try {
+                TipoEsporte tipoEsporte = TipoEsporte.valueOf(esporte.toUpperCase());
+                return builder.equal(root.get("esporte"), tipoEsporte);
+            } catch (IllegalArgumentException e) {
+                // Retorna uma condição que sempre será falsa se o esporte for inválido
+                return builder.disjunction();
+            }
+        };
+    }
+
+    public static Specification<Agendamento> isUpcoming() {
+        return (root, query, builder) -> {
+            ZoneId fusoHorarioBrasilia = ZoneId.of("America/Sao_Paulo");
+            LocalDate hoje = LocalDate.now(fusoHorarioBrasilia);
+            LocalTime agora = LocalTime.now(fusoHorarioBrasilia);
+
+            // Condição 1: Agendamentos em datas futuras
+            Predicate agendamentoEmDataFutura = builder.greaterThan(root.get("dataAgendamento"), hoje);
+
+            // Condição 2: Agendamentos para hoje que ainda não começaram
+            Predicate agendamentoHojeNaoIniciado = builder.and(
+                    builder.equal(root.get("dataAgendamento"), hoje),
+                    builder.greaterThan(root.get("horarioInicioSnapshot"), agora)
+            );
+
+            // A consulta final combina as duas condições com um "OU"
+            return builder.or(agendamentoEmDataFutura, agendamentoHojeNaoIniciado);
         };
     }
 }

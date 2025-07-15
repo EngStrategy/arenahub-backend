@@ -26,5 +26,5 @@ public class JogoAbertoResponseDTO {
     private String nomeArena;
     private String nomeQuadra;
     private String cidade;
-    private String urlFotoQuadra;
+    private String urlFotoArena;
 }
