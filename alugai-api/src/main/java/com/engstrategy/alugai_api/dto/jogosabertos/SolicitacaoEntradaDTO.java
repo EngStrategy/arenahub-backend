@@ -11,6 +11,7 @@ public class SolicitacaoEntradaDTO {
     private Long agendamentoId;
     private Long solicitanteId;
     private String nomeSolicitante;
+    private String telefoneSolicitante;
     private String fotoSolicitante;
     private StatusSolicitacao status;
 }

@@ -42,6 +42,7 @@ public class JogoAbertoMapper {
                 .agendamentoId(solicitacao.getAgendamento().getId())
                 .solicitanteId(solicitacao.getSolicitante().getId())
                 .nomeSolicitante(solicitacao.getSolicitante().getNome())
+                .telefoneSolicitante(solicitacao.getSolicitante().getTelefone())
                 .fotoSolicitante(solicitacao.getSolicitante().getUrlFoto())
                 .status(solicitacao.getStatus())
                 .build();
