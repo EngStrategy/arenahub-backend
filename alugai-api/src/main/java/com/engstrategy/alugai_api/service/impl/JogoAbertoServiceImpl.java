@@ -154,6 +154,8 @@ public class JogoAbertoServiceImpl implements JogoAbertoService {
 
     @Override
     public void sairDeJogoAberto(Long solicitacaoId, Long atletaId) {
+        List<StatusSolicitacao> statusPermitidos = List.of(StatusSolicitacao.ACEITO, StatusSolicitacao.PENDENTE);
+
         SolicitacaoEntrada solicitacao = solicitacaoRepository.findById(solicitacaoId)
                 .orElseThrow(() -> new EntityNotFoundException("Solicitação não encontrada."));
 
@@ -165,16 +167,17 @@ public class JogoAbertoServiceImpl implements JogoAbertoService {
 
         ZoneId fusoHorarioBrasilia = ZoneId.of("America/Sao_Paulo");
         LocalDateTime dataHoraDoJogo = LocalDateTime.of(agendamento.getDataAgendamento(), agendamento.getHorarioInicio());
-        if (LocalDateTime.now(fusoHorarioBrasilia).isAfter(dataHoraDoJogo.minusHours(24))) {
-            throw new IllegalStateException("Você não pode sair de um jogo com menos de 24 horas de antecedência.");
+        if (LocalDateTime.now(fusoHorarioBrasilia).isAfter(dataHoraDoJogo.minusHours(3))) {
+            throw new IllegalStateException("Você não pode sair de um jogo com menos de 3 horas de antecedência.");
         }
 
         if (!solicitacao.getSolicitante().getId().equals(atletaId)) {
             throw new AccessDeniedException("Você não tem permissão para cancelar esta participação.");
         }
 
-        if (solicitacao.getStatus() != StatusSolicitacao.ACEITO) {
-            throw new IllegalStateException("Sua participação precisa estar aceita para que você possa sair.");
+
+        if (!statusPermitidos.contains(solicitacao.getStatus())) {
+            throw new IllegalStateException("Sua participação precisa estar 'Aceita' ou 'Pendente' para que você possa sair.");
         }
 
         agendamento.getParticipantes().remove(solicitacao.getSolicitante());
