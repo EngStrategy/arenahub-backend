@@ -28,7 +28,7 @@ public class JogoAbertoMapper {
                 .nomeArena(agendamento.getQuadra().getArena().getNome())
                 .nomeQuadra(agendamento.getQuadra().getNomeQuadra())
                 .cidade(agendamento.getQuadra().getArena().getEndereco().getCidade())
-                .urlFotoQuadra(agendamento.getQuadra().getUrlFotoQuadra())
+                .urlFotoArena(agendamento.getQuadra().getArena().getUrlFoto())
                 .build();
     }
 
@@ -42,6 +42,7 @@ public class JogoAbertoMapper {
                 .agendamentoId(solicitacao.getAgendamento().getId())
                 .solicitanteId(solicitacao.getSolicitante().getId())
                 .nomeSolicitante(solicitacao.getSolicitante().getNome())
+                .telefoneSolicitante(solicitacao.getSolicitante().getTelefone())
                 .fotoSolicitante(solicitacao.getSolicitante().getUrlFoto())
                 .status(solicitacao.getStatus())
                 .build();
@@ -59,7 +60,7 @@ public class JogoAbertoMapper {
                 .agendamentoId(agendamento.getId())
                 .nomeArena(agendamento.getQuadra().getArena().getNome())
                 .nomeQuadra(agendamento.getQuadra().getNomeQuadra())
-                .urlFotoQuadra(agendamento.getQuadra().getUrlFotoQuadra())
+                .urlFotoArena(agendamento.getQuadra().getArena().getUrlFoto())
                 .data(agendamento.getDataAgendamento())
                 .horarioInicio(agendamento.getHorarioInicio())
                 .horarioFim(agendamento.getHorarioFim())

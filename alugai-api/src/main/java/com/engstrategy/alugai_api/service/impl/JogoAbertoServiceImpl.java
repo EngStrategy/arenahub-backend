@@ -13,14 +13,19 @@ import com.engstrategy.alugai_api.model.enums.StatusSolicitacao;
 import com.engstrategy.alugai_api.repository.AgendamentoRepository;
 import com.engstrategy.alugai_api.repository.AtletaRepository;
 import com.engstrategy.alugai_api.repository.SolicitacaoEntradaRepository;
+import com.engstrategy.alugai_api.repository.specs.AgendamentoSpecs;
 import com.engstrategy.alugai_api.service.JogoAbertoService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -36,11 +41,28 @@ public class JogoAbertoServiceImpl implements JogoAbertoService {
     private final EmailService emailService;
 
     @Override
-    public List<JogoAbertoResponseDTO> listarJogosAbertos() {
-        List<Agendamento> jogosAbertos = agendamentoRepository.findAgendamentosPublicos(LocalDate.now());
-        return jogosAbertos.stream()
-                .map(jogoAbertoMapper::toJogoAbertoResponseDTO)
-                .collect(Collectors.toList());
+    public Page<JogoAbertoResponseDTO> listarJogosAbertos(Pageable pageable, String cidade, String esporte) {
+        // A construção da Specification agora é feita de forma incremental.
+        // Começamos com as condições que sempre se aplicam.
+        Specification<Agendamento> spec = AgendamentoSpecs.isPublico()
+                .and(AgendamentoSpecs.isPendente())
+                .and(AgendamentoSpecs.hasVagas())
+                .and(AgendamentoSpecs.isUpcoming());
+
+        // Adicionamos os filtros opcionais apenas se eles forem fornecidos.
+        if (cidade != null && !cidade.trim().isEmpty()) {
+            spec = spec.and(AgendamentoSpecs.hasCidade(cidade));
+        }
+
+        if (esporte != null && !esporte.trim().isEmpty()) {
+            spec = spec.and(AgendamentoSpecs.hasEsporte(esporte));
+        }
+
+        // A busca agora é paginada e filtrada
+        Page<Agendamento> jogosAbertosPage = agendamentoRepository.findAll(spec, pageable);
+
+        // Mapeia o resultado para o DTO
+        return jogosAbertosPage.map(jogoAbertoMapper::toJogoAbertoResponseDTO);
     }
 
     @Override
@@ -48,9 +70,10 @@ public class JogoAbertoServiceImpl implements JogoAbertoService {
         Agendamento agendamento = agendamentoRepository.findById(agendamentoId)
                 .orElseThrow(() -> new EntityNotFoundException("Jogo aberto não encontrado."));
 
+        ZoneId fusoHorarioBrasilia = ZoneId.of("America/Sao_Paulo");
         LocalDateTime dataHoraDoJogo = LocalDateTime.of(agendamento.getDataAgendamento(), agendamento.getHorarioInicio());
-        if (LocalDateTime.now().isAfter(dataHoraDoJogo.minusHours(2))) {
-            throw new IllegalStateException("Não é possível solicitar entrada em um jogo que começa em menos de 2 horas.");
+        if (LocalDateTime.now(fusoHorarioBrasilia).isAfter(dataHoraDoJogo.minusMinutes(30L))) {
+            throw new IllegalStateException("Não é possível solicitar entrada em um jogo que começa em menos de 30 minutos.");
         }
 
         if (!agendamento.isPublico() || agendamento.getVagasDisponiveis() <= 0) {
@@ -131,6 +154,8 @@ public class JogoAbertoServiceImpl implements JogoAbertoService {
 
     @Override
     public void sairDeJogoAberto(Long solicitacaoId, Long atletaId) {
+        List<StatusSolicitacao> statusPermitidos = List.of(StatusSolicitacao.ACEITO, StatusSolicitacao.PENDENTE);
+
         SolicitacaoEntrada solicitacao = solicitacaoRepository.findById(solicitacaoId)
                 .orElseThrow(() -> new EntityNotFoundException("Solicitação não encontrada."));
 
@@ -140,17 +165,19 @@ public class JogoAbertoServiceImpl implements JogoAbertoService {
             throw new IllegalStateException("Você não pode sair de um jogo que já foi cancelado");
         }
 
+        ZoneId fusoHorarioBrasilia = ZoneId.of("America/Sao_Paulo");
         LocalDateTime dataHoraDoJogo = LocalDateTime.of(agendamento.getDataAgendamento(), agendamento.getHorarioInicio());
-        if (LocalDateTime.now().isAfter(dataHoraDoJogo.minusHours(24))) { // Exemplo: 24 horas de antecedência
-            throw new IllegalStateException("Você não pode sair de um jogo com menos de 24 horas de antecedência.");
+        if (LocalDateTime.now(fusoHorarioBrasilia).isAfter(dataHoraDoJogo.minusHours(3))) {
+            throw new IllegalStateException("Você não pode sair de um jogo com menos de 3 horas de antecedência.");
         }
 
         if (!solicitacao.getSolicitante().getId().equals(atletaId)) {
             throw new AccessDeniedException("Você não tem permissão para cancelar esta participação.");
         }
 
-        if (solicitacao.getStatus() != StatusSolicitacao.ACEITO) {
-            throw new IllegalStateException("Sua participação precisa estar aceita para que você possa sair.");
+
+        if (!statusPermitidos.contains(solicitacao.getStatus())) {
+            throw new IllegalStateException("Sua participação precisa estar 'Aceita' ou 'Pendente' para que você possa sair.");
         }
 
         agendamento.getParticipantes().remove(solicitacao.getSolicitante());
