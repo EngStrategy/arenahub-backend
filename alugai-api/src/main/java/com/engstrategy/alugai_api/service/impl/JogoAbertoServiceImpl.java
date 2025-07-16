@@ -154,39 +154,43 @@ public class JogoAbertoServiceImpl implements JogoAbertoService {
 
     @Override
     public void sairDeJogoAberto(Long solicitacaoId, Long atletaId) {
-        List<StatusSolicitacao> statusPermitidos = List.of(StatusSolicitacao.ACEITO, StatusSolicitacao.PENDENTE);
-
         SolicitacaoEntrada solicitacao = solicitacaoRepository.findById(solicitacaoId)
                 .orElseThrow(() -> new EntityNotFoundException("Solicitação não encontrada."));
 
         Agendamento agendamento = solicitacao.getAgendamento();
 
-        if(agendamento.getStatus() == StatusAgendamento.CANCELADO){
+        if (agendamento.getStatus() == StatusAgendamento.CANCELADO) {
             throw new IllegalStateException("Você não pode sair de um jogo que já foi cancelado");
         }
 
         ZoneId fusoHorarioBrasilia = ZoneId.of("America/Sao_Paulo");
         LocalDateTime dataHoraDoJogo = LocalDateTime.of(agendamento.getDataAgendamento(), agendamento.getHorarioInicio());
         if (LocalDateTime.now(fusoHorarioBrasilia).isAfter(dataHoraDoJogo.minusHours(3))) {
-            throw new IllegalStateException("Você não pode sair de um jogo com menos de 3 horas de antecedência.");
+            throw new IllegalStateException("Você não pode sair de um jogo com menos de 2 horas de antecedência.");
         }
 
         if (!solicitacao.getSolicitante().getId().equals(atletaId)) {
             throw new AccessDeniedException("Você não tem permissão para cancelar esta participação.");
         }
 
+        StatusSolicitacao statusAtual = solicitacao.getStatus();
 
-        if (!statusPermitidos.contains(solicitacao.getStatus())) {
+        if (statusAtual == StatusSolicitacao.ACEITO) {
+            // Se o atleta foi aceito, remove ele dos participantes e incrementa as vagas
+            agendamento.getParticipantes().remove(solicitacao.getSolicitante());
+            agendamento.setVagasDisponiveis(agendamento.getVagasDisponiveis() + 1);
+            agendamentoRepository.save(agendamento);
+
+            // Notifica o dono do jogo que um participante saiu
+            Atleta donoDoJogo = agendamento.getAtleta();
+            emailService.enviarEmailParticipanteSaiu(donoDoJogo.getEmail(), donoDoJogo.getNome(), solicitacao.getSolicitante().getNome(), agendamento);
+        } else if (statusAtual != StatusSolicitacao.PENDENTE) {
+            // Se a solicitação não estiver ACEITA nem PENDENTE, lança uma exceção
             throw new IllegalStateException("Sua participação precisa estar 'Aceita' ou 'Pendente' para que você possa sair.");
         }
 
-        agendamento.getParticipantes().remove(solicitacao.getSolicitante());
-        agendamento.setVagasDisponiveis(agendamento.getVagasDisponiveis() + 1);
-
-        agendamentoRepository.save(agendamento);
+        // Deleta a solicitação em ambos os casos (ACEITO ou PENDENTE)
         solicitacaoRepository.delete(solicitacao);
-        Atleta donoDoJogo = agendamento.getAtleta();
-        emailService.enviarEmailParticipanteSaiu(donoDoJogo.getEmail(), donoDoJogo.getNome(), solicitacao.getSolicitante().getNome(), agendamento);
     }
 
     @Override
