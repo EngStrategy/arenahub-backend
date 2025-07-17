@@ -1,8 +1,11 @@
 package com.engstrategy.alugai_api.repository;
 
 import com.engstrategy.alugai_api.model.Arena;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
@@ -15,4 +18,6 @@ public interface ArenaRepository extends JpaRepository<Arena, Long>, JpaSpecific
     boolean existsByCpfProprietario(String cpfProprietario);
     boolean existsByCnpj(String cnpj);
     Optional<Arena> findByEmail(String email);
+    @Query("SELECT DISTINCT a.endereco.cidade FROM Arena a")
+    Page<String> findDistinctCidades(Pageable pageable);
 }
