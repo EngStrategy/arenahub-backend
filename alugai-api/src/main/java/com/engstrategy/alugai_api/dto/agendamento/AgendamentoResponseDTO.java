@@ -35,5 +35,5 @@ public class AgendamentoResponseDTO {
     private String urlFotoArena;
     private boolean fixo;
     private boolean publico;
-    private boolean informacoesPreservadas;
+    private boolean possuiSolicitacoes;
 }

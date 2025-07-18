@@ -65,7 +65,7 @@ public class AgendamentoMapper {
                 .nomeQuadra(agendamento.getQuadra().getNomeQuadra())
                 .fixo(agendamento.isFixo())
                 .publico(agendamento.isPublico())
-                .informacoesPreservadas(agendamento.getHorarioInicioSnapshot() != null)
+                .possuiSolicitacoes(agendamento.possuiSolicitacoes())
                 .build();
     }
 
