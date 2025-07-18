@@ -1,6 +1,8 @@
 package com.engstrategy.alugai_api.repository.specs;
 
 import com.engstrategy.alugai_api.model.Agendamento;
+import com.engstrategy.alugai_api.model.Arena;
+import com.engstrategy.alugai_api.model.Quadra;
 import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
 import com.engstrategy.alugai_api.model.enums.TipoAgendamento;
 import com.engstrategy.alugai_api.model.enums.TipoEsporte;
@@ -112,6 +114,35 @@ public class AgendamentoSpecs {
 
             // A consulta final combina as duas condições com um "OU"
             return builder.or(agendamentoEmDataFutura, agendamentoHojeNaoIniciado);
+        };
+    }
+
+    public static Specification<Agendamento> hasArenaId(Long arenaId) {
+        return (root, query, criteriaBuilder) -> {
+            if (arenaId == null) {
+                return criteriaBuilder.conjunction();
+            }
+            Join<Agendamento, Quadra> quadraJoin = root.join("quadra");
+            Join<Quadra, Arena> arenaJoin = quadraJoin.join("arena");
+            return criteriaBuilder.equal(arenaJoin.get("id"), arenaId);
+        };
+    }
+
+    public static Specification<Agendamento> hasStatus(StatusAgendamento status) {
+        return (root, query, criteriaBuilder) -> {
+            if (status == null) {
+                return criteriaBuilder.conjunction();
+            }
+            return criteriaBuilder.equal(root.get("status"), status);
+        };
+    }
+
+    public static Specification<Agendamento> hasQuadraId(Long quadraId) {
+        return (root, query, criteriaBuilder) -> {
+            if (quadraId == null) {
+                return criteriaBuilder.conjunction();
+            }
+            return criteriaBuilder.equal(root.get("quadra").get("id"), quadraId);
         };
     }
 }

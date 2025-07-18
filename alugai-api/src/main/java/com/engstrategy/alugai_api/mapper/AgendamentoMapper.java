@@ -3,6 +3,8 @@ package com.engstrategy.alugai_api.mapper;
 import com.engstrategy.alugai_api.dto.agendamento.AgendamentoCreateDTO;
 import com.engstrategy.alugai_api.dto.agendamento.AgendamentoFixoResponseDTO;
 import com.engstrategy.alugai_api.dto.agendamento.AgendamentoResponseDTO;
+import com.engstrategy.alugai_api.dto.agendamento.arena.AgendamentoArenaResponseDTO;
+import com.engstrategy.alugai_api.dto.agendamento.arena.ParticipanteDTO;
 import com.engstrategy.alugai_api.dto.quadra.SlotHorarioResponseDTO;
 import com.engstrategy.alugai_api.exceptions.UserNotFoundException;
 import com.engstrategy.alugai_api.model.*;
@@ -12,7 +14,10 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Component
@@ -74,18 +79,74 @@ public class AgendamentoMapper {
                 .build();
     }
 
-    public AgendamentoFixoResponseDTO fromAgendamentoFixoToResponseDTO(AgendamentoFixo agendamentoFixo) {
-        return AgendamentoFixoResponseDTO.builder()
-                .id(agendamentoFixo.getId())
-                .dataInicio(agendamentoFixo.getDataInicio())
-                .dataFim(agendamentoFixo.getDataFim())
-                .periodo(agendamentoFixo.getPeriodo())
-                .status(agendamentoFixo.getStatus())
-                .totalAgendamentos(agendamentoFixo.getAgendamentos().size())
-                .agendamentos(agendamentoFixo.getAgendamentos().stream()
-                        .map(this::fromAgendamentoToResponseDTO)
-                        .collect(Collectors.toList()))
-                .atletaId(agendamentoFixo.getAtleta().getId())
+    public AgendamentoArenaResponseDTO fromAgendamentoToArenaResponseDTO(Agendamento agendamento) {
+        if (agendamento == null) {
+            return null;
+        }
+
+        return AgendamentoArenaResponseDTO.builder()
+                .id(agendamento.getId())
+                .dataAgendamento(agendamento.getDataAgendamento())
+                .horarioInicio(agendamento.getHorarioInicio())
+                .horarioFim(agendamento.getHorarioFim())
+                .valorTotal(agendamento.getValorTotal())
+                .status(agendamento.getStatus())
+                .isFixo(agendamento.isFixo())
+                .isPublico(agendamento.isPublico())
+                .vagasDisponiveis(agendamento.getVagasDisponiveis())
+                .esporte(agendamento.getEsporte())
+                .quadraId(agendamento.getQuadra().getId())
+                .nomeQuadra(agendamento.getQuadra().getNomeQuadra())
+                .atletaId(agendamento.getAtleta().getId())
+                .nomeAtleta(agendamento.getAtleta().getNome())
+                .emailAtleta(agendamento.getAtleta().getEmail())
+                .telefoneAtleta(agendamento.getAtleta().getTelefone())
+                .urlFotoAtleta(agendamento.getAtleta().getUrlFoto())
+                .totalParticipantes(agendamento.getParticipantes() != null ?
+                        agendamento.getParticipantes().size() : 0)
+                .participantes(mapParticipantes(agendamento.getParticipantes()))
+                .slotsHorario(mapSlotsHorario(agendamento.getSlotsHorario()))
+                .build();
+    }
+
+    private List<ParticipanteDTO> mapParticipantes(Set<Atleta> participantes) {
+        if (participantes == null || participantes.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        return participantes.stream()
+                .map(this::mapParticipante)
+                .collect(Collectors.toList());
+    }
+
+    private ParticipanteDTO mapParticipante(Atleta atleta) {
+        return ParticipanteDTO.builder()
+                .id(atleta.getId())
+                .nome(atleta.getNome())
+                .email(atleta.getEmail())
+                .telefone(atleta.getTelefone())
+                .dataEntrada(atleta.getDataCriacao()) // Assumindo que existe este campo
+                .build();
+    }
+
+    private List<SlotHorarioResponseDTO> mapSlotsHorario(List<SlotHorario> slotsHorario) {
+        if (slotsHorario == null || slotsHorario.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        return slotsHorario.stream()
+                .map(this::mapSlotHorario)
+                .sorted(Comparator.comparing(SlotHorarioResponseDTO::getHorarioInicio))
+                .collect(Collectors.toList());
+    }
+
+    private SlotHorarioResponseDTO mapSlotHorario(SlotHorario slotHorario) {
+        return SlotHorarioResponseDTO.builder()
+                .id(slotHorario.getId())
+                .horarioInicio(slotHorario.getHorarioInicio())
+                .horarioFim(slotHorario.getHorarioFim())
+                .valor(slotHorario.getValor())
+                .statusDisponibilidade(slotHorario.getStatusDisponibilidade())
                 .build();
     }
 }

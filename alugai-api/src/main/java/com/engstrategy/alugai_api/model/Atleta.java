@@ -25,5 +25,4 @@ public class Atleta extends Usuario {
 
     @OneToMany(mappedBy = "solicitante", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SolicitacaoEntrada> solicitacoes = new ArrayList<>();
-
 }
