@@ -23,6 +23,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.List;
 
 @Service
@@ -275,9 +276,20 @@ public class AgendamentoServiceImpl implements AgendamentoService {
         if (dataFim != null) {
             spec = Specification.allOf(spec, AgendamentoSpecs.dataFimBeforeOrEqual(dataFim));
         }
+
+        // Lógica especial para status FINALIZADO
         if (status != null) {
-            spec = Specification.allOf(spec, AgendamentoSpecs.hasStatus(status));
+            if (status == StatusAgendamento.FINALIZADO) {
+                // Para FINALIZADO, buscar por múltiplos status
+                spec = Specification.allOf(spec, AgendamentoSpecs.hasStatusIn(
+                        Arrays.asList(StatusAgendamento.CANCELADO, StatusAgendamento.PAGO, StatusAgendamento.AUSENTE)
+                ));
+            } else {
+                // Para outros status, usar a lógica normal
+                spec = Specification.allOf(spec, AgendamentoSpecs.hasStatus(status));
+            }
         }
+
         if (tipoAgendamento != null && tipoAgendamento != TipoAgendamento.AMBOS) {
             spec = Specification.allOf(spec, AgendamentoSpecs.isTipoAgendamento(tipoAgendamento));
         }
@@ -307,9 +319,20 @@ public class AgendamentoServiceImpl implements AgendamentoService {
         if (dataFim != null) {
             spec = Specification.allOf(spec, AgendamentoSpecs.dataFimBeforeOrEqual(dataFim));
         }
+
+        // Lógica especial para status FINALIZADO
         if (status != null) {
-            spec = Specification.allOf(spec, AgendamentoSpecs.hasStatus(status));
+            if (status == StatusAgendamento.FINALIZADO) {
+                // Para FINALIZADO, buscar por múltiplos status
+                spec = Specification.allOf(spec, AgendamentoSpecs.hasStatusIn(
+                        Arrays.asList(StatusAgendamento.CANCELADO, StatusAgendamento.PAGO, StatusAgendamento.AUSENTE)
+                ));
+            } else {
+                // Para outros status, usar a lógica normal
+                spec = Specification.allOf(spec, AgendamentoSpecs.hasStatus(status));
+            }
         }
+
         if (quadraId != null) {
             spec = Specification.allOf(spec, AgendamentoSpecs.hasQuadraId(quadraId));
         }

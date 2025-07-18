@@ -13,6 +13,7 @@ import org.springframework.data.jpa.domain.Specification;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.util.List;
 
 public class AgendamentoSpecs {
 
@@ -60,14 +61,6 @@ public class AgendamentoSpecs {
 
     public static Specification<Agendamento> hasVagas() {
         return (root, query, builder) -> builder.greaterThan(root.get("vagasDisponiveis"), 0);
-    }
-
-    public static Specification<Agendamento> fromTodayOnwards() {
-        // Define o fuso horário do Brasil (America/Sao_Paulo)
-        ZoneId fusoHorarioBrasilia = ZoneId.of("America/Sao_Paulo");
-
-        // Usa o fuso para obter a data atual correta para a comparação
-        return (root, query, builder) -> builder.greaterThanOrEqualTo(root.get("dataAgendamento"), LocalDate.now(fusoHorarioBrasilia));
     }
 
     public static Specification<Agendamento> hasCidade(String cidade) {
@@ -134,6 +127,15 @@ public class AgendamentoSpecs {
                 return criteriaBuilder.conjunction();
             }
             return criteriaBuilder.equal(root.get("status"), status);
+        };
+    }
+
+    public static Specification<Agendamento> hasStatusIn(List<StatusAgendamento> statusList) {
+        return (root, query, cb) -> {
+            if (statusList == null || statusList.isEmpty()) {
+                return cb.conjunction();
+            }
+            return root.get("status").in(statusList);
         };
     }
 
