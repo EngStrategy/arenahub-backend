@@ -134,7 +134,10 @@ public class AgendamentoServiceImpl implements AgendamentoService {
     /**
      * Verifica se os slots estão disponíveis na data específica do agendamento
      */
-    protected void verificarDisponibilidadeSlotsParaData(List<SlotHorario> slots, LocalDate dataAgendamento, Long quadraId) {
+    protected void verificarDisponibilidadeSlotsParaData(List<SlotHorario> slots,
+                                                         LocalDate dataAgendamento,
+                                                         Long quadraId) {
+
         // Obter data e hora atual no fuso horário de São Paulo
         ZoneId fusoHorarioBrasilia = ZoneId.of("America/Sao_Paulo");
         LocalDate dataAtual = LocalDate.now(fusoHorarioBrasilia);
@@ -184,22 +187,6 @@ public class AgendamentoServiceImpl implements AgendamentoService {
                                 dataAgendamento)
                 );
             }
-        }
-    }
-
-    /**
-     * Verifica se todos os slots pertencem à mesma quadra
-     */
-    private void validarQuadraSlots(List<SlotHorario> slots, Long quadraId) {
-        boolean todosSlotsDaMesmaQuadra = slots.stream()
-                .allMatch(slot -> slot.getIntervaloHorario()
-                        .getHorarioFuncionamento()
-                        .getQuadra()
-                        .getId()
-                        .equals(quadraId));
-
-        if (!todosSlotsDaMesmaQuadra) {
-            throw new IllegalArgumentException("Todos os slots devem pertencer à mesma quadra");
         }
     }
 
@@ -273,8 +260,13 @@ public class AgendamentoServiceImpl implements AgendamentoService {
     }
 
     @Override
-    public Page<Agendamento> buscarPorAtletaId(Long atletaId, LocalDate dataInicio, LocalDate dataFim,
-                                               TipoAgendamento tipoAgendamento, Pageable pageable) {
+    public Page<Agendamento> buscarPorAtletaId(Long atletaId,
+                                               LocalDate dataInicio,
+                                               LocalDate dataFim,
+                                               TipoAgendamento tipoAgendamento,
+                                               StatusAgendamento status,
+                                               Pageable pageable) {
+
         Specification<Agendamento> spec = AgendamentoSpecs.hasAtletaId(atletaId);
 
         if (dataInicio != null) {
@@ -282,6 +274,9 @@ public class AgendamentoServiceImpl implements AgendamentoService {
         }
         if (dataFim != null) {
             spec = Specification.allOf(spec, AgendamentoSpecs.dataFimBeforeOrEqual(dataFim));
+        }
+        if (status != null) {
+            spec = Specification.allOf(spec, AgendamentoSpecs.hasStatus(status));
         }
         if (tipoAgendamento != null && tipoAgendamento != TipoAgendamento.AMBOS) {
             spec = Specification.allOf(spec, AgendamentoSpecs.isTipoAgendamento(tipoAgendamento));
@@ -291,33 +286,34 @@ public class AgendamentoServiceImpl implements AgendamentoService {
     }
 
     @Override
-    public List<Agendamento> buscarAgendamentosPublicos(LocalDate dataInicio) {
-        return agendamentoRepository.findAgendamentosPublicos(dataInicio);
-    }
-
-    @Override
     public Agendamento buscarPorId(Long agendamentoId) {
         return agendamentoRepository.findById(agendamentoId)
                 .orElseThrow(() -> new EntityNotFoundException("Agendamento não encontrado"));
     }
 
-    /**
-     * Busca agendamentos para uma quadra em uma data específica
-     * Útil para visualizar ocupação
-     */
     @Override
-    public List<Agendamento> buscarPorQuadraEData(Long quadraId, LocalDate data) {
-        Quadra quadra = new Quadra();
-        quadra.setId(quadraId);
-        return agendamentoRepository.findByDataAgendamentoAndQuadra(data, quadra);
-    }
+    public Page<Agendamento> buscarPorArenaId(Long arenaId,
+                                              LocalDate dataInicio,
+                                              LocalDate dataFim,
+                                              StatusAgendamento status,
+                                              Long quadraId,
+                                              Pageable pageable) {
 
-    /**
-     * Verifica se um horário específico está disponível para agendamento
-     */
-    @Override
-    public boolean verificarDisponibilidadeHorario(Long quadraId, LocalDate data,
-                                                   LocalTime inicio, LocalTime fim) {
-        return !agendamentoRepository.existeConflito(data, quadraId, inicio, fim);
+        Specification<Agendamento> spec = AgendamentoSpecs.hasArenaId(arenaId);
+
+        if (dataInicio != null) {
+            spec = Specification.allOf(spec, AgendamentoSpecs.dataInicioAfterOrEqual(dataInicio));
+        }
+        if (dataFim != null) {
+            spec = Specification.allOf(spec, AgendamentoSpecs.dataFimBeforeOrEqual(dataFim));
+        }
+        if (status != null) {
+            spec = Specification.allOf(spec, AgendamentoSpecs.hasStatus(status));
+        }
+        if (quadraId != null) {
+            spec = Specification.allOf(spec, AgendamentoSpecs.hasQuadraId(quadraId));
+        }
+
+        return agendamentoRepository.findAll(spec, pageable);
     }
 }

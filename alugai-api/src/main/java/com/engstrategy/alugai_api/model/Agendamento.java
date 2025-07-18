@@ -2,6 +2,7 @@ package com.engstrategy.alugai_api.model;
 
 import com.engstrategy.alugai_api.model.enums.PeriodoAgendamento;
 import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
+import com.engstrategy.alugai_api.model.enums.StatusSolicitacao;
 import com.engstrategy.alugai_api.model.enums.TipoEsporte;
 import jakarta.persistence.*;
 import lombok.*;
@@ -126,5 +127,10 @@ public class Agendamento {
         this.horarioFimSnapshot = getHorarioFim();
         this.valorTotalSnapshot = getValorTotal();
         this.dataSnapshot = LocalDateTime.now();
+    }
+
+    public boolean possuiSolicitacoes() {
+        return solicitacoes != null && solicitacoes.stream()
+                .anyMatch(solicitacao -> solicitacao.getStatus() == StatusSolicitacao.PENDENTE);
     }
 }
