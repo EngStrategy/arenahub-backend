@@ -18,6 +18,4 @@ public interface ArenaRepository extends JpaRepository<Arena, Long>, JpaSpecific
     boolean existsByCpfProprietario(String cpfProprietario);
     boolean existsByCnpj(String cnpj);
     Optional<Arena> findByEmail(String email);
-    @Query("SELECT DISTINCT a.endereco.cidade FROM Arena a")
-    Page<String> findDistinctCidades(Pageable pageable);
 }
