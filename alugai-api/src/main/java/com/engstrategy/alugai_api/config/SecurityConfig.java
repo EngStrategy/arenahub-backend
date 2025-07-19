@@ -51,7 +51,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/quadras/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/esportes").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/jogos-abertos").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/cidades").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/arenas/cidades").permitAll()
                         .requestMatchers("/api/v1/verify").permitAll()
                         .requestMatchers("/api/v1/resend-verification").permitAll()
                         .requestMatchers("/api/v1/forgot-password").permitAll()
