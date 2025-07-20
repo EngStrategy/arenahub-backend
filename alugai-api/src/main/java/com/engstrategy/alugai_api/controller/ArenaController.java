@@ -1,5 +1,6 @@
 package com.engstrategy.alugai_api.controller;
 
+import com.engstrategy.alugai_api.dto.agendamento.arena.CidadeDTO;
 import com.engstrategy.alugai_api.dto.arena.ArenaCreateDTO;
 import com.engstrategy.alugai_api.dto.arena.ArenaResponseDTO;
 import com.engstrategy.alugai_api.dto.arena.ArenaUpdateDTO;
@@ -155,9 +156,8 @@ public class ArenaController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Lista de cidades retornada com sucesso")
     })
-    public ResponseEntity<Map<String, List<String>>> getCidades() {
-        List<String> cidades = arenaService.getCidades();
-        Map<String, List<String>> response = Collections.singletonMap("cidades", cidades);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<List<CidadeDTO>> getCidades() {
+        List<CidadeDTO> cidades = arenaService.getCidades();
+        return ResponseEntity.ok(cidades);
     }
 }

@@ -1,5 +1,6 @@
 package com.engstrategy.alugai_api.service.impl;
 
+import com.engstrategy.alugai_api.dto.agendamento.arena.CidadeDTO;
 import com.engstrategy.alugai_api.dto.arena.ArenaUpdateDTO;
 import com.engstrategy.alugai_api.dto.arena.CidadeResponseDTO;
 import com.engstrategy.alugai_api.exceptions.UniqueConstraintViolationException;
@@ -163,9 +164,9 @@ public class ArenaServiceImpl implements ArenaService {
     }
 
     @Override
-    public List<String> getCidades() {
+    public List<CidadeDTO> getCidades() {
         return arenaRepository.findDistinctCidadeAndEstado().stream()
-                .map(result -> result[0] + " - " + result[1])
+                .map(result -> new CidadeDTO((String) result[0], (String) result[1]))
                 .collect(Collectors.toList());
     }
 
