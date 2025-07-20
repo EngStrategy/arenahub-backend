@@ -4,5 +4,6 @@ public enum StatusAgendamento {
     PENDENTE,
     AUSENTE,
     CANCELADO,
-    PAGO;
+    PAGO,
+    FINALIZADO; // status virtual para representar os status: AUSENTE, CANCELADO e PAGO
 }

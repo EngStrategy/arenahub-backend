@@ -1,22 +1,26 @@
-package com.engstrategy.alugai_api.dto.agendamento;
+package com.engstrategy.alugai_api.dto.agendamento.arena;
 
 import com.engstrategy.alugai_api.dto.quadra.SlotHorarioResponseDTO;
 import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
 import com.engstrategy.alugai_api.model.enums.TipoEsporte;
 import com.engstrategy.alugai_api.util.LocalTimeSerializer;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class AgendamentoResponseDTO {
+public class AgendamentoArenaResponseDTO {
     private Long id;
     private LocalDate dataAgendamento;
     @JsonSerialize(using = LocalTimeSerializer.class)
@@ -24,16 +28,27 @@ public class AgendamentoResponseDTO {
     @JsonSerialize(using = LocalTimeSerializer.class)
     private LocalTime horarioFim;
     private BigDecimal valorTotal;
-    private TipoEsporte esporte;
     private StatusAgendamento status;
-    private Integer numeroJogadoresNecessarios;
-    private List<SlotHorarioResponseDTO> slotsHorario;
+    private boolean isFixo;
+    private boolean isPublico;
+    private Integer vagasDisponiveis;
+    private TipoEsporte esporte;
+
+    // Informações da quadra
     private Long quadraId;
     private String nomeQuadra;
-    private String nomeArena;
-    private String urlFotoQuadra;
-    private String urlFotoArena;
-    private boolean fixo;
-    private boolean publico;
-    private boolean possuiSolicitacoes;
+
+    // Informações do atleta
+    private Long atletaId;
+    private String nomeAtleta;
+    private String emailAtleta;
+    private String telefoneAtleta;
+    private String urlFotoAtleta;
+
+    // Informações dos participantes (se for público)
+    private Integer totalParticipantes;
+    private List<ParticipanteDTO> participantes;
+
+    // Informações dos slots
+    private List<SlotHorarioResponseDTO> slotsHorario;
 }
