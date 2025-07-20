@@ -1,6 +1,8 @@
 package com.engstrategy.alugai_api.service.impl;
 
+import com.engstrategy.alugai_api.dto.agendamento.arena.CidadeDTO;
 import com.engstrategy.alugai_api.dto.arena.ArenaUpdateDTO;
+import com.engstrategy.alugai_api.dto.arena.CidadeResponseDTO;
 import com.engstrategy.alugai_api.exceptions.UniqueConstraintViolationException;
 import com.engstrategy.alugai_api.exceptions.UserNotFoundException;
 import com.engstrategy.alugai_api.mapper.EnderecoMapper;
@@ -19,6 +21,9 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -157,4 +162,12 @@ public class ArenaServiceImpl implements ArenaService {
         arena.setSenha(passwordEncoder.encode(novaSenha));
         arenaRepository.save(arena);
     }
+
+    @Override
+    public List<CidadeDTO> getCidades() {
+        return arenaRepository.findDistinctCidadeAndEstado().stream()
+                .map(result -> new CidadeDTO((String) result[0], (String) result[1]))
+                .collect(Collectors.toList());
+    }
+
 }

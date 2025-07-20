@@ -2,7 +2,7 @@ package com.engstrategy.alugai_api.service;
 
 import com.engstrategy.alugai_api.dto.agendamento.AgendamentoCreateDTO;
 import com.engstrategy.alugai_api.model.Agendamento;
-import com.engstrategy.alugai_api.model.SlotHorario;
+import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
 import com.engstrategy.alugai_api.model.enums.TipoAgendamento;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,15 +17,19 @@ public interface AgendamentoService {
 
     void cancelarAgendamento(Long agendamentoId, Long atletaId);
 
-    public Page<Agendamento> buscarPorAtletaId(Long atletaId, LocalDate dataInicio, LocalDate dataFim,
-                                               TipoAgendamento tipoAgendamento, Pageable pageable);
-
-    List<Agendamento> buscarAgendamentosPublicos(LocalDate dataInicio);
+    Page<Agendamento> buscarPorAtletaId(Long atletaId,
+                                        LocalDate dataInicio,
+                                        LocalDate dataFim,
+                                        TipoAgendamento tipoAgendamento,
+                                        StatusAgendamento status,
+                                        Pageable pageable);
 
     Agendamento buscarPorId(Long agendamentoId);
 
-    List<Agendamento> buscarPorQuadraEData(Long quadraId, LocalDate data);
-
-    boolean verificarDisponibilidadeHorario(Long quadraId, LocalDate data,
-                                            LocalTime inicio, LocalTime fim);
+    Page<Agendamento> buscarPorArenaId(Long arenaId,
+                                       LocalDate dataInicio,
+                                       LocalDate dataFim,
+                                       StatusAgendamento status,
+                                       Long quadraId,
+                                       Pageable pageable);
 }

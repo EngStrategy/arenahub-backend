@@ -21,6 +21,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.List;
 
 @Service
@@ -101,12 +104,16 @@ public class AgendamentoServiceImpl implements AgendamentoService {
     }
 
     private void validarDataAgendamento(LocalDate dataAgendamento) {
-        if (dataAgendamento.isBefore(LocalDate.now())) {
+        // Usar fuso horário de São Paulo para validação
+        ZoneId fusoHorarioBrasilia = ZoneId.of("America/Sao_Paulo");
+        LocalDate dataAtual = LocalDate.now(fusoHorarioBrasilia);
+
+        if (dataAgendamento.isBefore(dataAtual)) {
             throw new IllegalArgumentException("Não é possível criar agendamentos para datas passadas");
         }
 
         // Opcional: limitar agendamentos muito distantes no futuro
-        if (dataAgendamento.isAfter(LocalDate.now().plusYears(1))) {
+        if (dataAgendamento.isAfter(dataAtual.plusYears(1))) {
             throw new IllegalArgumentException("Não é possível criar agendamentos com mais de 1 ano de antecedência");
         }
     }
@@ -128,7 +135,18 @@ public class AgendamentoServiceImpl implements AgendamentoService {
     /**
      * Verifica se os slots estão disponíveis na data específica do agendamento
      */
-    protected void verificarDisponibilidadeSlotsParaData(List<SlotHorario> slots, LocalDate dataAgendamento, Long quadraId) {
+    protected void verificarDisponibilidadeSlotsParaData(List<SlotHorario> slots,
+                                                         LocalDate dataAgendamento,
+                                                         Long quadraId) {
+
+        // Obter data e hora atual no fuso horário de São Paulo
+        ZoneId fusoHorarioBrasilia = ZoneId.of("America/Sao_Paulo");
+        LocalDate dataAtual = LocalDate.now(fusoHorarioBrasilia);
+        LocalTime horaAtual = LocalTime.now(fusoHorarioBrasilia);
+
+        // Verificar se a data do agendamento é hoje
+        boolean isDataAtual = dataAgendamento.equals(dataAtual);
+
         for (SlotHorario slot : slots) {
             // 1. Verificar se o slot está fisicamente disponível (não em manutenção)
             if (slot.getStatusDisponibilidade() == StatusDisponibilidade.MANUTENCAO ||
@@ -142,7 +160,18 @@ public class AgendamentoServiceImpl implements AgendamentoService {
                 );
             }
 
-            // 2. Verificar se já existe agendamento para este slot na data específica
+            // 2. Se a data é hoje, verificar se o horário do slot já passou
+            if (isDataAtual && slot.getHorarioInicio().isBefore(horaAtual)) {
+                throw new IllegalArgumentException(
+                        String.format("Slot %d (%s às %s) não pode ser agendado pois o horário já passou. Horário atual: %s",
+                                slot.getId(),
+                                slot.getHorarioInicio(),
+                                slot.getHorarioFim(),
+                                horaAtual.format(DateTimeFormatter.ofPattern("HH:mm")))
+                );
+            }
+
+            // 3. Verificar se já existe agendamento para este slot na data específica
             boolean jaAgendado = agendamentoRepository.existeConflito(
                     dataAgendamento,
                     quadraId,
@@ -162,22 +191,6 @@ public class AgendamentoServiceImpl implements AgendamentoService {
         }
     }
 
-    /**
-     * Verifica se todos os slots pertencem à mesma quadra
-     */
-    private void validarQuadraSlots(List<SlotHorario> slots, Long quadraId) {
-        boolean todosSlotsDaMesmaQuadra = slots.stream()
-                .allMatch(slot -> slot.getIntervaloHorario()
-                        .getHorarioFuncionamento()
-                        .getQuadra()
-                        .getId()
-                        .equals(quadraId));
-
-        if (!todosSlotsDaMesmaQuadra) {
-            throw new IllegalArgumentException("Todos os slots devem pertencer à mesma quadra");
-        }
-    }
-
     @Override
     @Transactional
     public void cancelarAgendamento(Long agendamentoId, Long atletaId) {
@@ -191,9 +204,32 @@ public class AgendamentoServiceImpl implements AgendamentoService {
             throw new IllegalArgumentException("Agendamento não pertence ao atleta informado");
         }
 
-        // Verificar se o agendamento pode ser cancelado (não está no passado)
-        if (agendamento.getDataAgendamento().isBefore(LocalDate.now())) {
+        // Usar fuso horário de São Paulo para validação
+        ZoneId fusoHorarioBrasilia = ZoneId.of("America/Sao_Paulo");
+        LocalDate dataAtual = LocalDate.now(fusoHorarioBrasilia);
+        LocalTime horaAtual = LocalTime.now(fusoHorarioBrasilia);
+
+        // Verificar se o agendamento pode ser cancelado
+        if (agendamento.getDataAgendamento().isBefore(dataAtual)) {
             throw new IllegalArgumentException("Não é possível cancelar agendamentos de datas passadas");
+        }
+
+        // Se a data do agendamento é hoje, verificar se o primeiro slot já passou
+        if (agendamento.getDataAgendamento().equals(dataAtual)) {
+            // Buscar o primeiro slot (horário de início mais cedo)
+            LocalTime primeiroHorario = agendamento.getSlotsHorario().stream()
+                    .map(SlotHorario::getHorarioInicio)
+                    .min(LocalTime::compareTo)
+                    .orElseThrow(() -> new IllegalStateException("Agendamento sem slots de horário"));
+
+            if (primeiroHorario.isBefore(horaAtual)) {
+                throw new IllegalArgumentException(
+                        String.format("Não é possível cancelar agendamento pois o horário já passou. " +
+                                        "Horário do agendamento: %s, Horário atual: %s",
+                                primeiroHorario.format(DateTimeFormatter.ofPattern("HH:mm")),
+                                horaAtual.format(DateTimeFormatter.ofPattern("HH:mm")))
+                );
+            }
         }
 
         // Verificar se já não está cancelado
@@ -225,8 +261,13 @@ public class AgendamentoServiceImpl implements AgendamentoService {
     }
 
     @Override
-    public Page<Agendamento> buscarPorAtletaId(Long atletaId, LocalDate dataInicio, LocalDate dataFim,
-                                               TipoAgendamento tipoAgendamento, Pageable pageable) {
+    public Page<Agendamento> buscarPorAtletaId(Long atletaId,
+                                               LocalDate dataInicio,
+                                               LocalDate dataFim,
+                                               TipoAgendamento tipoAgendamento,
+                                               StatusAgendamento status,
+                                               Pageable pageable) {
+
         Specification<Agendamento> spec = AgendamentoSpecs.hasAtletaId(atletaId);
 
         if (dataInicio != null) {
@@ -235,6 +276,20 @@ public class AgendamentoServiceImpl implements AgendamentoService {
         if (dataFim != null) {
             spec = Specification.allOf(spec, AgendamentoSpecs.dataFimBeforeOrEqual(dataFim));
         }
+
+        // Lógica especial para status FINALIZADO
+        if (status != null) {
+            if (status == StatusAgendamento.FINALIZADO) {
+                // Para FINALIZADO, buscar por múltiplos status
+                spec = Specification.allOf(spec, AgendamentoSpecs.hasStatusIn(
+                        Arrays.asList(StatusAgendamento.CANCELADO, StatusAgendamento.PAGO, StatusAgendamento.AUSENTE)
+                ));
+            } else {
+                // Para outros status, usar a lógica normal
+                spec = Specification.allOf(spec, AgendamentoSpecs.hasStatus(status));
+            }
+        }
+
         if (tipoAgendamento != null && tipoAgendamento != TipoAgendamento.AMBOS) {
             spec = Specification.allOf(spec, AgendamentoSpecs.isTipoAgendamento(tipoAgendamento));
         }
@@ -243,33 +298,45 @@ public class AgendamentoServiceImpl implements AgendamentoService {
     }
 
     @Override
-    public List<Agendamento> buscarAgendamentosPublicos(LocalDate dataInicio) {
-        return agendamentoRepository.findAgendamentosPublicos(dataInicio);
-    }
-
-    @Override
     public Agendamento buscarPorId(Long agendamentoId) {
         return agendamentoRepository.findById(agendamentoId)
                 .orElseThrow(() -> new EntityNotFoundException("Agendamento não encontrado"));
     }
 
-    /**
-     * Busca agendamentos para uma quadra em uma data específica
-     * Útil para visualizar ocupação
-     */
     @Override
-    public List<Agendamento> buscarPorQuadraEData(Long quadraId, LocalDate data) {
-        Quadra quadra = new Quadra();
-        quadra.setId(quadraId);
-        return agendamentoRepository.findByDataAgendamentoAndQuadra(data, quadra);
-    }
+    public Page<Agendamento> buscarPorArenaId(Long arenaId,
+                                              LocalDate dataInicio,
+                                              LocalDate dataFim,
+                                              StatusAgendamento status,
+                                              Long quadraId,
+                                              Pageable pageable) {
 
-    /**
-     * Verifica se um horário específico está disponível para agendamento
-     */
-    @Override
-    public boolean verificarDisponibilidadeHorario(Long quadraId, LocalDate data,
-                                                   LocalTime inicio, LocalTime fim) {
-        return !agendamentoRepository.existeConflito(data, quadraId, inicio, fim);
+        Specification<Agendamento> spec = AgendamentoSpecs.hasArenaId(arenaId);
+
+        if (dataInicio != null) {
+            spec = Specification.allOf(spec, AgendamentoSpecs.dataInicioAfterOrEqual(dataInicio));
+        }
+        if (dataFim != null) {
+            spec = Specification.allOf(spec, AgendamentoSpecs.dataFimBeforeOrEqual(dataFim));
+        }
+
+        // Lógica especial para status FINALIZADO
+        if (status != null) {
+            if (status == StatusAgendamento.FINALIZADO) {
+                // Para FINALIZADO, buscar por múltiplos status
+                spec = Specification.allOf(spec, AgendamentoSpecs.hasStatusIn(
+                        Arrays.asList(StatusAgendamento.CANCELADO, StatusAgendamento.PAGO, StatusAgendamento.AUSENTE)
+                ));
+            } else {
+                // Para outros status, usar a lógica normal
+                spec = Specification.allOf(spec, AgendamentoSpecs.hasStatus(status));
+            }
+        }
+
+        if (quadraId != null) {
+            spec = Specification.allOf(spec, AgendamentoSpecs.hasQuadraId(quadraId));
+        }
+
+        return agendamentoRepository.findAll(spec, pageable);
     }
 }
