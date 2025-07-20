@@ -1,6 +1,8 @@
 package com.engstrategy.alugai_api.repository.specs;
 
 import com.engstrategy.alugai_api.model.Agendamento;
+import com.engstrategy.alugai_api.model.Arena;
+import com.engstrategy.alugai_api.model.Quadra;
 import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
 import com.engstrategy.alugai_api.model.enums.TipoAgendamento;
 import com.engstrategy.alugai_api.model.enums.TipoEsporte;
@@ -11,6 +13,7 @@ import org.springframework.data.jpa.domain.Specification;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.util.List;
 
 public class AgendamentoSpecs {
 
@@ -60,14 +63,6 @@ public class AgendamentoSpecs {
         return (root, query, builder) -> builder.greaterThan(root.get("vagasDisponiveis"), 0);
     }
 
-    public static Specification<Agendamento> fromTodayOnwards() {
-        // Define o fuso horário do Brasil (America/Sao_Paulo)
-        ZoneId fusoHorarioBrasilia = ZoneId.of("America/Sao_Paulo");
-
-        // Usa o fuso para obter a data atual correta para a comparação
-        return (root, query, builder) -> builder.greaterThanOrEqualTo(root.get("dataAgendamento"), LocalDate.now(fusoHorarioBrasilia));
-    }
-
     public static Specification<Agendamento> hasCidade(String cidade) {
         return (root, query, builder) -> {
             if (cidade == null || cidade.trim().isEmpty()) {
@@ -112,6 +107,44 @@ public class AgendamentoSpecs {
 
             // A consulta final combina as duas condições com um "OU"
             return builder.or(agendamentoEmDataFutura, agendamentoHojeNaoIniciado);
+        };
+    }
+
+    public static Specification<Agendamento> hasArenaId(Long arenaId) {
+        return (root, query, criteriaBuilder) -> {
+            if (arenaId == null) {
+                return criteriaBuilder.conjunction();
+            }
+            Join<Agendamento, Quadra> quadraJoin = root.join("quadra");
+            Join<Quadra, Arena> arenaJoin = quadraJoin.join("arena");
+            return criteriaBuilder.equal(arenaJoin.get("id"), arenaId);
+        };
+    }
+
+    public static Specification<Agendamento> hasStatus(StatusAgendamento status) {
+        return (root, query, criteriaBuilder) -> {
+            if (status == null) {
+                return criteriaBuilder.conjunction();
+            }
+            return criteriaBuilder.equal(root.get("status"), status);
+        };
+    }
+
+    public static Specification<Agendamento> hasStatusIn(List<StatusAgendamento> statusList) {
+        return (root, query, cb) -> {
+            if (statusList == null || statusList.isEmpty()) {
+                return cb.conjunction();
+            }
+            return root.get("status").in(statusList);
+        };
+    }
+
+    public static Specification<Agendamento> hasQuadraId(Long quadraId) {
+        return (root, query, criteriaBuilder) -> {
+            if (quadraId == null) {
+                return criteriaBuilder.conjunction();
+            }
+            return criteriaBuilder.equal(root.get("quadra").get("id"), quadraId);
         };
     }
 }

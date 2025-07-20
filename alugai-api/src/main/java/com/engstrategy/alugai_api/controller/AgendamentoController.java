@@ -7,6 +7,7 @@ import com.engstrategy.alugai_api.jwt.CustomUserDetails;
 import com.engstrategy.alugai_api.mapper.AgendamentoMapper;
 import com.engstrategy.alugai_api.model.Agendamento;
 import com.engstrategy.alugai_api.model.AgendamentoFixo;
+import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
 import com.engstrategy.alugai_api.model.enums.TipoAgendamento;
 import com.engstrategy.alugai_api.service.AgendamentoFixoService;
 import com.engstrategy.alugai_api.service.AgendamentoService;
@@ -114,11 +115,18 @@ public class AgendamentoController {
             @Parameter(description = "Data de fim do filtro (opcional, formato: yyyy-MM-dd)")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim,
             @Parameter(description = "Tipo de agendamento (NORMAL, FIXO, AMBOS)")
-            @RequestParam(defaultValue = "AMBOS") TipoAgendamento tipoAgendamento) {
+            @RequestParam(defaultValue = "AMBOS") TipoAgendamento tipoAgendamento,
+            @Parameter(description = "Status do agendamento (opcional)")
+            @RequestParam(required = false) StatusAgendamento status) {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(direction), sort));
         Page<Agendamento> agendamentosPage = agendamentoService.buscarPorAtletaId(
-                userDetails.getUserId(), dataInicio, dataFim, tipoAgendamento, pageable);
+                userDetails.getUserId(),
+                dataInicio,
+                dataFim,
+                tipoAgendamento,
+                status,
+                pageable);
         Page<AgendamentoResponseDTO> response = agendamentosPage.map(agendamentoMapper::fromAgendamentoToResponseDTO);
 
         return ResponseEntity.ok(response);

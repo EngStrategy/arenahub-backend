@@ -1,8 +1,10 @@
 package com.engstrategy.alugai_api.controller;
 
+import com.engstrategy.alugai_api.dto.agendamento.arena.CidadeDTO;
 import com.engstrategy.alugai_api.dto.arena.ArenaCreateDTO;
 import com.engstrategy.alugai_api.dto.arena.ArenaResponseDTO;
 import com.engstrategy.alugai_api.dto.arena.ArenaUpdateDTO;
+import com.engstrategy.alugai_api.dto.arena.CidadeResponseDTO;
 import com.engstrategy.alugai_api.dto.usuario.AlterarSenhaRequest;
 import com.engstrategy.alugai_api.jwt.CustomUserDetails;
 import com.engstrategy.alugai_api.mapper.ArenaMapper;
@@ -27,6 +29,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/arenas")
@@ -143,5 +149,15 @@ public class ArenaController {
         arenaService.alterarSenha(userDetails.getUserId(), request.getSenhaAtual(), request.getNovaSenha());
 
         return ResponseEntity.ok("Senha alterada com sucesso.");
+    }
+
+    @GetMapping("/cidades")
+    @Operation(summary = "Listar cidades", description = "Retorna uma lista de cidades e estados")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Lista de cidades retornada com sucesso")
+    })
+    public ResponseEntity<List<CidadeDTO>> getCidades() {
+        List<CidadeDTO> cidades = arenaService.getCidades();
+        return ResponseEntity.ok(cidades);
     }
 }

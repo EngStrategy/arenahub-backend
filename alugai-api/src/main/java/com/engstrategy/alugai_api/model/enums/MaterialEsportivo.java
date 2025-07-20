@@ -4,6 +4,9 @@ public enum MaterialEsportivo {
     BOLA,
     COLETE,
     LUVA,
-    CHUTEIRA,
-    CONE;
+    CONE,
+    APITO,
+    BOMBA,
+    MARCADOR_PLACAR,
+    BOTAO_GOL;
 }
