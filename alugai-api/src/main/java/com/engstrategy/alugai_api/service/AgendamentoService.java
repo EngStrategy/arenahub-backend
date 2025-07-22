@@ -32,4 +32,6 @@ public interface AgendamentoService {
                                        StatusAgendamento status,
                                        Long quadraId,
                                        Pageable pageable);
+
+    Agendamento atualizarStatus(Long agendamentoId, Long arenaId, StatusAgendamento novoStatus);
 }
