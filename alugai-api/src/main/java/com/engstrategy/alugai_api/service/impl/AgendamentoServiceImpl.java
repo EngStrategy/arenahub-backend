@@ -1,6 +1,7 @@
 package com.engstrategy.alugai_api.service.impl;
 
 import com.engstrategy.alugai_api.dto.agendamento.AgendamentoCreateDTO;
+import com.engstrategy.alugai_api.exceptions.AccessDeniedException;
 import com.engstrategy.alugai_api.mapper.AgendamentoMapper;
 import com.engstrategy.alugai_api.model.*;
 import com.engstrategy.alugai_api.model.enums.*;
@@ -131,6 +132,8 @@ public class AgendamentoServiceImpl implements AgendamentoService {
 
         return slots;
     }
+
+
 
     /**
      * Verifica se os slots estão disponíveis na data específica do agendamento
@@ -338,5 +341,42 @@ public class AgendamentoServiceImpl implements AgendamentoService {
         }
 
         return agendamentoRepository.findAll(spec, pageable);
+    }
+
+    @Override
+    @Transactional
+    public Agendamento atualizarStatus(Long agendamentoId, Long arenaId, StatusAgendamento novoStatus) {
+        log.info("Atualizando status do agendamento ID: {} para {}", agendamentoId, novoStatus);
+
+        Agendamento agendamento = agendamentoRepository.findById(agendamentoId)
+                .orElseThrow(() -> new EntityNotFoundException("Agendamento não encontrado"));
+
+        if (!agendamento.getQuadra().getArena().getId().equals(arenaId)) {
+            throw new AccessDeniedException("Você não tem permissão para atualizar este agendamento.");
+        }
+
+        StatusAgendamento statusAtual = agendamento.getStatus();
+        if (statusAtual == StatusAgendamento.CANCELADO
+                || statusAtual == StatusAgendamento.PAGO
+                || statusAtual == StatusAgendamento.AUSENTE) {
+            throw new IllegalStateException("Não é possível alterar o status de um agendamento que já foi finalizado.");
+        }
+
+        if (novoStatus != StatusAgendamento.PAGO && novoStatus != StatusAgendamento.AUSENTE && novoStatus != StatusAgendamento.CANCELADO) {
+            throw new IllegalArgumentException("A arena só pode alterar o status para PAGO, AUSENTE ou CANCELADO.");
+        }
+
+        // Envio de email para os participantes
+        if (agendamento.isPublico() && agendamento.getParticipantes() != null) {
+            for (Atleta participante : agendamento.getParticipantes()) {
+                emailService.enviarEmailJogoCancelado(participante.getEmail(), participante.getNome(), agendamento);
+            }
+        }
+
+        emailService.enviarEmailJogoCancelado(agendamento.getAtleta().getEmail(), agendamento.getAtleta().getNome(),
+                agendamento);
+
+        agendamento.setStatus(novoStatus);
+        return agendamentoRepository.save(agendamento);
     }
 }
