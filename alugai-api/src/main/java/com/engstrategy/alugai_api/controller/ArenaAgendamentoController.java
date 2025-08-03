@@ -1,5 +1,6 @@
 package com.engstrategy.alugai_api.controller;
 
+import com.engstrategy.alugai_api.dto.agendamento.AtualizarStatusAgendamentoDTO;
 import com.engstrategy.alugai_api.dto.agendamento.arena.AgendamentoArenaResponseDTO;
 import com.engstrategy.alugai_api.jwt.CustomUserDetails;
 import com.engstrategy.alugai_api.mapper.AgendamentoMapper;
@@ -8,8 +9,11 @@ import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
 import com.engstrategy.alugai_api.service.AgendamentoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -19,10 +23,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 
@@ -65,6 +66,26 @@ public class ArenaAgendamentoController {
         Page<AgendamentoArenaResponseDTO> response = agendamentosPage.map(
                 agendamentoMapper::fromAgendamentoToArenaResponseDTO);
 
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{agendamentoId}/status")
+    @Operation(summary = "Atualizar status de um agendamento", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Status do agendamento atualizado com sucesso"),
+            @ApiResponse(responseCode = "400", description = "Dados inválidos ou mudança de status não permitida"),
+            @ApiResponse(responseCode = "403", description = "Arena não tem permissão para alterar este agendamento"),
+            @ApiResponse(responseCode = "404", description = "Agendamento não encontrado")
+    })
+    public ResponseEntity<AgendamentoArenaResponseDTO> atualizarStatusAgendamento(
+            @Parameter(description = "ID do agendamento a ser atualizado", required = true)
+            @PathVariable Long agendamentoId,
+            @Valid @RequestBody AtualizarStatusAgendamentoDTO request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        Long arenaId = userDetails.getUserId();
+        Agendamento agendamentoAtualizado = agendamentoService.atualizarStatus(agendamentoId, arenaId, request.getStatus());
+        AgendamentoArenaResponseDTO response = agendamentoMapper.fromAgendamentoToArenaResponseDTO(agendamentoAtualizado);
         return ResponseEntity.ok(response);
     }
 }
