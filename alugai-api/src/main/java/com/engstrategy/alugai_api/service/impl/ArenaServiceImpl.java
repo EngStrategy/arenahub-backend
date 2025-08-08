@@ -1,20 +1,24 @@
 package com.engstrategy.alugai_api.service.impl;
 
+import com.engstrategy.alugai_api.dto.agendamento.AgendamentoDashboardDTO;
 import com.engstrategy.alugai_api.dto.agendamento.arena.CidadeDTO;
+import com.engstrategy.alugai_api.dto.arena.ArenaDashboardDTO;
 import com.engstrategy.alugai_api.dto.arena.ArenaUpdateDTO;
 import com.engstrategy.alugai_api.dto.arena.CidadeResponseDTO;
 import com.engstrategy.alugai_api.exceptions.UniqueConstraintViolationException;
 import com.engstrategy.alugai_api.exceptions.UserNotFoundException;
 import com.engstrategy.alugai_api.mapper.EnderecoMapper;
-import com.engstrategy.alugai_api.model.Arena;
-import com.engstrategy.alugai_api.model.CodigoVerificacao;
-import com.engstrategy.alugai_api.model.Usuario;
+import com.engstrategy.alugai_api.model.*;
+import com.engstrategy.alugai_api.model.enums.DiaDaSemana;
+import com.engstrategy.alugai_api.repository.AgendamentoRepository;
 import com.engstrategy.alugai_api.repository.ArenaRepository;
+import com.engstrategy.alugai_api.repository.AtletaRepository;
 import com.engstrategy.alugai_api.repository.CodigoVerificacaoRepository;
 import com.engstrategy.alugai_api.repository.specs.ArenaSpecs;
 import com.engstrategy.alugai_api.service.ArenaService;
 import com.engstrategy.alugai_api.util.GeradorCodigoVerificacao;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -22,6 +26,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.*;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -35,6 +43,7 @@ public class ArenaServiceImpl implements ArenaService {
     private final CodigoVerificacaoRepository codigoVerificacaoRepository;
     private final EmailService emailService;
     private final UserService userService;
+    private final AgendamentoRepository agendamentoRepository;
 
     @Override
     @Transactional
@@ -103,7 +112,7 @@ public class ArenaServiceImpl implements ArenaService {
         if (arenaUpdateDTO.getEndereco() != null) {
             savedArena.setEndereco(enderecoMapper.mapEnderecoDtoToEndereco(arenaUpdateDTO.getEndereco()));
         }
-        if(arenaUpdateDTO.getUrlFoto() == null) {
+        if (arenaUpdateDTO.getUrlFoto() == null) {
             savedArena.setUrlFoto(null);
         }
 
@@ -170,4 +179,123 @@ public class ArenaServiceImpl implements ArenaService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public ArenaDashboardDTO getDashboardData(Long arenaId) {
+        // Busca a arena com todas as suas dependências
+        Arena arena = arenaRepository.findByIdFetchingQuadrasAndHorarios(arenaId)
+                .orElseThrow(() -> new UserNotFoundException("Arena não encontrada com o ID: " + arenaId));
+
+        LocalDate hoje = LocalDate.now(ZoneId.of("America/Sao_Paulo"));
+        LocalTime agora = LocalTime.now(ZoneId.of("America/Sao_Paulo"));
+        DiaDaSemana diaDaSemanaHoje = DiaDaSemana.fromLocalDate(hoje);
+
+
+        // CÁLCULO DE RECEITA MENSAL E VARIAÇÃO
+        LocalDateTime inicioMesAtual = hoje.withDayOfMonth(1).atStartOfDay();
+        LocalDateTime fimDoDiaDeHoje = hoje.atTime(LocalTime.MAX);
+        BigDecimal receitaDoMes = agendamentoRepository.calcularReceitaPorPeriodo(arenaId, inicioMesAtual, fimDoDiaDeHoje);
+        receitaDoMes = (receitaDoMes == null) ? BigDecimal.ZERO : receitaDoMes;
+
+        // Calcula a receita do mês anterior completo
+        LocalDate mesAnterior = hoje.minusMonths(1);
+        LocalDateTime inicioMesAnterior = mesAnterior.withDayOfMonth(1).atStartOfDay();
+        LocalDateTime fimMesAnterior = mesAnterior.with(TemporalAdjusters.lastDayOfMonth()).atTime(LocalTime.MAX);
+        BigDecimal receitaMesAnterior = agendamentoRepository.calcularReceitaPorPeriodo(arenaId, inicioMesAnterior, fimMesAnterior);
+        receitaMesAnterior = (receitaMesAnterior == null) ? BigDecimal.ZERO : receitaMesAnterior;
+
+        Double percentualReceita;
+        if (receitaMesAnterior.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal variacao = receitaDoMes.subtract(receitaMesAnterior);
+            BigDecimal percentual = variacao.divide(receitaMesAnterior, 4, RoundingMode.HALF_UP)
+                    .multiply(new BigDecimal("100"));
+            percentualReceita = percentual.doubleValue();
+        } else if (receitaMesAnterior.compareTo(BigDecimal.ZERO) == 0 && receitaDoMes.compareTo(BigDecimal.ZERO) > 0) {
+            percentualReceita = 100.0;
+        } else {
+            percentualReceita = 0.0;
+        }
+
+        int totalSlotsOperacionaisHoje = 0;
+        for (Quadra quadra : arena.getQuadras()) {
+
+            if (quadra.getDuracaoReserva() == null) {
+                continue;
+            }
+
+            int duracaoReservaMinutos = quadra.getDuracaoReserva().getMinutos();
+
+            if (duracaoReservaMinutos <= 0) {
+                continue;
+            }
+
+            boolean encontrouHorarioParaHoje = false;
+            for (HorarioFuncionamento hf : quadra.getHorariosFuncionamento()) {
+                if (hf.getDiaDaSemana() == diaDaSemanaHoje) {
+                    encontrouHorarioParaHoje = true;
+
+                    for (IntervaloHorario intervalo : hf.getIntervalosDeHorario()) {
+                        long duracaoIntervaloMinutos = Duration.between(intervalo.getInicio(), intervalo.getFim()).toMinutes();
+                        int slotsNesteIntervalo = (int) (duracaoIntervaloMinutos / duracaoReservaMinutos);
+                        totalSlotsOperacionaisHoje += slotsNesteIntervalo;
+                    }
+                    break;
+                }
+            }
+        }
+
+        // Busca o número de agendamentos já confirmados para hoje
+        int agendamentosConfirmadosHoje = agendamentoRepository.countByArenaIdAndDataAgendamento(arenaId, hoje);
+
+        // Lógica da Taxa de Ocupação
+        Double taxaOcupacaoHoje = 0.0;
+        if (totalSlotsOperacionaisHoje > 0) { // Proteção contra divisão por zero se a arena estiver
+            System.out.println("Agendamentos confirmados hoje: " + agendamentosConfirmadosHoje);
+            System.out.println("Total de slots operacionais hoje: " + totalSlotsOperacionaisHoje);
+            taxaOcupacaoHoje = ((double) agendamentosConfirmadosHoje / totalSlotsOperacionaisHoje) * 100;
+            System.out.println("Taxa de ocupação hoje: " + taxaOcupacaoHoje);
+        }
+
+        // Calcula os horários que ainda estão livres
+        int horariosLivresHoje = Math.max(0, totalSlotsOperacionaisHoje - agendamentosConfirmadosHoje);
+
+
+        // CÁLCULO DE NOVOS CLIENTES NA SEMANA E VARIAÇÃO
+        LocalDateTime inicioSemanaAtual = hoje.with(DayOfWeek.MONDAY).atStartOfDay();
+        int novosClientesSemana = agendamentoRepository.countNovosClientesDaArenaPorPeriodo(arenaId, inicioSemanaAtual, fimDoDiaDeHoje);
+
+        // Calcula novos clientes da semana anterior completa
+        LocalDateTime inicioSemanaAnterior = inicioSemanaAtual.minusWeeks(1);
+        LocalDateTime fimSemanaAnterior = inicioSemanaAnterior.plusDays(6).with(LocalTime.MAX);
+        int novosClientesSemanaAnterior = agendamentoRepository.countNovosClientesDaArenaPorPeriodo(arenaId, inicioSemanaAnterior, fimSemanaAnterior);
+
+        int diferencaNovosClientes = novosClientesSemana - novosClientesSemanaAnterior;
+
+
+        // BUSCA DOS PRÓXIMOS AGENDAMENTOS DO DIA
+        List<Agendamento> proximosAgendamentos = agendamentoRepository.findProximosAgendamentosDoDia(arenaId, hoje, agora);
+        List<AgendamentoDashboardDTO> proximosAgendamentosDTO = proximosAgendamentos.stream()
+                .map(agendamento -> AgendamentoDashboardDTO.builder()
+                        .agendamentoId(agendamento.getId())
+                        .clienteNome(agendamento.getAtleta().getNome())
+                        .urlFoto(agendamento.getAtleta().getUrlFoto())
+                        .quadraNome(agendamento.getQuadra().getNomeQuadra())
+                        .horarioInicio(agendamento.getHorarioInicioSnapshot())
+                        .horarioFim(agendamento.getHorarioFimSnapshot())
+                        .clienteTelefone(agendamento.getAtleta().getTelefone())
+                        .build())
+                .toList();
+
+
+        return ArenaDashboardDTO.builder()
+                .nomeArena(arena.getNome())
+                .receitaDoMes(receitaDoMes)
+                .percentualReceitaVsMesAnterior(percentualReceita)
+                .agendamentosHoje(agendamentosConfirmadosHoje)
+                .taxaOcupacaoHoje(taxaOcupacaoHoje)
+                .novosClientes(novosClientesSemana)
+                .diferencaNovosClientesVsSemanaAnterior(diferencaNovosClientes)
+                .proximosAgendamentos(proximosAgendamentosDTO)
+                .build();
+    }
 }

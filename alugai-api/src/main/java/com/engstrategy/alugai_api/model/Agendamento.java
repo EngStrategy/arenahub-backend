@@ -121,7 +121,7 @@ public class Agendamento {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    // Método para criar snapshot dos dados
+    // Metodo para criar snapshot dos dados
     public void criarSnapshot() {
         this.horarioInicioSnapshot = getHorarioInicio();
         this.horarioFimSnapshot = getHorarioFim();
