@@ -6,7 +6,9 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Getter
@@ -24,7 +26,7 @@ public class HorarioFuncionamento {
     private DiaDaSemana diaDaSemana;
 
     @OneToMany(mappedBy = "horarioFuncionamento", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<IntervaloHorario> intervalosDeHorario = new ArrayList<>();
+    private Set<IntervaloHorario> intervalosDeHorario = new HashSet<>();
 
     @ManyToOne
     @JoinColumn(name = "quadra_id", nullable = false)

@@ -2,6 +2,9 @@ package com.engstrategy.alugai_api.model.enums;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public enum DiaDaSemana {
     SEGUNDA,

@@ -12,9 +12,7 @@ import com.engstrategy.alugai_api.service.impl.SlotHorarioService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -32,11 +30,11 @@ public class QuadraMapper {
                 ));
 
         // Create HorarioFuncionamento for all days
-        List<HorarioFuncionamento> horariosFuncionamento = new ArrayList<>();
+        Set<HorarioFuncionamento> horariosFuncionamento = new HashSet<>();
         for (DiaDaSemana dia : DiaDaSemana.values()) {
             HorarioFuncionamento horario = horarioMap.getOrDefault(dia, HorarioFuncionamento.builder()
                     .diaDaSemana(dia)
-                    .intervalosDeHorario(new ArrayList<>())
+                    .intervalosDeHorario(new HashSet<>())
                     .build());
             horariosFuncionamento.add(horario);
         }
@@ -59,7 +57,7 @@ public class QuadraMapper {
                 .diaDaSemana(dto.getDiaDaSemana())
                 .build();
 
-        List<IntervaloHorario> intervalos = dto.getIntervalosDeHorario()
+        Set<IntervaloHorario> intervalos = dto.getIntervalosDeHorario()
                 .stream()
                 .map(intervaloDto -> IntervaloHorario.builder()
                         .inicio(intervaloDto.getInicio())
@@ -68,7 +66,7 @@ public class QuadraMapper {
                         .horarioFuncionamento(horario)
                         .status(intervaloDto.getStatus())
                         .build())
-                .collect(Collectors.toList());
+                .collect(Collectors.toSet());
 
         horario.setIntervalosDeHorario(intervalos);
         return horario;

@@ -92,7 +92,7 @@ public class QuadraServiceImpl implements QuadraService {
             quadra.setUrlFotoQuadra(updateDTO.getUrlFotoQuadra());
         }
 
-        if(updateDTO.getUrlFotoQuadra() == null) {
+        if (updateDTO.getUrlFotoQuadra() == null) {
             quadra.setUrlFotoQuadra(null);
         }
 
@@ -295,7 +295,7 @@ public class QuadraServiceImpl implements QuadraService {
         }
     }
 
-    private void validarHorariosFuncionamento(List<HorarioFuncionamento> horarios) {
+    private void validarHorariosFuncionamento(Set<HorarioFuncionamento> horarios) {
         Set<DiaDaSemana> dias = new HashSet<>();
         for (HorarioFuncionamento horario : horarios) {
             if (!dias.add(horario.getDiaDaSemana())) {
@@ -303,7 +303,9 @@ public class QuadraServiceImpl implements QuadraService {
                         "Horário de funcionamento duplicado para o dia: " + horario.getDiaDaSemana());
             }
             if (!horario.getIntervalosDeHorario().isEmpty()) {
-                validarIntervalosDeHorario(horario.getIntervalosDeHorario());
+                // <-- CORREÇÃO AQUI
+                // Converte o Set para uma nova ArrayList antes de passar para o método de validação.
+                validarIntervalosDeHorario(new ArrayList<>(horario.getIntervalosDeHorario()));
             }
         }
     }

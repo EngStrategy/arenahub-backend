@@ -7,7 +7,9 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Getter
@@ -27,10 +29,11 @@ public class Quadra {
     @Column(name = "nome_quadra")
     private String nomeQuadra;
 
+    @Builder.Default
     @ElementCollection(targetClass = TipoEsporte.class)
     @CollectionTable(joinColumns = @JoinColumn(name = "quadra_id"))
     @Enumerated(EnumType.STRING)
-    private List<TipoEsporte> tipoQuadra;
+    private List<TipoEsporte> tipoQuadra = new ArrayList<>();
 
     private String descricao;
 
@@ -42,9 +45,11 @@ public class Quadra {
     @Column(name = "iluminacao_noturna")
     private boolean iluminacaoNoturna;
 
+    @Builder.Default
     @OneToMany(mappedBy = "quadra", cascade = CascadeType.ALL)
-    private List<HorarioFuncionamento> horariosFuncionamento = new ArrayList<>();
+    private Set<HorarioFuncionamento> horariosFuncionamento = new HashSet<>();
 
+    @Builder.Default
     @ElementCollection(targetClass = MaterialEsportivo.class)
     @CollectionTable(name = "materiais_quadra", joinColumns = @JoinColumn(name = "quadra_id"))
     @Enumerated(EnumType.STRING)
@@ -54,6 +59,7 @@ public class Quadra {
     @JoinColumn(name = "arena_id", nullable = false)
     private Arena arena;
 
+    @Builder.Default
     @OneToMany(mappedBy = "quadra", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Agendamento> agendamentos = new ArrayList<>();
 }

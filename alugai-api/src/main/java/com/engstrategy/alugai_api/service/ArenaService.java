@@ -1,6 +1,7 @@
 package com.engstrategy.alugai_api.service;
 
 import com.engstrategy.alugai_api.dto.agendamento.arena.CidadeDTO;
+import com.engstrategy.alugai_api.dto.arena.ArenaDashboardDTO;
 import com.engstrategy.alugai_api.dto.arena.ArenaUpdateDTO;
 import com.engstrategy.alugai_api.dto.arena.CidadeResponseDTO;
 import com.engstrategy.alugai_api.model.Arena;
@@ -19,4 +20,5 @@ public interface ArenaService {
     void redefinirSenha(Usuario usuario, String novaSenha);
     void alterarSenha(Long arenaId, String senhaAtual, String novaSenha);
     List<CidadeDTO> getCidades();
+    ArenaDashboardDTO getDashboardData(Long arenaId);
 }

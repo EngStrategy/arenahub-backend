@@ -3,8 +3,8 @@ package com.engstrategy.alugai_api.model;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Getter
@@ -25,6 +25,7 @@ public class Arena extends Usuario {
 
     private String descricao;
 
+    @Builder.Default
     @OneToMany(mappedBy = "arena", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Quadra> quadras = new ArrayList<>();
+    private Set<Quadra> quadras = new HashSet<>();
 }

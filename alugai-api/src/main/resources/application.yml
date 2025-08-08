@@ -9,7 +9,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/alugai
     username: postgres
-    password: postgres
+    password: 25052022
   jpa:
     database: POSTGRESQL
     hibernate:
