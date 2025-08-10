@@ -32,7 +32,7 @@ jobs:
       with:
         context: .
         push: true
-        tags: seu-usuario-docker/seu-projeto-docker:latest
+        tags: saviosoaresc/alugai-api:latest
 
     - name: Deploy to Production
       uses: appleboy/ssh-action@master
