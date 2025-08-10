@@ -6,10 +6,10 @@ spring:
   config:
     activate:
       on-profile: dev
-  datasource:
-    url: jdbc:postgresql://localhost:5432/alugai
-    username: postgres
-    password: 25052022
+#  datasource:
+#    url: jdbc:postgresql://localhost:5432/alugai
+#    username: postgres
+#    password: 25052022
   jpa:
     database: POSTGRESQL
     hibernate:
