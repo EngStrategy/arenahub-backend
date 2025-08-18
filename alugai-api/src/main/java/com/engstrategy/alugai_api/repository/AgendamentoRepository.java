@@ -73,4 +73,21 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Long>,
     List<Agendamento> findProximosAgendamentosDoDia(@Param("arenaId") Long arenaId,
                                                     @Param("dataAtual") LocalDate dataAtual,
                                                     @Param("horarioAtual") LocalTime horarioAtual);
+
+    /**
+     * Busca agendamentos de um atleta que já terminaram,
+     * não foram cancelados e ainda não possuem uma avaliação.
+     */
+    @Query("SELECT a FROM Agendamento a WHERE a.atleta.id = :atletaId " +
+            "AND a.avaliacao IS NULL " +
+            "AND (a.avaliacaoDispensada IS NULL OR a.avaliacaoDispensada = false) " +
+            "AND a.status IN ('PAGO', 'CONFIRMADO') " +
+            "AND ( (a.dataAgendamento < :dataAtual) OR " +
+            "      (a.dataAgendamento = :dataAtual AND a.horarioFimSnapshot < :horaAtual) ) " +
+            "ORDER BY a.dataAgendamento DESC, a.horarioFimSnapshot DESC")
+    List<Agendamento> findAgendamentosPendentesDeAvaliacao(
+            @Param("atletaId") Long atletaId,
+            @Param("dataAtual") LocalDate dataAtual,
+            @Param("horaAtual") LocalTime horaAtual
+    );
 }

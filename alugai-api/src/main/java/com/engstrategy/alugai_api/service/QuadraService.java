@@ -1,5 +1,6 @@
 package com.engstrategy.alugai_api.service;
 
+import com.engstrategy.alugai_api.dto.quadra.QuadraResponseDTO;
 import com.engstrategy.alugai_api.dto.quadra.QuadraUpdateDTO;
 import com.engstrategy.alugai_api.dto.quadra.SlotHorarioResponseDTO;
 import com.engstrategy.alugai_api.model.Quadra;
@@ -15,6 +16,6 @@ public interface QuadraService {
     Page<Quadra> listarTodos(Pageable pageable, Long arenaId, String esporte);
     Quadra atualizar(Long id, QuadraUpdateDTO quadraUpdateDTO, Long arenaId);
     void excluir(Long id, Long arenaId);
-    List<Quadra> buscarPorArenaId(Long arenaId);
+    List<QuadraResponseDTO> buscarPorArenaId(Long arenaId);
     List<SlotHorarioResponseDTO> consultarDisponibilidade(Long quadraId, LocalDate data);
 }

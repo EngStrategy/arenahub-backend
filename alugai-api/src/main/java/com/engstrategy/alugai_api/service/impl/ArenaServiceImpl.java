@@ -2,18 +2,14 @@ package com.engstrategy.alugai_api.service.impl;
 
 import com.engstrategy.alugai_api.dto.agendamento.AgendamentoDashboardDTO;
 import com.engstrategy.alugai_api.dto.agendamento.arena.CidadeDTO;
-import com.engstrategy.alugai_api.dto.arena.ArenaDashboardDTO;
-import com.engstrategy.alugai_api.dto.arena.ArenaUpdateDTO;
-import com.engstrategy.alugai_api.dto.arena.CidadeResponseDTO;
+import com.engstrategy.alugai_api.dto.arena.*;
 import com.engstrategy.alugai_api.exceptions.UniqueConstraintViolationException;
 import com.engstrategy.alugai_api.exceptions.UserNotFoundException;
+import com.engstrategy.alugai_api.mapper.ArenaMapper;
 import com.engstrategy.alugai_api.mapper.EnderecoMapper;
 import com.engstrategy.alugai_api.model.*;
 import com.engstrategy.alugai_api.model.enums.DiaDaSemana;
-import com.engstrategy.alugai_api.repository.AgendamentoRepository;
-import com.engstrategy.alugai_api.repository.ArenaRepository;
-import com.engstrategy.alugai_api.repository.AtletaRepository;
-import com.engstrategy.alugai_api.repository.CodigoVerificacaoRepository;
+import com.engstrategy.alugai_api.repository.*;
 import com.engstrategy.alugai_api.repository.specs.ArenaSpecs;
 import com.engstrategy.alugai_api.service.ArenaService;
 import com.engstrategy.alugai_api.util.GeradorCodigoVerificacao;
@@ -31,6 +27,7 @@ import java.math.RoundingMode;
 import java.time.*;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -44,6 +41,8 @@ public class ArenaServiceImpl implements ArenaService {
     private final EmailService emailService;
     private final UserService userService;
     private final AgendamentoRepository agendamentoRepository;
+    private final AvaliacaoRepository avaliacaoRepository;
+    private final ArenaMapper arenaMapper;
 
     @Override
     @Transactional
@@ -63,15 +62,33 @@ public class ArenaServiceImpl implements ArenaService {
     }
 
     @Override
-    public Arena buscarPorId(Long id) {
-        return arenaRepository.findById(id)
+    public ArenaResponseDTO buscarPorId(Long id) {
+        Arena arena = arenaRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("Arena não encontrada com ID: " + id));
+
+        // Busca as informações de avaliação
+        ArenaRatingInfo ratingInfo = avaliacaoRepository.findArenaRatingInfoByArenaId(id);
+
+        // Mapeia a arena para o DTO
+        ArenaResponseDTO responseDTO = arenaMapper.mapArenaToArenaResponseDTO(arena);
+
+        // Adiciona as informações de avaliação ao DTO, se existirem
+        if (ratingInfo != null && ratingInfo.getQuantidadeAvaliacoes() > 0) {
+            responseDTO.setNotaMedia(ratingInfo.getNotaMedia());
+            responseDTO.setQuantidadeAvaliacoes(ratingInfo.getQuantidadeAvaliacoes());
+        } else {
+            responseDTO.setNotaMedia(0.0);
+            responseDTO.setQuantidadeAvaliacoes(0L);
+        }
+
+        return responseDTO;
     }
 
     @Override
-    public Page<Arena> listarTodos(Pageable pageable, String cidade, String esporte) {
+    public Page<ArenaResponseDTO> listarTodos(Pageable pageable, String cidade, String esporte) {
         // Criar Specification base
         Specification<Arena> spec = ArenaSpecs.isAtivo();
+        Page<Arena> arenasPage = arenaRepository.findAll(spec, pageable);
 
         // Adicionar filtro de cidade se fornecido
         if (cidade != null && !cidade.trim().isEmpty()) {
@@ -83,8 +100,35 @@ public class ArenaServiceImpl implements ArenaService {
             spec = spec.and(ArenaSpecs.hasEsporte(esporte));
         }
 
-        // Executar consulta com specifications
-        return arenaRepository.findAll(spec, pageable);
+        if (arenasPage.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        // Pega os IDs das arenas da página atual
+        List<Long> arenaIds = arenasPage.getContent().stream()
+                .map(Arena::getId)
+                .collect(Collectors.toList());
+
+        // Busca as informações de avaliação para todas as arenas da página em UMA ÚNICA QUERY
+        List<Map<String, Object>> ratings = avaliacaoRepository.findArenaRatingInfoForArenas(arenaIds);
+        Map<Long, ArenaRatingInfo> ratingsMap = ratings.stream()
+                .collect(Collectors.toMap(
+                        r -> (Long) r.get("arenaId"),
+                        r -> new ArenaRatingInfo((Double) r.get("notaMedia"), (Long) r.get("quantidadeAvaliacoes"))
+                ));
+
+        return arenasPage.map(arena -> {
+            ArenaResponseDTO dto = arenaMapper.mapArenaToArenaResponseDTO(arena);
+            ArenaRatingInfo ratingInfo = ratingsMap.get(arena.getId());
+            if (ratingInfo != null) {
+                dto.setNotaMedia(ratingInfo.getNotaMedia());
+                dto.setQuantidadeAvaliacoes(ratingInfo.getQuantidadeAvaliacoes());
+            } else {
+                dto.setNotaMedia(0.0);
+                dto.setQuantidadeAvaliacoes(0L);
+            }
+            return dto;
+        });
     }
 
     @Override

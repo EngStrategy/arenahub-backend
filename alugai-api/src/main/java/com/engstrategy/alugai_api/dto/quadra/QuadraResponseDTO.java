@@ -54,4 +54,10 @@ public class QuadraResponseDTO {
 
     @Schema(description = "Horários de funcionamento da quadra")
     private List<HorarioFuncionamentoResponseDTO> horariosFuncionamento;
+
+    @Schema(description = "Nota média das avaliações da quadra", example = "4.7")
+    private Double notaMedia;
+
+    @Schema(description = "Quantidade total de avaliações recebidas pela quadra", example = "25")
+    private Long quantidadeAvaliacoes;
 }

@@ -52,4 +52,10 @@ public class ArenaResponseDTO {
 
     @Schema(description = "Quadras da arena")
     private List<QuadraResponseDTO> quadras;
+
+    @Schema(description = "Media da nota de avaliação da arena", example = "4.5")
+    private Double notaMedia;
+
+    @Schema(description = "Quantidade de avaliações", example = "10")
+    private Long quantidadeAvaliacoes;
 }

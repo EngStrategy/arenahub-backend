@@ -39,6 +39,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
     private final AgendamentoMapper agendamentoMapper;
     private final EmailService emailService;
     private final QuadraRepository quadraRepository;
+    private final ZoneId fusoHorarioPadrao = ZoneId.of("America/Sao_Paulo");
 
     @Override
     @Transactional
@@ -106,8 +107,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
 
     private void validarDataAgendamento(LocalDate dataAgendamento) {
         // Usar fuso horário de São Paulo para validação
-        ZoneId fusoHorarioBrasilia = ZoneId.of("America/Sao_Paulo");
-        LocalDate dataAtual = LocalDate.now(fusoHorarioBrasilia);
+        LocalDate dataAtual = LocalDate.now(fusoHorarioPadrao);
 
         if (dataAgendamento.isBefore(dataAtual)) {
             throw new IllegalArgumentException("Não é possível criar agendamentos para datas passadas");
@@ -143,9 +143,8 @@ public class AgendamentoServiceImpl implements AgendamentoService {
                                                          Long quadraId) {
 
         // Obter data e hora atual no fuso horário de São Paulo
-        ZoneId fusoHorarioBrasilia = ZoneId.of("America/Sao_Paulo");
-        LocalDate dataAtual = LocalDate.now(fusoHorarioBrasilia);
-        LocalTime horaAtual = LocalTime.now(fusoHorarioBrasilia);
+        LocalDate dataAtual = LocalDate.now(fusoHorarioPadrao);
+        LocalTime horaAtual = LocalTime.now(fusoHorarioPadrao);
 
         // Verificar se a data do agendamento é hoje
         boolean isDataAtual = dataAgendamento.equals(dataAtual);
@@ -208,9 +207,8 @@ public class AgendamentoServiceImpl implements AgendamentoService {
         }
 
         // Usar fuso horário de São Paulo para validação
-        ZoneId fusoHorarioBrasilia = ZoneId.of("America/Sao_Paulo");
-        LocalDate dataAtual = LocalDate.now(fusoHorarioBrasilia);
-        LocalTime horaAtual = LocalTime.now(fusoHorarioBrasilia);
+        LocalDate dataAtual = LocalDate.now(fusoHorarioPadrao);
+        LocalTime horaAtual = LocalTime.now(fusoHorarioPadrao);
 
         // Verificar se o agendamento pode ser cancelado
         if (agendamento.getDataAgendamento().isBefore(dataAtual)) {
@@ -378,5 +376,14 @@ public class AgendamentoServiceImpl implements AgendamentoService {
 
         agendamento.setStatus(novoStatus);
         return agendamentoRepository.save(agendamento);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Agendamento> buscarAgendamentosParaAvaliacao(Long atletaId) {
+        LocalDate hoje = LocalDate.now(fusoHorarioPadrao);
+        LocalTime agora = LocalTime.now(fusoHorarioPadrao);
+
+        return agendamentoRepository.findAgendamentosPendentesDeAvaliacao(atletaId, hoje, agora);
     }
 }

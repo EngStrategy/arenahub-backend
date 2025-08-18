@@ -69,8 +69,7 @@ public class ArenaController {
             @Parameter(description = "ID da arena", required = true)
             @PathVariable Long id) {
 
-        Arena arena = arenaService.buscarPorId(id);
-        ArenaResponseDTO response = arenaMapper.mapArenaToArenaResponseDTO(arena);
+        ArenaResponseDTO response = arenaService.buscarPorId(id);
         return ResponseEntity.ok(response);
     }
 
@@ -95,8 +94,7 @@ public class ArenaController {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(direction), sort));
 
-        Page<Arena> arenas = arenaService.listarTodos(pageable, cidade, esporte);
-        Page<ArenaResponseDTO> response = arenas.map(arenaMapper::mapArenaToArenaResponseDTO);
+        Page<ArenaResponseDTO> response = arenaService.listarTodos(pageable, cidade, esporte);
         return ResponseEntity.ok(response);
     }
 

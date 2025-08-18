@@ -1,12 +1,15 @@
 package com.engstrategy.alugai_api.controller;
 
+import com.engstrategy.alugai_api.dto.avaliacao.AvaliacaoResponseDTO;
 import com.engstrategy.alugai_api.dto.quadra.QuadraCreateDTO;
 import com.engstrategy.alugai_api.dto.quadra.QuadraResponseDTO;
 import com.engstrategy.alugai_api.dto.quadra.QuadraUpdateDTO;
 import com.engstrategy.alugai_api.dto.quadra.SlotHorarioResponseDTO;
 import com.engstrategy.alugai_api.jwt.CustomUserDetails;
 import com.engstrategy.alugai_api.mapper.QuadraMapper;
+import com.engstrategy.alugai_api.model.Avaliacao;
 import com.engstrategy.alugai_api.model.Quadra;
+import com.engstrategy.alugai_api.service.AvaliacaoService;
 import com.engstrategy.alugai_api.service.QuadraService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -41,6 +44,7 @@ public class QuadraController {
 
     private final QuadraService quadraService;
     private final QuadraMapper quadraMapper;
+    private final AvaliacaoService avaliacaoService;
 
     @PostMapping
     @Operation(summary = "Criar quadra", description = "Cria uma nova quadra no sistema")
@@ -141,10 +145,9 @@ public class QuadraController {
     public ResponseEntity<List<QuadraResponseDTO>> buscarQuadrasPorArenaId(
             @Parameter(description = "ID da arena", required = true)
             @PathVariable Long arenaId) {
-        List<Quadra> quadras = quadraService.buscarPorArenaId(arenaId);
-        List<QuadraResponseDTO> response = quadras.stream()
-                .map(quadraMapper::mapQuadraToQuadraResponseDTOComHorarioFuncionamento)
-                .collect(Collectors.toList());
+
+        List<QuadraResponseDTO> response = quadraService.buscarPorArenaId(arenaId);
+
         return ResponseEntity.ok(response);
     }
 
@@ -164,6 +167,26 @@ public class QuadraController {
 
         List<SlotHorarioResponseDTO> horarios = quadraService.consultarDisponibilidade(quadraId, data);
         return ResponseEntity.ok(horarios);
+    }
+
+    @GetMapping("/{quadraId}/avaliacoes")
+    @Operation(summary = "Buscar todas as avaliações de uma quadra (com paginação)")
+    public ResponseEntity<Page<AvaliacaoResponseDTO>> buscarAvaliacoesPorQuadra(
+            @PathVariable Long quadraId,
+            @Parameter(description = "Número da página (iniciando em 0)")
+            @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Tamanho da página")
+            @RequestParam(defaultValue = "10") int size,
+            @Parameter(description = "Campo para ordenação (ex: dataAvaliacao, nota)")
+            @RequestParam(defaultValue = "dataAvaliacao") String sort,
+            @Parameter(description = "Direção da ordenação (asc/desc)")
+            @RequestParam(defaultValue = "desc") String direction
+    ) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(direction), sort));
+
+        Page<AvaliacaoResponseDTO> avaliacoesPage = avaliacaoService.buscarAvaliacoesPorQuadra(pageable, quadraId);
+
+        return ResponseEntity.ok(avaliacoesPage);
     }
 
 }

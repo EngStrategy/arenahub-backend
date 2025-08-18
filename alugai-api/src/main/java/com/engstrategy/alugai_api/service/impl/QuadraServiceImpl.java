@@ -1,9 +1,6 @@
 package com.engstrategy.alugai_api.service.impl;
 
-import com.engstrategy.alugai_api.dto.quadra.HorarioFuncionamentoUpdateDTO;
-import com.engstrategy.alugai_api.dto.quadra.IntervaloHorarioUpdateDTO;
-import com.engstrategy.alugai_api.dto.quadra.QuadraUpdateDTO;
-import com.engstrategy.alugai_api.dto.quadra.SlotHorarioResponseDTO;
+import com.engstrategy.alugai_api.dto.quadra.*;
 import com.engstrategy.alugai_api.exceptions.*;
 import com.engstrategy.alugai_api.mapper.QuadraMapper;
 import com.engstrategy.alugai_api.model.*;
@@ -40,6 +37,7 @@ public class QuadraServiceImpl implements QuadraService {
     private final SlotHorarioRepository slotHorarioRepository;
     private final IntervaloHorarioRepository intervaloHorarioRepository;
     private final AgendamentoSnapshotService agendamentoSnapshotService;
+    private final AvaliacaoRepository avaliacaoRepository;
 
     @Override
     @Transactional
@@ -361,12 +359,40 @@ public class QuadraServiceImpl implements QuadraService {
     }
 
     @Override
-    public List<Quadra> buscarPorArenaId(Long arenaId) {
+    public List<QuadraResponseDTO> buscarPorArenaId(Long arenaId) {
+        // Busca todas as quadras da arena
         List<Quadra> quadras = quadraRepository.findByArenaId(arenaId);
         if (quadras.isEmpty()) {
-            throw new EntityNotFoundException("Nenhuma quadra encontrada para a arena com ID: " + arenaId);
+            return new ArrayList<>();
         }
-        return quadras;
+
+        // Extrai os IDs das quadras encontradas
+        List<Long> quadraIds = quadras.stream()
+                .map(Quadra::getId)
+                .collect(Collectors.toList());
+
+        // Busca as informações de avaliação para TODAS as quadras em uma única consulta
+        Map<Long, QuadraRatingInfo> ratingsMap = avaliacaoRepository.findQuadraRatingInfoForQuadras(quadraIds)
+                .stream()
+                .collect(Collectors.toMap(QuadraRatingInfo::getQuadraId, info -> info));
+
+        // Mapeia cada quadra para seu DTO, adicionando as informações de avaliação
+        return quadras.stream()
+                .map(quadra -> {
+                    QuadraResponseDTO dto = quadraMapper.mapQuadraToQuadraResponseDTOComHorarioFuncionamento(quadra);
+                    QuadraRatingInfo ratingInfo = ratingsMap.get(quadra.getId());
+
+                    if (ratingInfo != null) {
+                        dto.setNotaMedia(ratingInfo.getNotaMedia());
+                        dto.setQuantidadeAvaliacoes(ratingInfo.getQuantidadeAvaliacoes());
+                    } else {
+                        // Se não houver avaliações, define valores padrão
+                        dto.setNotaMedia(0.0);
+                        dto.setQuantidadeAvaliacoes(0L);
+                    }
+                    return dto;
+                })
+                .collect(Collectors.toList());
     }
 
     /**
@@ -414,12 +440,21 @@ public class QuadraServiceImpl implements QuadraService {
             Long quadraId) {
 
         List<SlotHorario> slotsDisponiveis = new ArrayList<>();
+        ZoneId fusoHorarioBrasilia = ZoneId.of("America/Sao_Paulo");
+        LocalDate dataAtual = LocalDate.now(fusoHorarioBrasilia);
+        LocalTime horaAtual = LocalTime.now(fusoHorarioBrasilia);
+
+        boolean isDataAtual = dataAgendamento.equals(dataAtual);
 
         for (SlotHorario slot : slots) {
             // 1. Verificar se o slot está fisicamente disponível
             if (slot.getStatusDisponibilidade() == StatusDisponibilidade.MANUTENCAO ||
                     slot.getStatusDisponibilidade() == StatusDisponibilidade.INDISPONIVEL) {
                 continue; // pula para o próximo slot
+            }
+
+            if (isDataAtual && slot.getHorarioInicio().isBefore(horaAtual)) {
+                continue;
             }
 
             // 2. Verificar se já existe agendamento para este slot na data específica
