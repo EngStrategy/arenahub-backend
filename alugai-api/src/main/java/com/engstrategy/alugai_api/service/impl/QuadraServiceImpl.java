@@ -1,9 +1,6 @@
 package com.engstrategy.alugai_api.service.impl;
 
-import com.engstrategy.alugai_api.dto.quadra.HorarioFuncionamentoUpdateDTO;
-import com.engstrategy.alugai_api.dto.quadra.IntervaloHorarioUpdateDTO;
-import com.engstrategy.alugai_api.dto.quadra.QuadraUpdateDTO;
-import com.engstrategy.alugai_api.dto.quadra.SlotHorarioResponseDTO;
+import com.engstrategy.alugai_api.dto.quadra.*;
 import com.engstrategy.alugai_api.exceptions.*;
 import com.engstrategy.alugai_api.mapper.QuadraMapper;
 import com.engstrategy.alugai_api.model.*;
@@ -40,6 +37,7 @@ public class QuadraServiceImpl implements QuadraService {
     private final SlotHorarioRepository slotHorarioRepository;
     private final IntervaloHorarioRepository intervaloHorarioRepository;
     private final AgendamentoSnapshotService agendamentoSnapshotService;
+    private final AvaliacaoRepository avaliacaoRepository;
 
     @Override
     @Transactional
@@ -93,7 +91,7 @@ public class QuadraServiceImpl implements QuadraService {
             quadra.setUrlFotoQuadra(updateDTO.getUrlFotoQuadra());
         }
 
-        if(updateDTO.getUrlFotoQuadra() == null) {
+        if (updateDTO.getUrlFotoQuadra() == null) {
             quadra.setUrlFotoQuadra(null);
         }
 
@@ -296,7 +294,7 @@ public class QuadraServiceImpl implements QuadraService {
         }
     }
 
-    private void validarHorariosFuncionamento(List<HorarioFuncionamento> horarios) {
+    private void validarHorariosFuncionamento(Set<HorarioFuncionamento> horarios) {
         Set<DiaDaSemana> dias = new HashSet<>();
         for (HorarioFuncionamento horario : horarios) {
             if (!dias.add(horario.getDiaDaSemana())) {
@@ -304,7 +302,9 @@ public class QuadraServiceImpl implements QuadraService {
                         "Horário de funcionamento duplicado para o dia: " + horario.getDiaDaSemana());
             }
             if (!horario.getIntervalosDeHorario().isEmpty()) {
-                validarIntervalosDeHorario(horario.getIntervalosDeHorario());
+                // <-- CORREÇÃO AQUI
+                // Converte o Set para uma nova ArrayList antes de passar para o método de validação.
+                validarIntervalosDeHorario(new ArrayList<>(horario.getIntervalosDeHorario()));
             }
         }
     }
@@ -359,12 +359,40 @@ public class QuadraServiceImpl implements QuadraService {
     }
 
     @Override
-    public List<Quadra> buscarPorArenaId(Long arenaId) {
+    public List<QuadraResponseDTO> buscarPorArenaId(Long arenaId) {
+        // Busca todas as quadras da arena
         List<Quadra> quadras = quadraRepository.findByArenaId(arenaId);
         if (quadras.isEmpty()) {
-            throw new EntityNotFoundException("Nenhuma quadra encontrada para a arena com ID: " + arenaId);
+            return new ArrayList<>();
         }
-        return quadras;
+
+        // Extrai os IDs das quadras encontradas
+        List<Long> quadraIds = quadras.stream()
+                .map(Quadra::getId)
+                .collect(Collectors.toList());
+
+        // Busca as informações de avaliação para TODAS as quadras em uma única consulta
+        Map<Long, QuadraRatingInfo> ratingsMap = avaliacaoRepository.findQuadraRatingInfoForQuadras(quadraIds)
+                .stream()
+                .collect(Collectors.toMap(QuadraRatingInfo::getQuadraId, info -> info));
+
+        // Mapeia cada quadra para seu DTO, adicionando as informações de avaliação
+        return quadras.stream()
+                .map(quadra -> {
+                    QuadraResponseDTO dto = quadraMapper.mapQuadraToQuadraResponseDTOComHorarioFuncionamento(quadra);
+                    QuadraRatingInfo ratingInfo = ratingsMap.get(quadra.getId());
+
+                    if (ratingInfo != null) {
+                        dto.setNotaMedia(ratingInfo.getNotaMedia());
+                        dto.setQuantidadeAvaliacoes(ratingInfo.getQuantidadeAvaliacoes());
+                    } else {
+                        // Se não houver avaliações, define valores padrão
+                        dto.setNotaMedia(0.0);
+                        dto.setQuantidadeAvaliacoes(0L);
+                    }
+                    return dto;
+                })
+                .collect(Collectors.toList());
     }
 
     /**
@@ -412,12 +440,10 @@ public class QuadraServiceImpl implements QuadraService {
             Long quadraId) {
 
         List<SlotHorario> slotsDisponiveis = new ArrayList<>();
-
         ZoneId fusoHorarioBrasilia = ZoneId.of("America/Sao_Paulo");
         LocalDate dataAtual = LocalDate.now(fusoHorarioBrasilia);
         LocalTime horaAtual = LocalTime.now(fusoHorarioBrasilia);
 
-        // Verificar se a data do agendamento é hoje
         boolean isDataAtual = dataAgendamento.equals(dataAtual);
 
         for (SlotHorario slot : slots) {
@@ -427,12 +453,11 @@ public class QuadraServiceImpl implements QuadraService {
                 continue; // pula para o próximo slot
             }
 
-            // 2. Se a data é hoje, verificar se o horário do slot já passou
             if (isDataAtual && slot.getHorarioInicio().isBefore(horaAtual)) {
-                continue; // pula slots que já passaram do horário atual
+                continue;
             }
 
-            // 3. Verificar se já existe agendamento para este slot na data específica
+            // 2. Verificar se já existe agendamento para este slot na data específica
             boolean jaAgendado = agendamentoRepository.existeConflito(
                     dataAgendamento,
                     quadraId,

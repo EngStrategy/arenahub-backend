@@ -5,6 +5,7 @@ import com.engstrategy.alugai_api.dto.agendamento.AgendamentoFixoResponseDTO;
 import com.engstrategy.alugai_api.dto.agendamento.AgendamentoResponseDTO;
 import com.engstrategy.alugai_api.dto.agendamento.arena.AgendamentoArenaResponseDTO;
 import com.engstrategy.alugai_api.dto.agendamento.arena.ParticipanteDTO;
+import com.engstrategy.alugai_api.dto.avaliacao.AvaliacaoDetalhesDTO;
 import com.engstrategy.alugai_api.dto.quadra.SlotHorarioResponseDTO;
 import com.engstrategy.alugai_api.exceptions.UserNotFoundException;
 import com.engstrategy.alugai_api.model.*;
@@ -45,6 +46,20 @@ public class AgendamentoMapper {
     }
 
     public AgendamentoResponseDTO fromAgendamentoToResponseDTO(Agendamento agendamento) {
+        if (agendamento == null) {
+            return null;
+        }
+
+        Avaliacao avaliacaoEntidade = agendamento.getAvaliacao();
+        AvaliacaoDetalhesDTO avaliacaoDTO = null;
+        if (avaliacaoEntidade != null) {
+            avaliacaoDTO = AvaliacaoDetalhesDTO.builder()
+                    .idAvaliacao(avaliacaoEntidade.getId())
+                    .nota(avaliacaoEntidade.getNota())
+                    .comentario(avaliacaoEntidade.getComentario())
+                    .build();
+        }
+
         return AgendamentoResponseDTO.builder()
                 .id(agendamento.getId())
                 .dataAgendamento(agendamento.getDataAgendamento())
@@ -66,6 +81,8 @@ public class AgendamentoMapper {
                 .fixo(agendamento.isFixo())
                 .publico(agendamento.isPublico())
                 .possuiSolicitacoes(agendamento.possuiSolicitacoes())
+                .avaliacao(avaliacaoDTO)
+                .avaliacaoDispensada(agendamento.getAvaliacaoDispensada())
                 .build();
     }
 

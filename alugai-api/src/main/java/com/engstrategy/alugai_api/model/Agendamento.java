@@ -90,6 +90,11 @@ public class Agendamento {
     )
     private Set<Atleta> participantes = new HashSet<>();
 
+    @OneToOne(mappedBy = "agendamento", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private Avaliacao avaliacao;
+
+    private Boolean avaliacaoDispensada;
+
     // Métodos utilitários
     public LocalTime getHorarioInicio() {
         // Prioriza snapshot se disponível, senão calcula dos slots
@@ -121,7 +126,7 @@ public class Agendamento {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    // Método para criar snapshot dos dados
+    // Metodo para criar snapshot dos dados
     public void criarSnapshot() {
         this.horarioInicioSnapshot = getHorarioInicio();
         this.horarioFimSnapshot = getHorarioFim();

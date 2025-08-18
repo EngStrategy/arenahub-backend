@@ -1,16 +1,19 @@
 package com.engstrategy.alugai_api.controller;
 
 import com.engstrategy.alugai_api.dto.agendamento.AgendamentoCreateDTO;
-import com.engstrategy.alugai_api.dto.agendamento.AgendamentoFixoResponseDTO;
 import com.engstrategy.alugai_api.dto.agendamento.AgendamentoResponseDTO;
+import com.engstrategy.alugai_api.dto.avaliacao.AvaliacaoDTO;
+import com.engstrategy.alugai_api.dto.avaliacao.AvaliacaoResponseDTO;
 import com.engstrategy.alugai_api.jwt.CustomUserDetails;
 import com.engstrategy.alugai_api.mapper.AgendamentoMapper;
 import com.engstrategy.alugai_api.model.Agendamento;
 import com.engstrategy.alugai_api.model.AgendamentoFixo;
+import com.engstrategy.alugai_api.model.Avaliacao;
 import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
 import com.engstrategy.alugai_api.model.enums.TipoAgendamento;
 import com.engstrategy.alugai_api.service.AgendamentoFixoService;
 import com.engstrategy.alugai_api.service.AgendamentoService;
+import com.engstrategy.alugai_api.service.AvaliacaoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -32,6 +35,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
@@ -45,6 +49,7 @@ public class AgendamentoController {
     private final AgendamentoService agendamentoService;
     private final AgendamentoMapper agendamentoMapper;
     private final AgendamentoFixoService agendamentoFixoService;
+    private final AvaliacaoService avaliacaoService;
 
     @PostMapping
     @Operation(summary = "Criar novo agendamento", security = @SecurityRequirement(name = "bearerAuth"))
@@ -128,6 +133,45 @@ public class AgendamentoController {
                 status,
                 pageable);
         Page<AgendamentoResponseDTO> response = agendamentosPage.map(agendamentoMapper::fromAgendamentoToResponseDTO);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{agendamentoId}/avaliacoes")
+    @Operation(summary = "Cria ou dispensa uma avaliação para um agendamento", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<AvaliacaoResponseDTO> criarOuDispensarAvaliacao(
+            @PathVariable Long agendamentoId,
+            @RequestBody @Valid AvaliacaoDTO avaliacaoDTO,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        Optional<AvaliacaoResponseDTO> resultado = avaliacaoService.criarOuDispensarAvaliacao(agendamentoId, avaliacaoDTO, userDetails);
+
+        return resultado
+                .map(dto -> ResponseEntity.status(HttpStatus.CREATED).body(dto)) // Se a avaliação foi criada
+                .orElse(ResponseEntity.noContent().build()); // Se a avaliação foi dispensada
+    }
+
+    @PutMapping("/avaliacoes/{avaliacaoId}")
+    @Operation(summary = "Atualiza uma avaliação existente", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<AvaliacaoResponseDTO> atualizarAvaliacao(
+            @PathVariable Long avaliacaoId,
+            @RequestBody @Valid AvaliacaoDTO avaliacaoDTO,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        AvaliacaoResponseDTO avaliacaoAtualizada = avaliacaoService.atualizarAvaliacao(avaliacaoId, avaliacaoDTO, userDetails);
+        return ResponseEntity.ok(avaliacaoAtualizada);
+    }
+
+    @GetMapping("/avaliacoes-pendentes")
+    @Operation(summary = "Listar meus agendamentos com avaliação pendente", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<List<AgendamentoResponseDTO>> getAgendamentosParaAvaliar(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        List<Agendamento> agendamentos = agendamentoService.buscarAgendamentosParaAvaliacao(userDetails.getUserId());
+
+        List<AgendamentoResponseDTO> response = agendamentos.stream()
+                .map(agendamentoMapper::fromAgendamentoToResponseDTO)
+                .collect(Collectors.toList());
 
         return ResponseEntity.ok(response);
     }

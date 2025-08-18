@@ -1,11 +1,9 @@
 package com.engstrategy.alugai_api.controller;
 
 import com.engstrategy.alugai_api.dto.agendamento.arena.CidadeDTO;
-import com.engstrategy.alugai_api.dto.arena.ArenaCreateDTO;
-import com.engstrategy.alugai_api.dto.arena.ArenaResponseDTO;
-import com.engstrategy.alugai_api.dto.arena.ArenaUpdateDTO;
-import com.engstrategy.alugai_api.dto.arena.CidadeResponseDTO;
+import com.engstrategy.alugai_api.dto.arena.*;
 import com.engstrategy.alugai_api.dto.usuario.AlterarSenhaRequest;
+import com.engstrategy.alugai_api.exceptions.UserNotFoundException;
 import com.engstrategy.alugai_api.jwt.CustomUserDetails;
 import com.engstrategy.alugai_api.mapper.ArenaMapper;
 import com.engstrategy.alugai_api.model.Arena;
@@ -71,8 +69,7 @@ public class ArenaController {
             @Parameter(description = "ID da arena", required = true)
             @PathVariable Long id) {
 
-        Arena arena = arenaService.buscarPorId(id);
-        ArenaResponseDTO response = arenaMapper.mapArenaToArenaResponseDTO(arena);
+        ArenaResponseDTO response = arenaService.buscarPorId(id);
         return ResponseEntity.ok(response);
     }
 
@@ -97,8 +94,7 @@ public class ArenaController {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(direction), sort));
 
-        Page<Arena> arenas = arenaService.listarTodos(pageable, cidade, esporte);
-        Page<ArenaResponseDTO> response = arenas.map(arenaMapper::mapArenaToArenaResponseDTO);
+        Page<ArenaResponseDTO> response = arenaService.listarTodos(pageable, cidade, esporte);
         return ResponseEntity.ok(response);
     }
 
@@ -159,5 +155,24 @@ public class ArenaController {
     public ResponseEntity<List<CidadeDTO>> getCidades() {
         List<CidadeDTO> cidades = arenaService.getCidades();
         return ResponseEntity.ok(cidades);
+    }
+
+    @GetMapping("/dashboard")
+    @Operation(summary = "Resumo do Dashboard da Arena", description = "Retorna os dados do dashboard para a arena logada", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<ArenaDashboardDTO> getDashboardData(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        // Tentamos buscar a arena com o userId do token.
+        // Se a busca falhar (retornar uma exceção NotFoundException), significa que o usuário logado não é uma Arena,
+        // e o ExceptionHandler pode lidar com isso retornando 404/403.
+        // Ou você pode usar um try-catch para ser explícito.
+        try {
+            ArenaDashboardDTO dashboardData = arenaService.getDashboardData(userDetails.getUserId());
+            return ResponseEntity.ok(dashboardData);
+        } catch (UserNotFoundException e) {
+            // Se o usuário não for uma Arena, o service lança NotFoundException
+            // Tratamos como acesso negado (Forbidden).
+            return ResponseEntity.status(403).build();
+        }
     }
 }

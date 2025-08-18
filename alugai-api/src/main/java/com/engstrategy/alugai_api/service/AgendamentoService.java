@@ -34,4 +34,5 @@ public interface AgendamentoService {
                                        Pageable pageable);
 
     Agendamento atualizarStatus(Long agendamentoId, Long arenaId, StatusAgendamento novoStatus);
+    List<Agendamento> buscarAgendamentosParaAvaliacao(Long atletaId);
 }

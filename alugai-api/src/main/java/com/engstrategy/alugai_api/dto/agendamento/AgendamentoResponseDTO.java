@@ -1,9 +1,11 @@
 package com.engstrategy.alugai_api.dto.agendamento;
 
+import com.engstrategy.alugai_api.dto.avaliacao.AvaliacaoDetalhesDTO;
 import com.engstrategy.alugai_api.dto.quadra.SlotHorarioResponseDTO;
 import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
 import com.engstrategy.alugai_api.model.enums.TipoEsporte;
 import com.engstrategy.alugai_api.util.LocalTimeSerializer;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.*;
 
@@ -16,6 +18,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class AgendamentoResponseDTO {
     private Long id;
     private LocalDate dataAgendamento;
@@ -36,4 +39,6 @@ public class AgendamentoResponseDTO {
     private boolean fixo;
     private boolean publico;
     private boolean possuiSolicitacoes;
+    private AvaliacaoDetalhesDTO avaliacao;
+    private Boolean avaliacaoDispensada;
 }
