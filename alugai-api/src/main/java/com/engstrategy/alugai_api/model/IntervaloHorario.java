@@ -37,6 +37,7 @@ public class IntervaloHorario {
     @JoinColumn(name = "horario_funcionamento_id", nullable = false)
     private HorarioFuncionamento horarioFuncionamento;
 
+    @Builder.Default
     @OneToMany(mappedBy = "intervaloHorario", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SlotHorario> slotsHorario = new ArrayList<>();
 }

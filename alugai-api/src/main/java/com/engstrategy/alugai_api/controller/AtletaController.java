@@ -1,8 +1,6 @@
 package com.engstrategy.alugai_api.controller;
 
-import com.engstrategy.alugai_api.dto.atleta.AtletaCreateDTO;
-import com.engstrategy.alugai_api.dto.atleta.AtletaResponseDTO;
-import com.engstrategy.alugai_api.dto.atleta.AtletaUpdateDTO;
+import com.engstrategy.alugai_api.dto.atleta.*;
 import com.engstrategy.alugai_api.dto.usuario.AlterarSenhaRequest;
 import com.engstrategy.alugai_api.jwt.CustomUserDetails;
 import com.engstrategy.alugai_api.mapper.AtletaMapper;
@@ -27,6 +25,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/atletas")
@@ -139,5 +139,25 @@ public class AtletaController {
         atletaService.alterarSenha(userDetails.getUserId(), request.getSenhaAtual(), request.getNovaSenha());
 
         return ResponseEntity.ok("Senha alterada com sucesso.");
+    }
+
+    @GetMapping ("buscar-atleta")
+    @Operation(summary = "Buscar atletas por nome ou telefone (para arenas)", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<List<AtletaBuscaResponseDTO>> buscarAtletas(@RequestParam String query) {
+        return ResponseEntity.ok(atletaService.buscarPorNomeOuTelefone(query));
+    }
+
+    @PostMapping("/iniciar-ativacao")
+    @Operation(summary = "Inicia o processo de ativação de conta para um atleta externo")
+    public ResponseEntity<Void> iniciarAtivacao(@RequestBody AtivacaoRequestDTO dto) {
+        atletaService.iniciarAtivacaoConta(dto.getTelefone());
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/ativar-conta")
+    @Operation(summary = "Conclui a ativação de conta com o código SMS")
+    public ResponseEntity<Void> ativarConta(@RequestBody @Valid AtivacaoCompletaDTO dto) {
+        atletaService.ativarConta(dto.getTelefone(), dto.getCodigo(), dto.getEmail(), dto.getSenha());
+        return ResponseEntity.ok().build();
     }
 }

@@ -41,6 +41,7 @@ public class AgendamentoFixo {
     @JoinColumn(name = "atleta_id", nullable = false)
     private Atleta atleta;
 
+    @Builder.Default
     @OneToMany(mappedBy = "agendamentoFixo", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Agendamento> agendamentos = new ArrayList<>();
 

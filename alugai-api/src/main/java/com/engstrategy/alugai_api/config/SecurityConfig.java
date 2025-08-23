@@ -11,6 +11,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -43,6 +44,8 @@ public class SecurityConfig {
                         // endpoints públicos
                         .requestMatchers("/api/v1/usuarios/auth").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/atletas").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/atletas/iniciar-ativacao").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/atletas/ativar-conta").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/arenas").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/atletas").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/arenas").permitAll()
@@ -61,6 +64,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/agendamentos/**").hasAnyRole("ATLETA", "ARENA")
                         .requestMatchers("/api/v1/jogos-abertos/**").hasRole("ATLETA")
                         .requestMatchers("/api/v1/agendamentos/**").hasRole("ATLETA")
+                        .requestMatchers("/api/v1/atletas/buscar-atleta").hasRole("ARENA")
                         .requestMatchers("/api/v1/atletas/**").hasRole("ATLETA")
                         .requestMatchers("/api/v1/arenas/**").hasRole("ARENA")
                         .requestMatchers("/api/v1/quadras/**").hasRole("ARENA")
@@ -85,7 +89,8 @@ public class SecurityConfig {
                 "http://localhost:5173",    // Vite dev server
                 "http://localhost:8080",    // Backend (para testes diretos)
                 "http://127.0.0.1:3000",   // Variação do localhost
-                "http://127.0.0.1:5173"   // Variação do localhost
+                "http://127.0.0.1:5173",   // Variação do localhost
+                "http://10.8.0.54:3000"   // Variação do localhost
         ));
 
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
@@ -109,5 +114,10 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
+    }
+
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
     }
 }

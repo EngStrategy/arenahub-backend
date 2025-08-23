@@ -38,12 +38,17 @@ public class SlotHorarioService {
         LocalTime fim = intervaloHorario.getFim();
         int minutosSlot = getDuracaoEmMinutos(duracaoReserva);
 
+        if (minutosSlot <= 0) {
+            return slots; // Evita divisão por zero ou loop infinito
+        }
+
         LocalTime horarioAtual = inicio;
 
         while (horarioAtual.isBefore(fim)) {
             LocalTime proximoHorario = horarioAtual.plusMinutes(minutosSlot);
 
-            if (proximoHorario.isAfter(fim)) {
+            // A verificação interna para evitar ultrapassar o 'fim' em intervalos normais
+            if (proximoHorario.isAfter(fim) && proximoHorario.isAfter(horarioAtual)) {
                 break;
             }
 
@@ -54,9 +59,17 @@ public class SlotHorarioService {
                     .statusDisponibilidade(mapearStatusDisponibilidade(intervaloHorario.getStatus()))
                     .intervaloHorario(intervaloHorario)
                     .build();
-
             slots.add(slot);
+
+            // Guardamos o horário antigo antes de atualizar
+            LocalTime horarioAnterior = horarioAtual;
             horarioAtual = proximoHorario;
+
+            // Se o novo horário for "menor" que o anterior, significa que cruzamos a meia-noite.
+            // Neste caso, devemos parar o loop para evitar a repetição infinita.
+            if (horarioAtual.isBefore(horarioAnterior)) {
+                break;
+            }
         }
 
         return slots;

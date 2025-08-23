@@ -38,6 +38,7 @@ public class ArenaMapper {
                 .endereco(enderecoMapper.mapEnderecoDtoToEndereco(arenaCreateDTO.getEndereco()))
                 .role(Role.ARENA)
                 .ativo(false)
+                .horasCancelarAgendamento(arenaCreateDTO.getHorasCancelarAgendamento())
                 .build();
     }
 
@@ -71,6 +72,7 @@ public class ArenaMapper {
                 .dataCriacao(arena.getDataCriacao())
                 .role(arena.getRole())
                 .esportes(esportes)
+                .horasCancelarAgendamento(arena.getHorasCancelarAgendamento())
                 .build();
     }
 

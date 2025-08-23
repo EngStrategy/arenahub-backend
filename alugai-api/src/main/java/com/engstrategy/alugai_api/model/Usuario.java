@@ -23,13 +23,13 @@ public abstract class Usuario {
     @Column(nullable=false)
     private String nome;
 
-    @Column(nullable=false, unique = true)
+    @Column(nullable=true, unique = true)
     private String email;
 
     @Column(nullable=false, unique = true)
     private String telefone;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String senha;
 
     @Column(name = "url_foto")
@@ -43,6 +43,7 @@ public abstract class Usuario {
     @Column(nullable = false)
     private Role role;
 
+    @Builder.Default
     @Column(nullable = false)
     private boolean ativo = false;
 }

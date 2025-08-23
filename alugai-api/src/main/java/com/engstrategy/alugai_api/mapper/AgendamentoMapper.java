@@ -1,6 +1,7 @@
 package com.engstrategy.alugai_api.mapper;
 
 import com.engstrategy.alugai_api.dto.agendamento.AgendamentoCreateDTO;
+import com.engstrategy.alugai_api.dto.agendamento.AgendamentoExternoCreateDTO;
 import com.engstrategy.alugai_api.dto.agendamento.AgendamentoFixoResponseDTO;
 import com.engstrategy.alugai_api.dto.agendamento.AgendamentoResponseDTO;
 import com.engstrategy.alugai_api.dto.agendamento.arena.AgendamentoArenaResponseDTO;
@@ -165,5 +166,28 @@ public class AgendamentoMapper {
                 .valor(slotHorario.getValor())
                 .statusDisponibilidade(slotHorario.getStatusDisponibilidade())
                 .build();
+    }
+
+    /**
+     * Converte um DTO de agendamento externo para o DTO de criação de agendamento padrão.
+     * Define valores padrão para campos que não se aplicam a agendamentos externos.
+     * @param externoDTO O DTO recebido do endpoint de agendamento externo.
+     * @return Um AgendamentoCreateDTO pronto para ser usado pelo método de criação principal.
+     */
+    public AgendamentoCreateDTO fromExternoToCreateDTO(AgendamentoExternoCreateDTO externoDTO) {
+        AgendamentoCreateDTO createDTO = new AgendamentoCreateDTO();
+
+        createDTO.setQuadraId(externoDTO.getQuadraId());
+        createDTO.setDataAgendamento(externoDTO.getDataAgendamento());
+        createDTO.setSlotHorarioIds(externoDTO.getSlotHorarioIds());
+        createDTO.setEsporte(externoDTO.getEsporte());
+
+        // Ele nunca será 'fixo' ou 'público' neste contexto
+        createDTO.setFixo(false);
+        createDTO.setPublico(false);
+        createDTO.setNumeroJogadoresNecessarios(null);
+        createDTO.setPeriodoFixo(null);
+
+        return createDTO;
     }
 }

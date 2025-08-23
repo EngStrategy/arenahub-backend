@@ -8,7 +8,6 @@ import com.engstrategy.alugai_api.jwt.CustomUserDetails;
 import com.engstrategy.alugai_api.mapper.AgendamentoMapper;
 import com.engstrategy.alugai_api.model.Agendamento;
 import com.engstrategy.alugai_api.model.AgendamentoFixo;
-import com.engstrategy.alugai_api.model.Avaliacao;
 import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
 import com.engstrategy.alugai_api.model.enums.TipoAgendamento;
 import com.engstrategy.alugai_api.service.AgendamentoFixoService;

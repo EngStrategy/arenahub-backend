@@ -38,6 +38,7 @@ public class IntervaloHorarioResponseDTO {
     @Schema(description = "Status do intervalo", example = "DISPONIVEL")
     private StatusIntervalo status;
 
+    @Builder.Default
     @Schema(description = "Slots de horário", example = "08:00 - 09:00")
     private List<SlotHorarioResponseDTO> slotsDisponiveis = new ArrayList<>();
 }

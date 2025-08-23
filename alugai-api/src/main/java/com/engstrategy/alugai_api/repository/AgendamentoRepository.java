@@ -67,7 +67,8 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Long>,
     @Query("SELECT a FROM Agendamento a " +
             "WHERE a.quadra.arena.id = :arenaId " +
             "AND a.dataAgendamento = :dataAtual " +
-            "AND a.horarioInicioSnapshot > :horarioAtual " + // Usando o campo de snapshot para consistência
+            "AND a.horarioInicioSnapshot > :horarioAtual " +
+            "AND a.status IN ('PENDENTE') " +
             "ORDER BY a.horarioInicioSnapshot ASC " +
             "LIMIT 5")
     List<Agendamento> findProximosAgendamentosDoDia(@Param("arenaId") Long arenaId,
@@ -87,6 +88,22 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Long>,
             "ORDER BY a.dataAgendamento DESC, a.horarioFimSnapshot DESC")
     List<Agendamento> findAgendamentosPendentesDeAvaliacao(
             @Param("atletaId") Long atletaId,
+            @Param("dataAtual") LocalDate dataAtual,
+            @Param("horaAtual") LocalTime horaAtual
+    );
+
+    /**
+     * Busca todos os agendamentos com status PENDENTE para uma arena, a partir da data atual,
+     * ordenados pela data e hora do agendamento.
+     */
+    @Query("SELECT a FROM Agendamento a " +
+            "WHERE a.quadra.arena.id = :arenaId " +
+            "AND a.status = 'PENDENTE' " +
+            "AND ( a.dataAgendamento < :dataAtual OR " + // Critério 1: Agendamentos de dias anteriores
+            "      (a.dataAgendamento = :dataAtual AND a.horarioInicioSnapshot <= :horaAtual) ) " + // Critério 2: Agendamentos de hoje cuja hora já passou
+            "ORDER BY a.dataAgendamento ASC, a.horarioInicioSnapshot ASC")
+    List<Agendamento> findPendentesAcaoByArenaId(
+            @Param("arenaId") Long arenaId,
             @Param("dataAtual") LocalDate dataAtual,
             @Param("horaAtual") LocalTime horaAtual
     );
