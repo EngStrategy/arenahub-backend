@@ -1,0 +1,52 @@
+services:
+  db:
+    image: postgres:latest
+    container_name: postgres_alugai
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 25052022
+      POSTGRES_DB: alugai
+    ports:
+      - '5432:5432'
+    volumes:
+      - alugai_postgres_data:/var/lib/postgresql/data
+    networks:
+      - alugainetwork
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin_alugai
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - '15432:80'
+    depends_on:
+      - db
+    networks:
+      - alugainetwork
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: alugai_app
+    environment:
+      JAVA_TOOL_OPTIONS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/alugai
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+    ports:
+      - '8080:8080'
+      - '5005:5005'
+    depends_on:
+      - db
+    networks:
+      - alugainetwork
+
+volumes:
+  alugai_postgres_data:
+
+networks:
+  alugainetwork:
+    driver: bridge
