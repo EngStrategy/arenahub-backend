@@ -1,3 +1,9 @@
+server:
+  tomcat:
+    threads:
+      max: 20
+springdoc:
+  server-url: https://arenahub-d665d54c598e.herokuapp.com
 spring:
   profiles:
     active: dev
@@ -10,6 +16,8 @@ spring:
     url: jdbc:postgresql://localhost:5432/alugai
     username: postgres
     password: 25052022
+    hiraki:
+      maximun-pool-size: 5
   jpa:
     hibernate:
       ddl-auto: update
