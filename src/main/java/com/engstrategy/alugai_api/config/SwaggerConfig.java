@@ -25,9 +25,6 @@ public class SwaggerConfig {
                         .contact(new Contact()
                                 .name("Suporte")
                                 .email("rlimamendes085@gmail.com")))
-                .servers(List.of(
-                        new Server().url("http://localhost:8080").description("Ambiente de desenvolvimento")
-                ))
                 .addSecurityItem(new SecurityRequirement().addList("bearerAuth"))
                 .components(new Components()
                         .addSecuritySchemes("bearerAuth",

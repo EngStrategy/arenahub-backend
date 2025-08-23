@@ -91,7 +91,10 @@ public class SecurityConfig {
                 "http://127.0.0.1:3000",   // Variação do localhost
                 "http://127.0.0.1:5173",   // Variação do localhost
                 "http://10.8.0.54:3000",   // Variação do localhost
-                "https://arenahub.vercel.app"
+                "https://arenahub.vercel.app",
+                "https://alugaiapirest-10efa692a5d3.herokuapp.com",
+                "https://arenahub-d665d54c598e.herokuapp.com",
+                "https://arenahub.onrender.com"
         ));
 
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
