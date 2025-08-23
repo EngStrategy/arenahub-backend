@@ -23,6 +23,9 @@ public class Arena extends Usuario {
     @Embedded
     private Endereco endereco;
 
+    @Column(name = "horas_cancelar_agendamento")
+    private Integer horasCancelarAgendamento;
+
     private String descricao;
 
     @Builder.Default

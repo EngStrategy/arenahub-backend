@@ -11,7 +11,6 @@ spring:
     username: postgres
     password: 25052022
   jpa:
-    database: POSTGRESQL
     hibernate:
       ddl-auto: update
     show-sql: true
@@ -27,5 +26,8 @@ spring:
           starttls:
             enable: true
       test-connection: true
-
-# prod (configuracao abaixo, futuramente)
+zenvia:
+  api-token: POz_IOVwRJaZhBPG1eyxQFyJ2BG5H9PBad3f
+  sender-id: shard-vertebra
+#jwt:
+#    secret-key: ptw/PNIjH2BR2rjF4+1uRpv0V3oCRkxXNiZtnNU2rHEpM4iXBkUuWcDNSr+BuppztPEDvOgEp8vISdzPu+U2TQ==

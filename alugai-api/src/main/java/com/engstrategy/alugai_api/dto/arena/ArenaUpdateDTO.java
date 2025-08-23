@@ -2,6 +2,8 @@ package com.engstrategy.alugai_api.dto.arena;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -28,6 +30,11 @@ public class ArenaUpdateDTO {
     @Schema(description = "Endereço da arena")
     @Valid
     private EnderecoDTO endereco;
+
+    @Schema(description = "Até quantas horas antes o atleta pode cancelar", required = true)
+    @NotNull(message = "Hora de antecedencia de cancelamento é obrigatório")
+    @Min(value = 0, message = "O valor não pode ser negativo.")
+    private Integer horasCancelarAgendamento;
 
     @Schema(description = "Descrição da arena", example = "Arena com quadras de futebol society e tênis")
     @Size(max = 500, message = "Descrição deve ter no máximo 500 caracteres")

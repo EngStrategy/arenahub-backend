@@ -44,8 +44,11 @@ public class Agendamento {
     @Column(name = "data_snapshot")
     private LocalDateTime dataSnapshot;
 
-    private boolean isFixo;
-    private boolean isPublico;
+    @Builder.Default
+    private boolean isFixo = false;
+
+    @Builder.Default
+    private boolean isPublico = false;
 
     @Enumerated(EnumType.STRING)
     private PeriodoAgendamento periodoAgendamentoFixo;
@@ -71,6 +74,7 @@ public class Agendamento {
     @JoinColumn(name = "agendamento_fixo_id")
     private AgendamentoFixo agendamentoFixo;
 
+    @Builder.Default
     @ManyToMany
     @JoinTable(
             name = "agendamento_slot_horario",
@@ -79,9 +83,11 @@ public class Agendamento {
     )
     private List<SlotHorario> slotsHorario = new ArrayList<>();
 
+    @Builder.Default
     @OneToMany(mappedBy = "agendamento", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SolicitacaoEntrada> solicitacoes = new ArrayList<>();
 
+    @Builder.Default
     @ManyToMany
     @JoinTable(
             name = "agendamento_participantes",
@@ -93,7 +99,8 @@ public class Agendamento {
     @OneToOne(mappedBy = "agendamento", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Avaliacao avaliacao;
 
-    private Boolean avaliacaoDispensada;
+    @Builder.Default
+    private Boolean avaliacaoDispensada = false;
 
     // Métodos utilitários
     public LocalTime getHorarioInicio() {

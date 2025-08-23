@@ -1,7 +1,10 @@
 package com.engstrategy.alugai_api.service.impl;
 
 import com.engstrategy.alugai_api.dto.agendamento.AgendamentoCreateDTO;
+import com.engstrategy.alugai_api.dto.agendamento.AgendamentoExternoCreateDTO;
+import com.engstrategy.alugai_api.dto.agendamento.NovoAtletaExternoDTO;
 import com.engstrategy.alugai_api.exceptions.AccessDeniedException;
+import com.engstrategy.alugai_api.exceptions.UniqueConstraintViolationException;
 import com.engstrategy.alugai_api.mapper.AgendamentoMapper;
 import com.engstrategy.alugai_api.model.*;
 import com.engstrategy.alugai_api.model.enums.*;
@@ -21,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -134,7 +138,6 @@ public class AgendamentoServiceImpl implements AgendamentoService {
     }
 
 
-
     /**
      * Verifica se os slots estão disponíveis na data específica do agendamento
      */
@@ -201,19 +204,11 @@ public class AgendamentoServiceImpl implements AgendamentoService {
         Agendamento agendamento = agendamentoRepository.findById(agendamentoId)
                 .orElseThrow(() -> new EntityNotFoundException("Agendamento não encontrado"));
 
-        // Verificar se o agendamento pertence ao atleta
-        if (!agendamento.getAtleta().getId().equals(atletaId)) {
-            throw new IllegalArgumentException("Agendamento não pertence ao atleta informado");
-        }
+        validarPermissaoCancelamento(agendamento, atletaId);
 
         // Usar fuso horário de São Paulo para validação
         LocalDate dataAtual = LocalDate.now(fusoHorarioPadrao);
         LocalTime horaAtual = LocalTime.now(fusoHorarioPadrao);
-
-        // Verificar se o agendamento pode ser cancelado
-        if (agendamento.getDataAgendamento().isBefore(dataAtual)) {
-            throw new IllegalArgumentException("Não é possível cancelar agendamentos de datas passadas");
-        }
 
         // Se a data do agendamento é hoje, verificar se o primeiro slot já passou
         if (agendamento.getDataAgendamento().equals(dataAtual)) {
@@ -231,6 +226,25 @@ public class AgendamentoServiceImpl implements AgendamentoService {
                                 horaAtual.format(DateTimeFormatter.ofPattern("HH:mm")))
                 );
             }
+        }
+
+        Arena arena = agendamento.getQuadra().getArena();
+        Integer horasParaCancelar = arena.getHorasCancelarAgendamento();
+
+        if (horasParaCancelar == null) {
+            horasParaCancelar = 24;
+        }
+
+        LocalDateTime inicioAgendamento = agendamento.getDataAgendamento().atTime(agendamento.getHorarioInicioSnapshot());
+
+        LocalDateTime prazoCancelamento = inicioAgendamento.minusHours(horasParaCancelar);
+
+        LocalDateTime agora = LocalDateTime.now(ZoneId.of("America/Sao_Paulo"));
+        if (agora.isAfter(prazoCancelamento)) {
+            throw new IllegalArgumentException(
+                    "O prazo para cancelamento expirou. O cancelamento deve ser feito com pelo menos " +
+                            horasParaCancelar + " horas de antecedência."
+            );
         }
 
         // Verificar se já não está cancelado
@@ -385,5 +399,84 @@ public class AgendamentoServiceImpl implements AgendamentoService {
         LocalTime agora = LocalTime.now(fusoHorarioPadrao);
 
         return agendamentoRepository.findAgendamentosPendentesDeAvaliacao(atletaId, hoje, agora);
+    }
+
+
+    private void validarPermissaoCancelamento(Agendamento agendamento, Long userId) {
+        if (!agendamento.getAtleta().getId().equals(userId) && !agendamento.getQuadra().getArena().getId().equals(userId)) {
+            throw new AccessDeniedException("Usuário não autorizado!");
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Agendamento> buscarPendentesAcaoPorArenaId(Long arenaId) {
+        LocalDate dataAtual = LocalDate.now(fusoHorarioPadrao);
+        LocalTime horaAtual = LocalTime.now(fusoHorarioPadrao);
+
+        return agendamentoRepository.findPendentesAcaoByArenaId(arenaId, dataAtual, horaAtual);
+    }
+
+    @Override
+    @Transactional
+    public Agendamento criarAgendamentoExterno(AgendamentoExternoCreateDTO dto, Long arenaId) {
+        Atleta atleta;
+
+        // Determina o atleta (existente ou novo)
+        if (dto.getAtletaExistenteId() != null) {
+            atleta = atletaRepository.findById(dto.getAtletaExistenteId())
+                    .orElseThrow(() -> new EntityNotFoundException("Atleta existente não encontrado"));
+        } else {
+            // Cria um novo atleta externo
+            NovoAtletaExternoDTO novoAtletaDto = dto.getNovoAtleta();
+            if (atletaRepository.existsByTelefone(novoAtletaDto.getTelefone())) {
+                throw new UniqueConstraintViolationException("Já existe um atleta com este telefone.");
+            }
+            atleta = Atleta.builder()
+                    .nome(novoAtletaDto.getNome())
+                    .telefone(novoAtletaDto.getTelefone())
+                    .tipoConta(TipoContaAtleta.EXTERNO)
+                    .role(Role.ATLETA)
+                    .ativo(true) // Atletas externos já nascem ativos
+                    .build();
+            atleta = atletaRepository.save(atleta);
+        }
+
+        // Valida se a quadra pertence à arena logada
+        Quadra quadra = quadraRepository.findById(dto.getQuadraId())
+                .orElseThrow(() -> new EntityNotFoundException("Quadra não encontrada"));
+        if (!quadra.getArena().getId().equals(arenaId)) {
+            throw new AccessDeniedException("Esta quadra não pertence à sua arena.");
+        }
+
+        // Logica para determinar um esporte para o agendamento
+        TipoEsporte esporteAgendado;
+        List<TipoEsporte> esportesDaQuadra = quadra.getTipoQuadra();
+
+        if (esportesDaQuadra == null || esportesDaQuadra.isEmpty()) {
+            throw new IllegalStateException("Esta quadra não tem nenhum esporte configurado e não pode ser agendada.");
+
+        } else if (esportesDaQuadra.size() == 1) {
+            // Se a quadra só tem 1 esporte, ele é selecionado automaticamente.
+            esporteAgendado = esportesDaQuadra.get(0);
+
+        } else {
+            // Se a quadra tem múltiplos esportes, o DTO PRECISA especificar um.
+            if (dto.getEsporte() == null) {
+                throw new IllegalArgumentException("Esta quadra suporta múltiplos esportes. Especifique o esporte a ser agendado.");
+            }
+            if (!esportesDaQuadra.contains(dto.getEsporte())) {
+                throw new IllegalArgumentException("O esporte '"+ dto.getEsporte() + "' não é válido para esta quadra.");
+            }
+            esporteAgendado = dto.getEsporte();
+        }
+
+        // Converte o DTO externo para o DTO de criação padrão
+        AgendamentoCreateDTO agendamentoCoreDto = agendamentoMapper.fromExternoToCreateDTO(dto);
+
+        // Garante que o esporte correto seja usado
+        agendamentoCoreDto.setEsporte(esporteAgendado);
+
+        return this.criarAgendamento(agendamentoCoreDto, atleta.getId());
     }
 }

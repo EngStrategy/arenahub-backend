@@ -4,6 +4,7 @@ import com.engstrategy.alugai_api.dto.atleta.AtletaCreateDTO;
 import com.engstrategy.alugai_api.dto.atleta.AtletaResponseDTO;
 import com.engstrategy.alugai_api.model.Atleta;
 import com.engstrategy.alugai_api.model.enums.Role;
+import com.engstrategy.alugai_api.model.enums.TipoContaAtleta;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -17,6 +18,7 @@ public class AtletaMapper {
                 .senha(atletaCreateDTO.getSenha())
                 .role(Role.ATLETA)
                 .ativo(false)
+                .tipoConta(TipoContaAtleta.COMPLETO)
                 .build();
     }
 

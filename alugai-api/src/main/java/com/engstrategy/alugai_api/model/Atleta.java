@@ -1,12 +1,8 @@
 package com.engstrategy.alugai_api.model;
 
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Entity;
-import jakarta.persistence.OneToMany;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import com.engstrategy.alugai_api.model.enums.TipoContaAtleta;
+import jakarta.persistence.*;
+import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 import java.util.ArrayList;
@@ -20,9 +16,15 @@ import java.util.List;
 @SuperBuilder
 public class Atleta extends Usuario {
 
+    @Builder.Default
     @OneToMany(mappedBy = "atleta", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Agendamento> agendamentos = new ArrayList<>();
 
+    @Builder.Default
     @OneToMany(mappedBy = "solicitante", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SolicitacaoEntrada> solicitacoes = new ArrayList<>();
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private TipoContaAtleta tipoConta;
 }

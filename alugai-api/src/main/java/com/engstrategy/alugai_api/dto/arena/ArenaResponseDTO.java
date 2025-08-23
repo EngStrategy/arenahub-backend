@@ -56,6 +56,9 @@ public class ArenaResponseDTO {
     @Schema(description = "Media da nota de avaliação da arena", example = "4.5")
     private Double notaMedia;
 
+    @Schema(description = "Hora de antecedência de agendamento", example = "2")
+    private Integer horasCancelarAgendamento;
+
     @Schema(description = "Quantidade de avaliações", example = "10")
     private Long quantidadeAvaliacoes;
 }

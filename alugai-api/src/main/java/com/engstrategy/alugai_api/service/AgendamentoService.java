@@ -1,6 +1,7 @@
 package com.engstrategy.alugai_api.service;
 
 import com.engstrategy.alugai_api.dto.agendamento.AgendamentoCreateDTO;
+import com.engstrategy.alugai_api.dto.agendamento.AgendamentoExternoCreateDTO;
 import com.engstrategy.alugai_api.model.Agendamento;
 import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
 import com.engstrategy.alugai_api.model.enums.TipoAgendamento;
@@ -35,4 +36,8 @@ public interface AgendamentoService {
 
     Agendamento atualizarStatus(Long agendamentoId, Long arenaId, StatusAgendamento novoStatus);
     List<Agendamento> buscarAgendamentosParaAvaliacao(Long atletaId);
+
+    List<Agendamento> buscarPendentesAcaoPorArenaId(Long arenaId);
+
+    Agendamento criarAgendamentoExterno(AgendamentoExternoCreateDTO dto, Long arenaId);
 }

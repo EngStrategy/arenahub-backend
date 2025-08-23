@@ -25,6 +25,7 @@ public class HorarioFuncionamento {
     @Enumerated(EnumType.STRING)
     private DiaDaSemana diaDaSemana;
 
+    @Builder.Default
     @OneToMany(mappedBy = "horarioFuncionamento", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<IntervaloHorario> intervalosDeHorario = new HashSet<>();
 

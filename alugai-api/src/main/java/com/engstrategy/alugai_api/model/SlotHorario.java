@@ -37,6 +37,7 @@ public class SlotHorario {
     @JoinColumn(name = "intervalo_horario_id", nullable = false)
     private IntervaloHorario intervaloHorario;
 
+    @Builder.Default
     @ManyToMany(mappedBy = "slotsHorario")
     private List<Agendamento> agendamentos = new ArrayList<>();
 }

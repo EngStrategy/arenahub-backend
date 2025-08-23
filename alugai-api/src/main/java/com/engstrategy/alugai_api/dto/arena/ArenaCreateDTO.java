@@ -51,6 +51,11 @@ public class ArenaCreateDTO {
     @Valid
     private EnderecoDTO endereco;
 
+    @Schema(description = "Até quantas horas antes o atleta pode cancelar", required = true)
+    @NotNull(message = "Hora de antecedencia de cancelamento é obrigatório")
+    @Min(value = 0, message = "O valor não pode ser negativo.")
+    private Integer horasCancelarAgendamento;
+
     @Schema(description = "Descrição da arena", example = "Arena com quadras de futebol society e tênis")
     @Size(max = 500, message = "Descrição deve ter no máximo 500 caracteres")
     private String descricao;

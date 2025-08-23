@@ -17,6 +17,8 @@ import java.util.Optional;
 @Repository
 public interface AtletaRepository extends JpaRepository<Atleta, Long> {
 
+    Optional<Atleta> findAtletaByTelefone(String telefone);
+
     boolean existsByEmail(String email);
 
     boolean existsByTelefone(String telefone);
@@ -55,4 +57,15 @@ public interface AtletaRepository extends JpaRepository<Atleta, Long> {
     List<Agendamento> findProximosAgendamentosDoDia(@Param("arenaId") Long arenaId,
                                                     @Param("dataAtual") LocalDate dataAtual,
                                                     @Param("horarioAtual") LocalTime horarioAtual);
+
+    @Query("SELECT a FROM Atleta a " +
+            "WHERE lower(a.nome) LIKE lower(concat('%', :query, '%')) " +
+            "OR ( " +
+            "   :telefoneQuery <> '' AND " +
+            "   REPLACE(REPLACE(REPLACE(REPLACE(a.telefone, '(', ''), ')', ''), '-', ''), ' ', '') LIKE concat('%', :telefoneQuery, '%')" +
+            ")")
+    List<Atleta> searchByNomeOuTelefone(
+            @Param("query") String query,
+            @Param("telefoneQuery") String telefoneQuery
+    );
 }

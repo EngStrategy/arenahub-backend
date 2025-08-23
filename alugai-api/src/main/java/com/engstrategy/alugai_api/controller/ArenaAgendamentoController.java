@@ -1,7 +1,10 @@
 package com.engstrategy.alugai_api.controller;
 
+import com.engstrategy.alugai_api.dto.agendamento.AgendamentoExternoCreateDTO;
+import com.engstrategy.alugai_api.dto.agendamento.AgendamentoResponseDTO;
 import com.engstrategy.alugai_api.dto.agendamento.AtualizarStatusAgendamentoDTO;
 import com.engstrategy.alugai_api.dto.agendamento.arena.AgendamentoArenaResponseDTO;
+import com.engstrategy.alugai_api.exceptions.AccessDeniedException;
 import com.engstrategy.alugai_api.jwt.CustomUserDetails;
 import com.engstrategy.alugai_api.mapper.AgendamentoMapper;
 import com.engstrategy.alugai_api.model.Agendamento;
@@ -20,12 +23,16 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/arena/agendamentos")
@@ -87,5 +94,37 @@ public class ArenaAgendamentoController {
         Agendamento agendamentoAtualizado = agendamentoService.atualizarStatus(agendamentoId, arenaId, request.getStatus());
         AgendamentoArenaResponseDTO response = agendamentoMapper.fromAgendamentoToArenaResponseDTO(agendamentoAtualizado);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/pendentes-resolucao")
+    @Operation(summary = "Listar agendamentos pendentes que exigem ação da arena", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<List<AgendamentoArenaResponseDTO>> listarAgendamentosPendentes(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        Long arenaId = userDetails.getUserId();
+
+        List<Agendamento> agendamentosPendentes = agendamentoService.buscarPendentesAcaoPorArenaId(arenaId);
+
+        List<AgendamentoArenaResponseDTO> response = agendamentosPendentes.stream()
+                .map(agendamentoMapper::fromAgendamentoToArenaResponseDTO)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/externo")
+    @Operation(summary = "Criar novo agendamento externo (pela Arena)", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<AgendamentoResponseDTO> criarAgendamentoExterno(
+            @RequestBody @Valid AgendamentoExternoCreateDTO dto,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        // Garante que quem está logado é uma Arena
+        if (userDetails.getAuthorities().contains(new SimpleGrantedAuthority("ATLETA"))) {
+            throw new AccessDeniedException("Apenas arenas podem criar agendamentos externos.");
+        }
+
+        Agendamento agendamento = agendamentoService.criarAgendamentoExterno(dto, userDetails.getUserId());
+        AgendamentoResponseDTO response = agendamentoMapper.fromAgendamentoToResponseDTO(agendamento);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }

@@ -107,7 +107,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(UnavailableDateTimeException.class)
-    public ResponseEntity<ErrorResponse> handleUnavailableDateTime(UnavailableDateTimeException ex){
+    public ResponseEntity<ErrorResponse> handleUnavailableDateTime(UnavailableDateTimeException ex) {
         ErrorResponse error = new ErrorResponse("UNAVAILABLE_DATE_TIME", ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
@@ -151,5 +151,14 @@ public class GlobalExceptionHandler {
 
         ErrorResponse error = new ErrorResponse("VALIDATION_ERROR", message);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    @ExceptionHandler(ExternalAccountExistsException.class)
+    public ResponseEntity<ErrorResponse> handleExternalAccountExists(ExternalAccountExistsException ex) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                "EXTERNAL_ACCOUNT_EXISTS",
+                ex.getMessage()
+        );
+        return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
     }
 }

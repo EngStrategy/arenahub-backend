@@ -162,16 +162,10 @@ public class ArenaController {
     public ResponseEntity<ArenaDashboardDTO> getDashboardData(
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        // Tentamos buscar a arena com o userId do token.
-        // Se a busca falhar (retornar uma exceção NotFoundException), significa que o usuário logado não é uma Arena,
-        // e o ExceptionHandler pode lidar com isso retornando 404/403.
-        // Ou você pode usar um try-catch para ser explícito.
         try {
             ArenaDashboardDTO dashboardData = arenaService.getDashboardData(userDetails.getUserId());
             return ResponseEntity.ok(dashboardData);
         } catch (UserNotFoundException e) {
-            // Se o usuário não for uma Arena, o service lança NotFoundException
-            // Tratamos como acesso negado (Forbidden).
             return ResponseEntity.status(403).build();
         }
     }
