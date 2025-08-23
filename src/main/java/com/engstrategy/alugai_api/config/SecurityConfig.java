@@ -90,7 +90,8 @@ public class SecurityConfig {
                 "http://localhost:8080",    // Backend (para testes diretos)
                 "http://127.0.0.1:3000",   // Variação do localhost
                 "http://127.0.0.1:5173",   // Variação do localhost
-                "http://10.8.0.54:3000"   // Variação do localhost
+                "http://10.8.0.54:3000",   // Variação do localhost
+                "https://arenahub.vercel.app"
         ));
 
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
