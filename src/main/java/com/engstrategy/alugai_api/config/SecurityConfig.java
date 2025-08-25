@@ -60,6 +60,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/forgot-password").permitAll()
                         .requestMatchers("/api/v1/verify-reset-code").permitAll()
                         .requestMatchers( "/api/v1/reset-password").permitAll()
+                        .requestMatchers( "/api/v1/feedback").permitAll()
                         // endpoints com autorização
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/agendamentos/**").hasAnyRole("ATLETA", "ARENA")
                         .requestMatchers("/api/v1/jogos-abertos/**").hasRole("ATLETA")
@@ -91,6 +92,7 @@ public class SecurityConfig {
                 "http://127.0.0.1:3000",   // Variação do localhost
                 "http://127.0.0.1:5173",   // Variação do localhost
                 "http://10.8.0.54:3000",   // Variação do localhost
+                "http://192.168.1.29:3000",   // Variação do localhost
                 "https://arenahub.vercel.app",
                 "https://alugaiapirest-10efa692a5d3.herokuapp.com",
                 "https://arenahub-d665d54c598e.herokuapp.com"

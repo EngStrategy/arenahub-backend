@@ -4,6 +4,8 @@ server:
       max: 20
 springdoc:
   server-url: https://arenahub-d665d54c598e.herokuapp.com
+arenahub:
+  admin-email: saviosoares0402@gmail.com
 spring:
   profiles:
     active: dev
@@ -27,13 +29,18 @@ spring:
     port: 587
     username: engstrategy05@gmail.com
     password: csrycjlmdxwswclg
+    from: engstrategy05@gmail.com
     properties:
       mail:
         smtp:
           auth: true
           starttls:
             enable: true
-      test-connection: true
+          ssl:
+            trust: "smtp.gmail.com"
+          localhost: "localhost"
+        debug: false
+      #test-connection: true
 zenvia:
   api-token: POz_IOVwRJaZhBPG1eyxQFyJ2BG5H9PBad3f
   sender-id: shard-vertebra
