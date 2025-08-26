@@ -26,7 +26,7 @@ public class CodigoVerificacaoService {
     private final CodigoVerificacaoRepository codigoVerificacaoRepository;
     private final AtletaRepository atletaRepository;
     private final ArenaRepository arenaRepository;
-    private final UserService userService;
+    private final UserServiceImpl userServiceImpl;
     private final EmailService emailService;
 
     private static final int RESEND_COOLDOWN_MINUTES = 2;
@@ -38,7 +38,7 @@ public class CodigoVerificacaoService {
 
     @Transactional
     public void confirmCode(CodigoVerificacao codigo) {
-        Usuario usuario = userService.findUserByEmail(codigo.getEmail());
+        Usuario usuario = userServiceImpl.findUserByEmail(codigo.getEmail());
 
         if (usuario == null) {
             throw new UserNotFoundException("Usuário não encontrado");
@@ -63,7 +63,7 @@ public class CodigoVerificacaoService {
 
     @Transactional
     public void resendVerificationCode(String email) {
-        Usuario usuario = userService.findUserByEmail(email);
+        Usuario usuario = userServiceImpl.findUserByEmail(email);
 
         if (usuario == null) {
             throw new UserNotFoundException("Email não registrado");
@@ -105,6 +105,6 @@ public class CodigoVerificacaoService {
         newCode.setResendCount(validCodes.isEmpty() ? 1 : validCodes.getFirst().getResendCount() + 1);
         codigoVerificacaoRepository.save(newCode);
 
-        emailService.enviarCodigoVerificacao(email, userService.findUserByEmail(email).getNome(), newCode.getCode());
+        emailService.enviarCodigoVerificacao(email, userServiceImpl.findUserByEmail(email).getNome(), newCode.getCode());
     }
 }

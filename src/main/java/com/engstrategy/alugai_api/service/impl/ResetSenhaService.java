@@ -10,7 +10,6 @@ import com.engstrategy.alugai_api.service.ArenaService;
 import com.engstrategy.alugai_api.service.AtletaService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -21,7 +20,7 @@ import java.util.Random;
 @RequiredArgsConstructor
 public class ResetSenhaService {
     private final CodigoResetSenhaRepository codigoResetSenhaRepository;
-    private final UserService userService;
+    private final UserServiceImpl userServiceImpl;
     private final EmailService emailService;
     private final AtletaService atletaService;
     private final ArenaService arenaService;
@@ -32,7 +31,7 @@ public class ResetSenhaService {
 
     @Transactional
     public void solicitarResetSenha(String email) {
-        Usuario usuario = userService.findUserByEmail(email);
+        Usuario usuario = userServiceImpl.findUserByEmail(email);
         if (usuario == null) {
             // Por segurança, não revelamos se o email existe ou não
             return;
@@ -100,7 +99,7 @@ public class ResetSenhaService {
 
     @Transactional
     public void redefinirSenha(String email, String novaSenha) {
-        Usuario usuario = userService.findUserByEmail(email);
+        Usuario usuario = userServiceImpl.findUserByEmail(email);
         if (usuario == null) {
             throw new UserNotFoundException("Usuário não encontrado");
         }

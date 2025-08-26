@@ -37,7 +37,7 @@ public class AtletaServiceImpl implements AtletaService {
     private final PasswordEncoder passwordEncoder;
     private final CodigoVerificacaoRepository codigoVerificacaoRepository;
     private final EmailService emailService;
-    private final UserService userService;
+    private final UserServiceImpl userServiceImpl;
     private final CodigoVerificacaoSmsRepository codigoSmsRepository;
     private final SmsService smsService;
 
@@ -105,7 +105,7 @@ public class AtletaServiceImpl implements AtletaService {
     }
 
     private void validarDadosUnicos(String email, String telefone) {
-        if (userService.existsByEmail(email)) {
+        if (userServiceImpl.existsByEmail(email)) {
             throw new UniqueConstraintViolationException("Email já está em uso.");
         }
 

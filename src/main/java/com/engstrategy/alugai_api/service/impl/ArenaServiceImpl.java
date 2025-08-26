@@ -14,7 +14,6 @@ import com.engstrategy.alugai_api.repository.specs.ArenaSpecs;
 import com.engstrategy.alugai_api.service.ArenaService;
 import com.engstrategy.alugai_api.util.GeradorCodigoVerificacao;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -39,7 +38,7 @@ public class ArenaServiceImpl implements ArenaService {
     private final EnderecoMapper enderecoMapper;
     private final CodigoVerificacaoRepository codigoVerificacaoRepository;
     private final EmailService emailService;
-    private final UserService userService;
+    private final UserServiceImpl userServiceImpl;
     private final AgendamentoRepository agendamentoRepository;
     private final AvaliacaoRepository avaliacaoRepository;
     private final ArenaMapper arenaMapper;
@@ -172,10 +171,10 @@ public class ArenaServiceImpl implements ArenaService {
     }
 
     private void validarDadosUnicos(String email, String telefone, String cpfProprietario, String cnpj) {
-        if (userService.existsByEmail(email)) {
+        if (userServiceImpl.existsByEmail(email)) {
             throw new UniqueConstraintViolationException("Email já está em uso.");
         }
-        if (userService.existsByTelefone(telefone)) {
+        if (userServiceImpl.existsByTelefone(telefone)) {
             throw new UniqueConstraintViolationException("Telefone já está em uso.");
         }
         if (arenaRepository.existsByCpfProprietario(cpfProprietario)) {

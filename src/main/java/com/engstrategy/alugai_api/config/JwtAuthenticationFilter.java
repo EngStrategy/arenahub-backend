@@ -5,7 +5,7 @@ import com.engstrategy.alugai_api.jwt.CustomUserDetails;
 import com.engstrategy.alugai_api.jwt.JwtService;
 import com.engstrategy.alugai_api.model.Usuario;
 import com.engstrategy.alugai_api.model.enums.Role;
-import com.engstrategy.alugai_api.service.impl.UserService;
+import com.engstrategy.alugai_api.service.impl.UserServiceImpl;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,7 +25,7 @@ import java.util.Collections;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-    private final UserService userService;
+    private final UserServiceImpl userServiceImpl;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -46,13 +46,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             Long userId = jwtService.getUserIdFromToken(token);
 
             if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                Usuario usuario = userService.findUserById(userId, role);
+                Usuario usuario = userServiceImpl.findUserById(userId, role);
 
                 if (usuario != null) {
                     CustomUserDetails userDetails = new CustomUserDetails(
                             usuario.getEmail(),
                             usuario.getId(),
-                            Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + usuario.getRole().name()))
+                            Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + usuario.getRole().name())),
+                            usuario.isAtivo(),
+                            usuario.getSenha()
                     );
 
                     UsernamePasswordAuthenticationToken authToken =

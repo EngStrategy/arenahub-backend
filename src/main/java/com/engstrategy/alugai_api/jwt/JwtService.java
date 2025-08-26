@@ -4,80 +4,79 @@ import com.engstrategy.alugai_api.model.Usuario;
 import com.engstrategy.alugai_api.model.enums.Role;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import lombok.RequiredArgsConstructor;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+import javax.crypto.SecretKey; // IMPORTAR SecretKey
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Function;
 
 @Service
-@RequiredArgsConstructor
 public class JwtService {
 
-    private final SecretKeyGenerator secretKeyGenerator;
-    private static final long EXPIRATION_HOURS = 24;
-    private static final long EXPIRATION_SECONDS = EXPIRATION_HOURS * 3600;
+    @Value("${jwt.secret-key}")
+    private String secretKey;
 
-    public long getExpirationInSeconds() {
-        return EXPIRATION_SECONDS;
+    private final long expirationTime = 86400000;
+
+    public String getEmailFromToken(String token) {
+        return extractClaim(token, Claims::getSubject);
     }
 
-    public String generateToken(Usuario user) {
-        var key = secretKeyGenerator.getKey();
-        var expirationDate = generateExpirationDate();
-        var claims = generateTokenClaims(user);
+    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
+        final Claims claims = extractAllClaims(token);
+        return claimsResolver.apply(claims);
+    }
 
-        return Jwts
-                .builder()
-                .signWith(key)
-                .subject(user.getEmail())
-                .expiration(expirationDate)
-                .claims(claims)
+    public String generateToken(Usuario usuario) {
+        Map<String, Object> extraClaims = new HashMap<>();
+        extraClaims.put("userId", usuario.getId());
+        extraClaims.put("role", usuario.getRole().name());
+
+        return Jwts.builder()
+                .claims(extraClaims)
+                .subject(usuario.getEmail())
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + expirationTime))
+                .signWith(getSignInKey()) // O método signWith aceita o tipo SecretKey
                 .compact();
     }
 
-    public Claims validateToken(String token) {
-        try {
-            var key = secretKeyGenerator.getKey();
-            return Jwts.parser()
-                    .verifyWith(key)
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload();
-        } catch (Exception e) {
-            throw new RuntimeException("Token inválido");
-        }
+    private Claims extractAllClaims(String token) {
+        return Jwts.parser()
+                .verifyWith(getSignInKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 
-    public String getEmailFromToken(String token) {
-        Claims claims = validateToken(token);
-        return claims.getSubject();
-    }
-
-    public Role getRoleFromToken(String token) {
-        Claims claims = validateToken(token);
-        String role = claims.get("role", String.class);
-        return Role.valueOf(role);
+    private SecretKey getSignInKey() {
+        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
+        return Keys.hmacShaKeyFor(keyBytes);
     }
 
     public Long getUserIdFromToken(String token) {
-        Claims claims = validateToken(token);
-        return claims.get("id", Long.class);
+        return extractClaim(token, claims -> claims.get("userId", Long.class));
     }
 
-    private Date generateExpirationDate() {
-        LocalDateTime now = LocalDateTime.now().plusHours(EXPIRATION_HOURS);
-        return Date.from(now.atZone(ZoneId.systemDefault()).toInstant());
+    public Role getRoleFromToken(String token) {
+        String roleStr = extractClaim(token, claims -> claims.get("role", String.class));
+        return Role.valueOf(roleStr);
     }
 
-    private Map<String, Object> generateTokenClaims(Usuario user) {
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("name", user.getNome());
-        claims.put("id", user.getId());
-        claims.put("role", user.getRole().toString());
-        return claims;
+    public long getExpirationInSeconds() {
+        return expirationTime / 1000;
+    }
+
+    private boolean isTokenExpired(String token) {
+        return extractExpiration(token).before(new Date());
+    }
+
+    private Date extractExpiration(String token) {
+        return extractClaim(token, Claims::getExpiration);
     }
 }

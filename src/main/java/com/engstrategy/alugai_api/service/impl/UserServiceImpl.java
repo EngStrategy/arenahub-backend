@@ -1,19 +1,23 @@
 package com.engstrategy.alugai_api.service.impl;
 
+import com.engstrategy.alugai_api.jwt.CustomUserDetails;
 import com.engstrategy.alugai_api.model.Arena;
 import com.engstrategy.alugai_api.model.Atleta;
 import com.engstrategy.alugai_api.model.Usuario;
 import com.engstrategy.alugai_api.model.enums.Role;
 import com.engstrategy.alugai_api.repository.ArenaRepository;
 import com.engstrategy.alugai_api.repository.AtletaRepository;
+import com.engstrategy.alugai_api.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-public class UserService {
+public class UserServiceImpl implements UserService {
 
     private final ArenaRepository arenaRepository;
     private final AtletaRepository atletaRepository;
@@ -45,5 +49,14 @@ public class UserService {
             return atletaRepository.findById(id).orElse(null);
         }
         return null;
+    }
+
+    @Override
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        Usuario usuario = findUserByEmail(email);
+        if (usuario == null) {
+            throw new UsernameNotFoundException("Usuário não encontrado com o e-mail: " + email);
+        }
+        return new CustomUserDetails(usuario);
     }
 }

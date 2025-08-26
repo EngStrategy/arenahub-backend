@@ -30,7 +30,6 @@ public class Feedback {
     @Column(nullable = false)
     private TipoFeedback tipo;
 
-//  SQL para ver a mensagem SELECT convert_from(lo_get(mensagem::oid), 'UTF8') AS mensagem_real FROM feedbacks;
     @Lob
     @Column(nullable = false, columnDefinition = "TEXT")
     private String mensagem;

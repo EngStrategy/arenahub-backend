@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
 public class FeedbackServiceImpl implements FeedbackService {
 
     private final FeedbackRepository feedbackRepository;
-     private final EmailService emailService;
+    private final EmailService emailService;
 
     @Override
     public void salvarFeedback(FeedbackCreateDTO feedbackCreateDTO) {
@@ -25,6 +25,6 @@ public class FeedbackServiceImpl implements FeedbackService {
 
         Feedback feedbackSalvo = feedbackRepository.save(novoFeedback);
 
-         emailService.notificarAdminNovoFeedback(feedbackSalvo);
+        emailService.notificarAdminNovoFeedback(feedbackSalvo);
     }
 }
