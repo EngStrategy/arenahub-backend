@@ -9,13 +9,14 @@ import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 public interface QuadraService {
-    Quadra criarQuadra(Quadra quadra, Long arenaId);
+    Quadra criarQuadra(Quadra quadra, UUID arenaId);
     Quadra buscarPorId(Long id);
-    Page<Quadra> listarTodos(Pageable pageable, Long arenaId, String esporte);
-    Quadra atualizar(Long id, QuadraUpdateDTO quadraUpdateDTO, Long arenaId);
-    void excluir(Long id, Long arenaId);
-    List<QuadraResponseDTO> buscarPorArenaId(Long arenaId);
+    Page<Quadra> listarTodos(Pageable pageable, UUID arenaId, String esporte);
+    Quadra atualizar(Long id, QuadraUpdateDTO quadraUpdateDTO, UUID arenaId);
+    void excluir(Long id, UUID arenaId);
+    List<QuadraResponseDTO> buscarPorArenaId(UUID arenaId);
     List<SlotHorarioResponseDTO> consultarDisponibilidade(Long quadraId, LocalDate data);
 }

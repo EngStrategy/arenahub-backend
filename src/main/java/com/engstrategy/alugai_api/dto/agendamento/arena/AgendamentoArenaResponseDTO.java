@@ -15,6 +15,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -39,7 +40,7 @@ public class AgendamentoArenaResponseDTO {
     private String nomeQuadra;
 
     // Informações do atleta
-    private Long atletaId;
+    private UUID atletaId;
     private String nomeAtleta;
     private String emailAtleta;
     private String telefoneAtleta;

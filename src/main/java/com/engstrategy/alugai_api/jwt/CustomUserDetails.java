@@ -8,16 +8,17 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.UUID;
 
 public class CustomUserDetails implements UserDetails {
     private final String email;
     @Getter
-    private final Long userId;
+    private final UUID userId;
     private final Collection<? extends GrantedAuthority> authorities;
     private final boolean isAtivo;
     private final String password; // 1. Adicionado campo para a senha
 
-    public CustomUserDetails(String email, Long userId, Collection<? extends GrantedAuthority> authorities, boolean isAtivo, String password) {
+    public CustomUserDetails(String email, UUID userId, Collection<? extends GrantedAuthority> authorities, boolean isAtivo, String password) {
         this.email = email;
         this.userId = userId;
         this.authorities = authorities;

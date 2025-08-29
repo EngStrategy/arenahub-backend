@@ -27,6 +27,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/atletas")
@@ -64,7 +65,7 @@ public class AtletaController {
     })
     public ResponseEntity<AtletaResponseDTO> buscarAtletaPorId(
             @Parameter(description = "ID do atleta", required = true)
-            @PathVariable Long id) {
+            @PathVariable UUID id) {
 
         Atleta atleta = atletaService.buscarPorId(id);
         AtletaResponseDTO response = atletaMapper.mapAtletaToAtletaResponseDto(atleta);
@@ -103,7 +104,7 @@ public class AtletaController {
     })
     public ResponseEntity<AtletaResponseDTO> atualizarAtleta(
             @Parameter(description = "ID do atleta", required = true)
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @Valid @RequestBody AtletaUpdateDTO atletaUpdateDTO) {
 
         Atleta updatedAtleta = atletaService.atualizar(id, atletaUpdateDTO);
@@ -119,7 +120,7 @@ public class AtletaController {
     })
     public ResponseEntity<Void> excluirAtleta(
             @Parameter(description = "ID do atleta", required = true)
-            @PathVariable Long id) {
+            @PathVariable UUID id) {
         atletaService.excluir(id);
         return ResponseEntity.noContent().build();
     }

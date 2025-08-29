@@ -11,14 +11,15 @@ import org.springframework.data.domain.Pageable;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.UUID;
 
 public interface AgendamentoService {
 
-    Agendamento criarAgendamento(AgendamentoCreateDTO dto, Long atletaId);
+    Agendamento criarAgendamento(AgendamentoCreateDTO dto, UUID atletaId);
 
-    void cancelarAgendamento(Long agendamentoId, Long atletaId);
+    void cancelarAgendamento(Long agendamentoId, UUID atletaId);
 
-    Page<Agendamento> buscarPorAtletaId(Long atletaId,
+    Page<Agendamento> buscarPorAtletaId(UUID atletaId,
                                         LocalDate dataInicio,
                                         LocalDate dataFim,
                                         TipoAgendamento tipoAgendamento,
@@ -27,17 +28,17 @@ public interface AgendamentoService {
 
     Agendamento buscarPorId(Long agendamentoId);
 
-    Page<Agendamento> buscarPorArenaId(Long arenaId,
+    Page<Agendamento> buscarPorArenaId(UUID arenaId,
                                        LocalDate dataInicio,
                                        LocalDate dataFim,
                                        StatusAgendamento status,
                                        Long quadraId,
                                        Pageable pageable);
 
-    Agendamento atualizarStatus(Long agendamentoId, Long arenaId, StatusAgendamento novoStatus);
-    List<Agendamento> buscarAgendamentosParaAvaliacao(Long atletaId);
+    Agendamento atualizarStatus(Long agendamentoId, UUID arenaId, StatusAgendamento novoStatus);
+    List<Agendamento> buscarAgendamentosParaAvaliacao(UUID atletaId);
 
-    List<Agendamento> buscarPendentesAcaoPorArenaId(Long arenaId);
+    List<Agendamento> buscarPendentesAcaoPorArenaId(UUID arenaId);
 
-    Agendamento criarAgendamentoExterno(AgendamentoExternoCreateDTO dto, Long arenaId);
+    Agendamento criarAgendamentoExterno(AgendamentoExternoCreateDTO dto, UUID arenaId);
 }

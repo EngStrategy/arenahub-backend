@@ -30,6 +30,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -47,7 +48,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
 
     @Override
     @Transactional
-    public Agendamento criarAgendamento(AgendamentoCreateDTO dto, Long atletaId) {
+    public Agendamento criarAgendamento(AgendamentoCreateDTO dto, UUID atletaId) {
         log.info("Iniciando criação de agendamento para atleta ID: {} na data: {}",
                 atletaId, dto.getDataAgendamento());
 
@@ -198,7 +199,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
 
     @Override
     @Transactional
-    public void cancelarAgendamento(Long agendamentoId, Long atletaId) {
+    public void cancelarAgendamento(Long agendamentoId, UUID atletaId) {
         log.info("Cancelando agendamento ID: {} para atleta ID: {}", agendamentoId, atletaId);
 
         Agendamento agendamento = agendamentoRepository.findById(agendamentoId)
@@ -276,7 +277,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
     }
 
     @Override
-    public Page<Agendamento> buscarPorAtletaId(Long atletaId,
+    public Page<Agendamento> buscarPorAtletaId(UUID atletaId,
                                                LocalDate dataInicio,
                                                LocalDate dataFim,
                                                TipoAgendamento tipoAgendamento,
@@ -319,7 +320,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
     }
 
     @Override
-    public Page<Agendamento> buscarPorArenaId(Long arenaId,
+    public Page<Agendamento> buscarPorArenaId(UUID arenaId,
                                               LocalDate dataInicio,
                                               LocalDate dataFim,
                                               StatusAgendamento status,
@@ -357,7 +358,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
 
     @Override
     @Transactional
-    public Agendamento atualizarStatus(Long agendamentoId, Long arenaId, StatusAgendamento novoStatus) {
+    public Agendamento atualizarStatus(Long agendamentoId, UUID arenaId, StatusAgendamento novoStatus) {
         log.info("Atualizando status do agendamento ID: {} para {}", agendamentoId, novoStatus);
 
         Agendamento agendamento = agendamentoRepository.findById(agendamentoId)
@@ -394,7 +395,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<Agendamento> buscarAgendamentosParaAvaliacao(Long atletaId) {
+    public List<Agendamento> buscarAgendamentosParaAvaliacao(UUID atletaId) {
         LocalDate hoje = LocalDate.now(fusoHorarioPadrao);
         LocalTime agora = LocalTime.now(fusoHorarioPadrao);
 
@@ -402,7 +403,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
     }
 
 
-    private void validarPermissaoCancelamento(Agendamento agendamento, Long userId) {
+    private void validarPermissaoCancelamento(Agendamento agendamento, UUID userId) {
         if (!agendamento.getAtleta().getId().equals(userId) && !agendamento.getQuadra().getArena().getId().equals(userId)) {
             throw new AccessDeniedException("Usuário não autorizado!");
         }
@@ -410,7 +411,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<Agendamento> buscarPendentesAcaoPorArenaId(Long arenaId) {
+    public List<Agendamento> buscarPendentesAcaoPorArenaId(UUID arenaId) {
         LocalDate dataAtual = LocalDate.now(fusoHorarioPadrao);
         LocalTime horaAtual = LocalTime.now(fusoHorarioPadrao);
 
@@ -419,7 +420,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
 
     @Override
     @Transactional
-    public Agendamento criarAgendamentoExterno(AgendamentoExternoCreateDTO dto, Long arenaId) {
+    public Agendamento criarAgendamentoExterno(AgendamentoExternoCreateDTO dto, UUID arenaId) {
         Atleta atleta;
 
         // Determina o atleta (existente ou novo)

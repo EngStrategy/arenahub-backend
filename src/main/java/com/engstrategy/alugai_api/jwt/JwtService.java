@@ -9,10 +9,11 @@ import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import javax.crypto.SecretKey; // IMPORTAR SecretKey
+import javax.crypto.SecretKey;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 
 @Service
@@ -23,7 +24,7 @@ public class JwtService {
 
     private final long expirationTime = 86400000;
 
-    public String getEmailFromToken(String token) {
+    public String getUserIdAsStringFromToken(String token) {
         return extractClaim(token, Claims::getSubject);
     }
 
@@ -34,16 +35,25 @@ public class JwtService {
 
     public String generateToken(Usuario usuario) {
         Map<String, Object> extraClaims = new HashMap<>();
-        extraClaims.put("userId", usuario.getId());
         extraClaims.put("role", usuario.getRole().name());
 
         return Jwts.builder()
                 .claims(extraClaims)
-                .subject(usuario.getEmail())
+                .subject(usuario.getId().toString())
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + expirationTime))
-                .signWith(getSignInKey()) // O método signWith aceita o tipo SecretKey
+                .signWith(getSignInKey())
                 .compact();
+    }
+
+    public UUID getUserIdFromToken(String token) {
+        String subject = extractClaim(token, Claims::getSubject);
+        return UUID.fromString(subject);
+    }
+
+    public Role getRoleFromToken(String token) {
+        String roleStr = extractClaim(token, claims -> claims.get("role", String.class));
+        return Role.valueOf(roleStr);
     }
 
     private Claims extractAllClaims(String token) {
@@ -57,15 +67,6 @@ public class JwtService {
     private SecretKey getSignInKey() {
         byte[] keyBytes = Decoders.BASE64.decode(secretKey);
         return Keys.hmacShaKeyFor(keyBytes);
-    }
-
-    public Long getUserIdFromToken(String token) {
-        return extractClaim(token, claims -> claims.get("userId", Long.class));
-    }
-
-    public Role getRoleFromToken(String token) {
-        String roleStr = extractClaim(token, claims -> claims.get("role", String.class));
-        return Role.valueOf(roleStr);
     }
 
     public long getExpirationInSeconds() {

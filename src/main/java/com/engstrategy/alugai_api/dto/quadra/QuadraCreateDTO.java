@@ -16,6 +16,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.validator.constraints.URL;
 
 import java.util.List;
+import java.util.UUID;
 
 @Data
 @NoArgsConstructor
@@ -56,7 +57,7 @@ public class QuadraCreateDTO {
 
     @Schema(description = "ID da arena associada", example = "1", required = true)
     @NotNull(message = "ID da arena é obrigatório")
-    private Long arenaId;
+    private UUID arenaId;
 
     @Schema(description = "Horários de funcionamento da quadra", required = true)
     @Valid

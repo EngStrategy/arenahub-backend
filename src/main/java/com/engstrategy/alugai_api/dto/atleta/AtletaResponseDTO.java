@@ -9,6 +9,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Schema(description = "Resposta com dados do atleta")
 @Data
@@ -18,7 +19,7 @@ import java.time.LocalDateTime;
 public class AtletaResponseDTO {
 
     @Schema(description = "ID do atleta", example = "1")
-    private Long id;
+    private UUID id;
 
     @Schema(description = "Nome do atleta", example = "João Silva")
     private String nome;

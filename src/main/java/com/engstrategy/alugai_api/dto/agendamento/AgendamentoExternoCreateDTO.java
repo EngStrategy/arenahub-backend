@@ -11,6 +11,7 @@ import lombok.Setter;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -28,7 +29,7 @@ public class AgendamentoExternoCreateDTO {
 
     private TipoEsporte esporte;
 
-    private Long atletaExistenteId;
+    private UUID atletaExistenteId;
 
     @Valid
     private NovoAtletaExternoDTO novoAtleta;

@@ -25,6 +25,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -191,7 +192,7 @@ public class AgendamentoFixoServiceImpl implements AgendamentoFixoService {
     }
 
     @Override
-    public void cancelarAgendamentoFixo(Long agendamentoFixoId, Long usuarioId) {
+    public void cancelarAgendamentoFixo(Long agendamentoFixoId, UUID usuarioId) {
         log.info("Cancelando agendamento fixo ID: {}", agendamentoFixoId);
 
         AgendamentoFixo agendamentoFixo = agendamentoFixoRepository.findById(agendamentoFixoId)
@@ -230,7 +231,7 @@ public class AgendamentoFixoServiceImpl implements AgendamentoFixoService {
     }
 
     @Override
-    public List<AgendamentoFixo> listarAgendamentosFixosAtivos(Long atletaId) {
+    public List<AgendamentoFixo> listarAgendamentosFixosAtivos(UUID atletaId) {
         return agendamentoFixoRepository.findByAtletaIdAndStatus(atletaId, StatusAgendamentoFixo.ATIVO);
     }
 

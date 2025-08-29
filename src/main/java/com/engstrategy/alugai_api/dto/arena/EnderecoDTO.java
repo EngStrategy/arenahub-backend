@@ -1,9 +1,7 @@
 package com.engstrategy.alugai_api.dto.arena;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -44,4 +42,14 @@ public class EnderecoDTO {
 
     @Schema(description = "Complemento", example = "Apto 101")
     private String complemento;
+
+    @NotNull(message = "A latitude é obrigatória")
+    @Min(value = -90, message = "Latitude deve ser no mínimo -90")
+    @Max(value = 90, message = "Latitude deve ser no máximo 90")
+    private Double latitude;
+
+    @NotNull(message = "A longitude é obrigatória")
+    @Min(value = -180, message = "Longitude deve ser no mínimo -180")
+    @Max(value = 180, message = "Longitude deve ser no máximo 180")
+    private Double longitude;
 }

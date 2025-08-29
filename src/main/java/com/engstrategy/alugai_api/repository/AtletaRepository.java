@@ -13,9 +13,10 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
-public interface AtletaRepository extends JpaRepository<Atleta, Long> {
+public interface AtletaRepository extends JpaRepository<Atleta, UUID> {
 
     Optional<Atleta> findAtletaByTelefone(String telefone);
 
@@ -30,20 +31,20 @@ public interface AtletaRepository extends JpaRepository<Atleta, Long> {
             "WHERE a.quadra.arena.id = :arenaId " +
             "AND a.dataSnapshot BETWEEN :dataInicio AND :dataFim " +
             "AND a.status = 'CONFIRMADO'")
-    BigDecimal calcularReceitaPorPeriodo(@Param("arenaId") Long arenaId,
+    BigDecimal calcularReceitaPorPeriodo(@Param("arenaId") UUID arenaId,
                                          @Param("dataInicio") LocalDateTime dataInicio,
                                          @Param("dataFim") LocalDateTime dataFim);
 
 
     // Para Agendamentos Hoje
     @Query("SELECT COUNT(a) FROM Agendamento a WHERE a.quadra.arena.id = :arenaId AND a.dataAgendamento = :dataAgendamento")
-    int countByArenaIdAndDataAgendamento(@Param("arenaId") Long arenaId, @Param("dataAgendamento") LocalDate dataAgendamento);
+    int countByArenaIdAndDataAgendamento(@Param("arenaId") UUID arenaId, @Param("dataAgendamento") LocalDate dataAgendamento);
 
     // Para Novos Clientes da Semana - Usando 'dataSnapshot'
     // Esta query conta atletas (clientes) únicos que fizeram seu primeiro agendamento na arena dentro do período.
     @Query("SELECT COUNT(DISTINCT a.atleta) FROM Agendamento a " +
             "WHERE a.quadra.arena.id = :arenaId AND a.dataSnapshot BETWEEN :dataInicio AND :dataFim")
-    int countNovosClientesDaArenaPorPeriodo(@Param("arenaId") Long arenaId,
+    int countNovosClientesDaArenaPorPeriodo(@Param("arenaId") UUID arenaId,
                                             @Param("dataInicio") LocalDateTime dataInicio,
                                             @Param("dataFim") LocalDateTime dataFim);
 
@@ -54,7 +55,7 @@ public interface AtletaRepository extends JpaRepository<Atleta, Long> {
             "AND a.horarioInicioSnapshot > :horarioAtual " + // Usando o campo de snapshot para consistência
             "ORDER BY a.horarioInicioSnapshot ASC " +
             "LIMIT 5")
-    List<Agendamento> findProximosAgendamentosDoDia(@Param("arenaId") Long arenaId,
+    List<Agendamento> findProximosAgendamentosDoDia(@Param("arenaId") UUID arenaId,
                                                     @Param("dataAtual") LocalDate dataAtual,
                                                     @Param("horarioAtual") LocalTime horarioAtual);
 

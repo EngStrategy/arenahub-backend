@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Schema(description = "Resposta com dados da arena")
 @Data
@@ -21,7 +22,7 @@ import java.util.List;
 public class ArenaResponseDTO {
 
     @Schema(description = "ID da arena", example = "1")
-    private Long id;
+    private UUID id;
 
     @Schema(description = "Nome da arena", example = "Arena Sports Center")
     private String nome;

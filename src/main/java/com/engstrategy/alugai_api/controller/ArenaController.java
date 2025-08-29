@@ -31,6 +31,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/arenas")
@@ -67,7 +68,7 @@ public class ArenaController {
     })
     public ResponseEntity<ArenaResponseDTO> buscarArenaPorId(
             @Parameter(description = "ID da arena", required = true)
-            @PathVariable Long id) {
+            @PathVariable UUID id) {
 
         ArenaResponseDTO response = arenaService.buscarPorId(id);
         return ResponseEntity.ok(response);
@@ -90,11 +91,18 @@ public class ArenaController {
             @Parameter(description = "Filtrar por cidade")
             @RequestParam(required = false) String cidade,
             @Parameter(description = "Filtrar por esporte (valores possíveis: FUTEBOL_SOCIETY, FUTEBOL_SETE, FUTEBOL_ONZE, FUTSAL, BEACHTENIS, VOLEI, FUTEVOLEI, BASQUETE, HANDEBOL)")
-            @RequestParam(required = false) String esporte) {
+            @RequestParam(required = false) String esporte,
+            @Parameter(description = "Latitude do usuário para busca por proximidade")
+            @RequestParam(required = false) Double latitude,
+            @Parameter(description = "Longitude do usuário para busca por proximidade")
+            @RequestParam(required = false) Double longitude,
+            @Parameter(description = "Raio da busca em quilômetros (km)")
+            @RequestParam(required = false) Double raioKm
+    ) {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(direction), sort));
 
-        Page<ArenaResponseDTO> response = arenaService.listarTodos(pageable, cidade, esporte);
+        Page<ArenaResponseDTO> response = arenaService.listarTodos(pageable, cidade, esporte, latitude, longitude, raioKm);
         return ResponseEntity.ok(response);
     }
 
@@ -109,7 +117,7 @@ public class ArenaController {
     })
     public ResponseEntity<ArenaResponseDTO> atualizarArena(
             @Parameter(description = "ID da arena", required = true)
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @Valid @RequestBody ArenaUpdateDTO arenaUpdateDTO) {
 
         Arena updatedArena = arenaService.atualizar(id, arenaUpdateDTO);
@@ -125,7 +133,7 @@ public class ArenaController {
     })
     public ResponseEntity<Void> excluirArena(
             @Parameter(description = "ID da arena", required = true)
-            @PathVariable Long id) {
+            @PathVariable UUID id) {
         arenaService.excluir(id);
         return ResponseEntity.noContent().build();
     }

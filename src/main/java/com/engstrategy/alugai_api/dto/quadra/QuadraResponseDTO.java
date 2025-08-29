@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Data
 @NoArgsConstructor
@@ -47,7 +48,7 @@ public class QuadraResponseDTO {
     private List<MaterialEsportivo> materiaisFornecidos;
 
     @Schema(description = "ID da arena associada", example = "1")
-    private Long arenaId;
+    private UUID arenaId;
 
     @Schema(description = "Nome da arena associada", example = "Arena Sports Center")
     private String nomeArena;

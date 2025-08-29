@@ -27,6 +27,7 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -58,7 +59,7 @@ public class AtletaServiceImpl implements AtletaService {
     }
 
     @Override
-    public Atleta buscarPorId(Long id) {
+    public Atleta buscarPorId(UUID id) {
         return atletaRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("Atleta não encontrado com ID: " + id));
     }
@@ -70,7 +71,7 @@ public class AtletaServiceImpl implements AtletaService {
 
     @Override
     @Transactional
-    public Atleta atualizar(Long id, AtletaUpdateDTO atletaUpdateDTO) {
+    public Atleta atualizar(UUID id, AtletaUpdateDTO atletaUpdateDTO) {
         Atleta savedAtleta = atletaRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("Atleta não encontrado com ID: " + id));
 
@@ -98,7 +99,7 @@ public class AtletaServiceImpl implements AtletaService {
 
     @Override
     @Transactional
-    public void excluir(Long id) {
+    public void excluir(UUID id) {
         Atleta atleta = atletaRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("Atleta não encontrado com ID: " + id));
         atletaRepository.delete(atleta);
@@ -141,7 +142,7 @@ public class AtletaServiceImpl implements AtletaService {
 
     @Override
     @Transactional
-    public void alterarSenha(Long atletaId, String senhaAtual, String novaSenha) {
+    public void alterarSenha(UUID atletaId, String senhaAtual, String novaSenha) {
         Atleta atleta = atletaRepository.findById(atletaId)
                 .orElseThrow(() -> new UserNotFoundException("Atleta não encontrado"));
 

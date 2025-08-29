@@ -11,15 +11,16 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
+import java.util.UUID;
 
 public interface ArenaService {
     Arena criarArena(Arena arena);
-    ArenaResponseDTO buscarPorId(Long id);
-    Page<ArenaResponseDTO> listarTodos(Pageable pageable, String cidade, String esporte);
-    Arena atualizar(Long id, ArenaUpdateDTO arenaUpdateDTO);
-    void excluir(Long id);
+    ArenaResponseDTO buscarPorId(UUID id);
+    Page<ArenaResponseDTO> listarTodos(Pageable pageable, String cidade, String esporte, Double latitude, Double longitude, Double raioKm);
+    Arena atualizar(UUID id, ArenaUpdateDTO arenaUpdateDTO);
+    void excluir(UUID id);
     void redefinirSenha(Usuario usuario, String novaSenha);
-    void alterarSenha(Long arenaId, String senhaAtual, String novaSenha);
+    void alterarSenha(UUID arenaId, String senhaAtual, String novaSenha);
     List<CidadeDTO> getCidades();
-    ArenaDashboardDTO getDashboardData(Long arenaId);
+    ArenaDashboardDTO getDashboardData(UUID arenaId);
 }

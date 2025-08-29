@@ -33,6 +33,12 @@ public class Endereco {
     @Column(length = 100)
     private String complemento;
 
+    @Column(nullable = false)
+    private Double latitude;
+
+    @Column(nullable = false)
+    private Double longitude;
+
     public String toStringFormatado() {
         StringBuilder endereco = new StringBuilder();
         endereco.append(rua).append(", ").append(numero);

@@ -7,19 +7,20 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
+import java.util.UUID;
 
 public interface JogoAbertoService {
 
     Page<JogoAbertoResponseDTO> listarJogosAbertos(Pageable pageable, String cidade, String esporte);
 
-    SolicitacaoEntradaDTO solicitarEntrada(Long agendamentoId, Long atletaId);
+    SolicitacaoEntradaDTO solicitarEntrada(Long agendamentoId, UUID atletaId);
 
-    List<SolicitacaoEntradaDTO> listarSolicitacoes(Long agendamentoId, Long proprietarioId);
+    List<SolicitacaoEntradaDTO> listarSolicitacoes(Long agendamentoId, UUID proprietarioId);
 
-    SolicitacaoEntradaDTO gerenciarSolicitacao(Long solicitacaoId, Long proprietarioId, boolean aceitar);
+    SolicitacaoEntradaDTO gerenciarSolicitacao(Long solicitacaoId, UUID proprietarioId, boolean aceitar);
 
-    void sairDeJogoAberto(Long solicitacaoId, Long atletaId);
+    void sairDeJogoAberto(Long solicitacaoId, UUID atletaId);
 
-    List<MinhaParticipacaoResponseDTO> listarMinhasParticipacoes(Long atletaId);
+    List<MinhaParticipacaoResponseDTO> listarMinhasParticipacoes(UUID atletaId);
 
 }

@@ -15,6 +15,7 @@ import com.engstrategy.alugai_api.service.ArenaService;
 import com.engstrategy.alugai_api.util.GeradorCodigoVerificacao;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -27,6 +28,7 @@ import java.time.*;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -61,7 +63,7 @@ public class ArenaServiceImpl implements ArenaService {
     }
 
     @Override
-    public ArenaResponseDTO buscarPorId(Long id) {
+    public ArenaResponseDTO buscarPorId(UUID id) {
         Arena arena = arenaRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("Arena não encontrada com ID: " + id));
 
@@ -84,19 +86,31 @@ public class ArenaServiceImpl implements ArenaService {
     }
 
     @Override
-    public Page<ArenaResponseDTO> listarTodos(Pageable pageable, String cidade, String esporte) {
-        // Criar Specification base
-        Specification<Arena> spec = ArenaSpecs.isAtivo();
-        Page<Arena> arenasPage = arenaRepository.findAll(spec, pageable);
+    @Transactional(readOnly = true)
+    public Page<ArenaResponseDTO> listarTodos(Pageable pageable, String cidade, String esporte, Double latitude, Double longitude, Double raioKm) {
 
-        // Adicionar filtro de cidade se fornecido
-        if (cidade != null && !cidade.trim().isEmpty()) {
-            spec = spec.and(ArenaSpecs.hasCidade(cidade));
-        }
+        // Esta variável guarda o resultado, seja da busca por proximidade ou por filtros.
+        Page<Arena> arenasPage;
 
-        // Adicionar filtro de esporte se fornecido
-        if (esporte != null && !esporte.trim().isEmpty()) {
-            spec = spec.and(ArenaSpecs.hasEsporte(esporte));
+        // Decide qual busca será executada com base nos parâmetros recebidos.
+        if (latitude != null && longitude != null && raioKm != null && raioKm > 0) {
+
+            // --- Caminho A: Busca por Proximidade ---
+            // Na busca por proximidade, a ordenação já é por distância, então não uso o 'sort' do request.
+            Pageable proximityPageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
+            arenasPage = arenaRepository.findByProximity(latitude, longitude, raioKm, proximityPageable);
+
+        } else {
+
+            // --- Caminho B: Busca por Filtros Tradicionais ---
+            Specification<Arena> spec = ArenaSpecs.isAtivo();
+            if (cidade != null && !cidade.trim().isEmpty()) {
+                spec = spec.and(ArenaSpecs.hasCidade(cidade));
+            }
+            if (esporte != null && !esporte.trim().isEmpty()) {
+                spec = spec.and(ArenaSpecs.hasEsporte(esporte));
+            }
+            arenasPage = arenaRepository.findAll(spec, pageable);
         }
 
         if (arenasPage.isEmpty()) {
@@ -104,7 +118,7 @@ public class ArenaServiceImpl implements ArenaService {
         }
 
         // Pega os IDs das arenas da página atual
-        List<Long> arenaIds = arenasPage.getContent().stream()
+        List<UUID> arenaIds = arenasPage.getContent().stream()
                 .map(Arena::getId)
                 .collect(Collectors.toList());
 
@@ -119,6 +133,7 @@ public class ArenaServiceImpl implements ArenaService {
         return arenasPage.map(arena -> {
             ArenaResponseDTO dto = arenaMapper.mapArenaToArenaResponseDTO(arena);
             ArenaRatingInfo ratingInfo = ratingsMap.get(arena.getId());
+
             if (ratingInfo != null) {
                 dto.setNotaMedia(ratingInfo.getNotaMedia());
                 dto.setQuantidadeAvaliacoes(ratingInfo.getQuantidadeAvaliacoes());
@@ -132,7 +147,7 @@ public class ArenaServiceImpl implements ArenaService {
 
     @Override
     @Transactional
-    public Arena atualizar(Long id, ArenaUpdateDTO arenaUpdateDTO) {
+    public Arena atualizar(UUID id, ArenaUpdateDTO arenaUpdateDTO) {
         Arena savedArena = arenaRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("Arena não encontrada com ID: " + id));
 
@@ -164,7 +179,7 @@ public class ArenaServiceImpl implements ArenaService {
 
     @Override
     @Transactional
-    public void excluir(Long id) {
+    public void excluir(UUID id) {
         Arena arena = arenaRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("Arena não encontrada com ID: " + id));
         arenaRepository.delete(arena);
@@ -203,7 +218,7 @@ public class ArenaServiceImpl implements ArenaService {
 
     @Override
     @Transactional
-    public void alterarSenha(Long arenaId, String senhaAtual, String novaSenha) {
+    public void alterarSenha(UUID arenaId, String senhaAtual, String novaSenha) {
         Arena arena = arenaRepository.findById(arenaId)
                 .orElseThrow(() -> new UserNotFoundException("Arena não encontrada"));
 
@@ -224,7 +239,7 @@ public class ArenaServiceImpl implements ArenaService {
 
     @Override
     @Transactional(readOnly = true)
-    public ArenaDashboardDTO getDashboardData(Long arenaId) {
+    public ArenaDashboardDTO getDashboardData(UUID arenaId) {
         // Busca a arena com todas as suas dependências
         Arena arena = arenaRepository.findByIdFetchingQuadrasAndHorarios(arenaId)
                 .orElseThrow(() -> new UserNotFoundException("Arena não encontrada com o ID: " + arenaId));
@@ -272,13 +287,15 @@ public class ArenaServiceImpl implements ArenaService {
                 continue;
             }
 
-            boolean encontrouHorarioParaHoje = false;
             for (HorarioFuncionamento hf : quadra.getHorariosFuncionamento()) {
                 if (hf.getDiaDaSemana() == diaDaSemanaHoje) {
-                    encontrouHorarioParaHoje = true;
-
                     for (IntervaloHorario intervalo : hf.getIntervalosDeHorario()) {
                         long duracaoIntervaloMinutos = Duration.between(intervalo.getInicio(), intervalo.getFim()).toMinutes();
+
+                        if (intervalo.getFim().equals(LocalTime.of(23, 59))) {
+                            duracaoIntervaloMinutos++;
+                        }
+
                         int slotsNesteIntervalo = (int) (duracaoIntervaloMinutos / duracaoReservaMinutos);
                         totalSlotsOperacionaisHoje += slotsNesteIntervalo;
                     }
@@ -293,15 +310,8 @@ public class ArenaServiceImpl implements ArenaService {
         // Lógica da Taxa de Ocupação
         Double taxaOcupacaoHoje = 0.0;
         if (totalSlotsOperacionaisHoje > 0) { // Proteção contra divisão por zero se a arena estiver
-            System.out.println("Agendamentos confirmados hoje: " + agendamentosConfirmadosHoje);
-            System.out.println("Total de slots operacionais hoje: " + totalSlotsOperacionaisHoje);
             taxaOcupacaoHoje = ((double) agendamentosConfirmadosHoje / totalSlotsOperacionaisHoje) * 100;
-            System.out.println("Taxa de ocupação hoje: " + taxaOcupacaoHoje);
         }
-
-        // Calcula os horários que ainda estão livres
-        int horariosLivresHoje = Math.max(0, totalSlotsOperacionaisHoje - agendamentosConfirmadosHoje);
-
 
         // CÁLCULO DE NOVOS CLIENTES NA SEMANA E VARIAÇÃO
         LocalDateTime inicioSemanaAtual = hoje.with(DayOfWeek.MONDAY).atStartOfDay();

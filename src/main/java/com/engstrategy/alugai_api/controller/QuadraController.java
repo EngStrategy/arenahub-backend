@@ -33,6 +33,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestController
@@ -92,7 +93,7 @@ public class QuadraController {
             @Parameter(description = "Direção da ordenação (asc/desc)")
             @RequestParam(defaultValue = "asc") String direction,
             @Parameter(description = "Filtrar por arena ID")
-            @RequestParam(required = false) Long arenaId,
+            @RequestParam(required = false) UUID arenaId,
             @Parameter(description = "Filtrar por esporte")
             @RequestParam(required = false) String esporte) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(direction), sort));
@@ -144,7 +145,7 @@ public class QuadraController {
     })
     public ResponseEntity<List<QuadraResponseDTO>> buscarQuadrasPorArenaId(
             @Parameter(description = "ID da arena", required = true)
-            @PathVariable Long arenaId) {
+            @PathVariable UUID arenaId) {
 
         List<QuadraResponseDTO> response = quadraService.buscarPorArenaId(arenaId);
 

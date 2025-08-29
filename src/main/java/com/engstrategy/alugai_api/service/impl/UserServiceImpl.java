@@ -14,6 +14,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -42,7 +43,7 @@ public class UserServiceImpl implements UserService {
         return atleta.orElse(null);
     }
 
-    public Usuario findUserById(Long id, Role role) {
+    public Usuario findUserById(UUID id, Role role) {
         if (role == Role.ARENA) {
             return arenaRepository.findById(id).orElse(null);
         } else if (role == Role.ATLETA) {

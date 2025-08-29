@@ -6,10 +6,11 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public interface SolicitacaoEntradaRepository extends JpaRepository<SolicitacaoEntrada, Long> {
-    Optional<SolicitacaoEntrada> findByAgendamentoIdAndSolicitanteId(Long agendamentoId, Long solicitanteId);
+    Optional<SolicitacaoEntrada> findByAgendamentoIdAndSolicitanteId(Long agendamentoId, UUID solicitanteId);
     List<SolicitacaoEntrada> findByAgendamentoId(Long agendamentoId);
-    List<SolicitacaoEntrada> findBySolicitanteIdOrderByAgendamentoDataAgendamentoDesc(Long solicitanteId);
+    List<SolicitacaoEntrada> findBySolicitanteIdOrderByAgendamentoDataAgendamentoDesc(UUID solicitanteId);
 }

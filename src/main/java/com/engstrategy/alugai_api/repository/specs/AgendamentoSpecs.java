@@ -14,10 +14,11 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.UUID;
 
 public class AgendamentoSpecs {
 
-    public static Specification<Agendamento> hasAtletaId(Long atletaId) {
+    public static Specification<Agendamento> hasAtletaId(UUID atletaId) {
         return (root, query, builder) ->
                 builder.equal(root.get("atleta").get("id"), atletaId);
     }
@@ -110,7 +111,7 @@ public class AgendamentoSpecs {
         };
     }
 
-    public static Specification<Agendamento> hasArenaId(Long arenaId) {
+    public static Specification<Agendamento> hasArenaId(UUID arenaId) {
         return (root, query, criteriaBuilder) -> {
             if (arenaId == null) {
                 return criteriaBuilder.conjunction();

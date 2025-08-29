@@ -32,6 +32,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestController
@@ -64,7 +65,7 @@ public class ArenaAgendamentoController {
             @Parameter(description = "ID da quadra (opcional)")
             @RequestParam(required = false) Long quadraId) {
 
-        Long arenaId = userDetails.getUserId();
+        UUID arenaId = userDetails.getUserId();
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(direction), sort));
         Page<Agendamento> agendamentosPage = agendamentoService.buscarPorArenaId(
@@ -90,7 +91,7 @@ public class ArenaAgendamentoController {
             @Valid @RequestBody AtualizarStatusAgendamentoDTO request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        Long arenaId = userDetails.getUserId();
+        UUID arenaId = userDetails.getUserId();
         Agendamento agendamentoAtualizado = agendamentoService.atualizarStatus(agendamentoId, arenaId, request.getStatus());
         AgendamentoArenaResponseDTO response = agendamentoMapper.fromAgendamentoToArenaResponseDTO(agendamentoAtualizado);
         return ResponseEntity.ok(response);
@@ -101,7 +102,7 @@ public class ArenaAgendamentoController {
     public ResponseEntity<List<AgendamentoArenaResponseDTO>> listarAgendamentosPendentes(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        Long arenaId = userDetails.getUserId();
+        UUID arenaId = userDetails.getUserId();
 
         List<Agendamento> agendamentosPendentes = agendamentoService.buscarPendentesAcaoPorArenaId(arenaId);
 

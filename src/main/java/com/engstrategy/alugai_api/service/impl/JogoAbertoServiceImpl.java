@@ -27,6 +27,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -66,7 +67,7 @@ public class JogoAbertoServiceImpl implements JogoAbertoService {
     }
 
     @Override
-    public SolicitacaoEntradaDTO solicitarEntrada(Long agendamentoId, Long atletaId) {
+    public SolicitacaoEntradaDTO solicitarEntrada(Long agendamentoId, UUID atletaId) {
         Agendamento agendamento = agendamentoRepository.findById(agendamentoId)
                 .orElseThrow(() -> new EntityNotFoundException("Jogo aberto não encontrado."));
 
@@ -105,7 +106,7 @@ public class JogoAbertoServiceImpl implements JogoAbertoService {
     }
 
     @Override
-    public List<SolicitacaoEntradaDTO> listarSolicitacoes(Long agendamentoId, Long proprietarioId) {
+    public List<SolicitacaoEntradaDTO> listarSolicitacoes(Long agendamentoId, UUID proprietarioId) {
         Agendamento agendamento = agendamentoRepository.findById(agendamentoId)
                 .orElseThrow(() -> new EntityNotFoundException("Agendamento não encontrado."));
 
@@ -119,7 +120,7 @@ public class JogoAbertoServiceImpl implements JogoAbertoService {
     }
 
     @Override
-    public SolicitacaoEntradaDTO gerenciarSolicitacao(Long solicitacaoId, Long proprietarioId, boolean aceitar) {
+    public SolicitacaoEntradaDTO gerenciarSolicitacao(Long solicitacaoId, UUID proprietarioId, boolean aceitar) {
         SolicitacaoEntrada solicitacao = solicitacaoRepository.findById(solicitacaoId)
                 .orElseThrow(() -> new EntityNotFoundException("Solicitação não encontrada."));
 
@@ -153,7 +154,7 @@ public class JogoAbertoServiceImpl implements JogoAbertoService {
     }
 
     @Override
-    public void sairDeJogoAberto(Long solicitacaoId, Long atletaId) {
+    public void sairDeJogoAberto(Long solicitacaoId, UUID atletaId) {
         SolicitacaoEntrada solicitacao = solicitacaoRepository.findById(solicitacaoId)
                 .orElseThrow(() -> new EntityNotFoundException("Solicitação não encontrada."));
 
@@ -195,7 +196,7 @@ public class JogoAbertoServiceImpl implements JogoAbertoService {
 
     @Override
     @Transactional
-    public List<MinhaParticipacaoResponseDTO> listarMinhasParticipacoes(Long atletaId) {
+    public List<MinhaParticipacaoResponseDTO> listarMinhasParticipacoes(UUID atletaId) {
         List<SolicitacaoEntrada> solicitacoes = solicitacaoRepository.findBySolicitanteIdOrderByAgendamentoDataAgendamentoDesc(atletaId);
         return solicitacoes.stream()
                 .map(jogoAbertoMapper::toMinhaParticipacaoResponseDTO)

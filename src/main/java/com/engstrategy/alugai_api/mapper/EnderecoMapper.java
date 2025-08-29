@@ -16,6 +16,8 @@ public class EnderecoMapper {
                 .rua(enderecoDTO.getRua())
                 .numero(enderecoDTO.getNumero())
                 .complemento(enderecoDTO.getComplemento())
+                .latitude(enderecoDTO.getLatitude())
+                .longitude(enderecoDTO.getLongitude())
                 .build();
     }
 
@@ -28,6 +30,8 @@ public class EnderecoMapper {
                 .rua(endereco.getRua())
                 .numero(endereco.getNumero())
                 .complemento(endereco.getComplemento())
+                .latitude(endereco.getLatitude())
+                .longitude(endereco.getLongitude())
                 .build();
     }
 }

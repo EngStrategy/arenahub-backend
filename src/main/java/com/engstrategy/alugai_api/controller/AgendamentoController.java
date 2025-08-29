@@ -35,6 +35,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestController
@@ -56,7 +57,7 @@ public class AgendamentoController {
             @RequestBody @Valid AgendamentoCreateDTO dto,
             @AuthenticationPrincipal CustomUserDetails customUserDetails) {
 
-        Long atletaId = customUserDetails.getUserId();
+        UUID atletaId = customUserDetails.getUserId();
 
         try {
             Agendamento agendamento = agendamentoService.criarAgendamento(dto, atletaId);

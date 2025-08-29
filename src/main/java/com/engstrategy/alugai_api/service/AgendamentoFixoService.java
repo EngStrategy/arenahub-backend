@@ -4,14 +4,15 @@ import com.engstrategy.alugai_api.model.Agendamento;
 import com.engstrategy.alugai_api.model.AgendamentoFixo;
 
 import java.util.List;
+import java.util.UUID;
 
 public interface AgendamentoFixoService {
 
     AgendamentoFixo criarAgendamentosFixos(Agendamento agendamentoBase);
 
-    void cancelarAgendamentoFixo(Long agendamentoFixoId, Long usuarioId);
+    void cancelarAgendamentoFixo(Long agendamentoFixoId, UUID usuarioId);
 
-    List<AgendamentoFixo> listarAgendamentosFixosAtivos(Long atletaId);
+    List<AgendamentoFixo> listarAgendamentosFixosAtivos(UUID atletaId);
 
     AgendamentoFixo buscarPorId(Long id);
 }

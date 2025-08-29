@@ -41,7 +41,7 @@ public class QuadraServiceImpl implements QuadraService {
 
     @Override
     @Transactional
-    public Quadra criarQuadra(Quadra quadra, Long arenaId) {
+    public Quadra criarQuadra(Quadra quadra, UUID arenaId) {
         validarDadosUnicos(quadra.getNomeQuadra());
         validarHorariosFuncionamento(quadra.getHorariosFuncionamento());
 
@@ -62,7 +62,7 @@ public class QuadraServiceImpl implements QuadraService {
 
     @Override
     @Transactional
-    public Quadra atualizar(Long quadraId, QuadraUpdateDTO updateDTO, Long arenaId) {
+    public Quadra atualizar(Long quadraId, QuadraUpdateDTO updateDTO, UUID arenaId) {
         Quadra quadra = quadraRepository.findById(quadraId)
                 .orElseThrow(() -> new UserNotFoundException("Quadra não encontrada com ID: " + quadraId));
 
@@ -274,7 +274,7 @@ public class QuadraServiceImpl implements QuadraService {
     }
 
     @Override
-    public Page<Quadra> listarTodos(Pageable pageable, Long arenaId, String esporte) {
+    public Page<Quadra> listarTodos(Pageable pageable, UUID arenaId, String esporte) {
         Specification<Quadra> spec = (root, query, builder) -> null;
 
         if (arenaId != null) {
@@ -347,7 +347,7 @@ public class QuadraServiceImpl implements QuadraService {
 
     @Override
     @Transactional
-    public void excluir(Long id, Long arenaId) {
+    public void excluir(Long id, UUID arenaId) {
         Quadra quadra = quadraRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("Quadra não encontrada com ID: " + id));
 
@@ -359,7 +359,7 @@ public class QuadraServiceImpl implements QuadraService {
     }
 
     @Override
-    public List<QuadraResponseDTO> buscarPorArenaId(Long arenaId) {
+    public List<QuadraResponseDTO> buscarPorArenaId(UUID arenaId) {
         // Busca todas as quadras da arena
         List<Quadra> quadras = quadraRepository.findByArenaId(arenaId);
         if (quadras.isEmpty()) {
