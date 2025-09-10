@@ -43,11 +43,13 @@ public interface ArenaRepository extends JpaRepository<Arena, UUID>, JpaSpecific
     @Query(
             value = "SELECT *, (6371 * acos(cos(radians(:latitude)) * cos(radians(a.latitude)) * cos(radians(a.longitude) - radians(:longitude)) + sin(radians(:latitude)) * sin(radians(a.latitude)))) AS distance " +
                     "FROM arena a " +
-                    "WHERE a.ativo = true AND (6371 * acos(cos(radians(:latitude)) * cos(radians(a.latitude)) * cos(radians(a.longitude) - radians(:longitude)) + sin(radians(:latitude)) * sin(radians(a.latitude)))) < :raioKm " +
+                    "WHERE a.ativo = true AND a.status_assinatura = 'ATIVA' AND (6371 * acos(cos(radians(:latitude)) * cos(radians(a.latitude)) * cos(radians(a.longitude) - radians(:longitude)) + sin(radians(:latitude)) * sin(radians(a.latitude)))) < :raioKm " +
                     "ORDER BY distance ASC",
             countQuery = "SELECT count(*) FROM arena a " +
-                    "WHERE a.ativo = true AND (6371 * acos(cos(radians(:latitude)) * cos(radians(a.latitude)) * cos(radians(a.longitude) - radians(:longitude)) + sin(radians(:latitude)) * sin(radians(a.latitude)))) < :raioKm",
+                    "WHERE a.ativo = true AND a.status_assinatura = 'ATIVA' AND (6371 * acos(cos(radians(:latitude)) * cos(radians(a.latitude)) * cos(radians(a.longitude) - radians(:longitude)) + sin(radians(:latitude)) * sin(radians(a.latitude)))) < :raioKm",
             nativeQuery = true
     )
     Page<Arena> findByProximity(@Param("latitude") Double latitude, @Param("longitude") Double longitude, @Param("raioKm") Double raioKm, Pageable pageable);
+
+    Optional<Arena> findByStripeCustomerId(String stripeCustomerId);
 }

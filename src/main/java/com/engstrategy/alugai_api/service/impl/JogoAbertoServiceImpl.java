@@ -19,6 +19,7 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -42,27 +43,30 @@ public class JogoAbertoServiceImpl implements JogoAbertoService {
     private final EmailService emailService;
 
     @Override
-    public Page<JogoAbertoResponseDTO> listarJogosAbertos(Pageable pageable, String cidade, String esporte) {
-        // A construção da Specification agora é feita de forma incremental.
-        // Começamos com as condições que sempre se aplicam.
-        Specification<Agendamento> spec = AgendamentoSpecs.isPublico()
-                .and(AgendamentoSpecs.isPendente())
-                .and(AgendamentoSpecs.hasVagas())
-                .and(AgendamentoSpecs.isUpcoming());
+    public Page<JogoAbertoResponseDTO> listarJogosAbertos(Pageable pageable, String cidade, String esporte, Double latitude, Double longitude, Double raioKm) {
+        Page<Agendamento> jogosAbertosPage;
 
-        // Adicionamos os filtros opcionais apenas se eles forem fornecidos.
-        if (cidade != null && !cidade.trim().isEmpty()) {
-            spec = spec.and(AgendamentoSpecs.hasCidade(cidade));
+        if (latitude != null && longitude != null && raioKm != null && raioKm > 0) {
+            // --- Busca por Proximidade ---
+            Pageable proximityPageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
+            jogosAbertosPage = agendamentoRepository.findJogosAbertosByProximity(latitude, longitude, raioKm, proximityPageable);
+
+        } else {
+            // --- Busca por Filtros Tradicionais ---
+            Specification<Agendamento> spec = AgendamentoSpecs.isPublico()
+                    .and(AgendamentoSpecs.isPendente())
+                    .and(AgendamentoSpecs.hasVagas())
+                    .and(AgendamentoSpecs.isUpcoming());
+
+            if (cidade != null && !cidade.trim().isEmpty()) {
+                spec = spec.and(AgendamentoSpecs.hasCidade(cidade));
+            }
+            if (esporte != null && !esporte.trim().isEmpty()) {
+                spec = spec.and(AgendamentoSpecs.hasEsporte(esporte));
+            }
+            jogosAbertosPage = agendamentoRepository.findAll(spec, pageable);
         }
 
-        if (esporte != null && !esporte.trim().isEmpty()) {
-            spec = spec.and(AgendamentoSpecs.hasEsporte(esporte));
-        }
-
-        // A busca agora é paginada e filtrada
-        Page<Agendamento> jogosAbertosPage = agendamentoRepository.findAll(spec, pageable);
-
-        // Mapeia o resultado para o DTO
         return jogosAbertosPage.map(jogoAbertoMapper::toJogoAbertoResponseDTO);
     }
 

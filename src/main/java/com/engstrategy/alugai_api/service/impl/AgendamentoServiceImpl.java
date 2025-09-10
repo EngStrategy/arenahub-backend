@@ -4,14 +4,12 @@ import com.engstrategy.alugai_api.dto.agendamento.AgendamentoCreateDTO;
 import com.engstrategy.alugai_api.dto.agendamento.AgendamentoExternoCreateDTO;
 import com.engstrategy.alugai_api.dto.agendamento.NovoAtletaExternoDTO;
 import com.engstrategy.alugai_api.exceptions.AccessDeniedException;
+import com.engstrategy.alugai_api.exceptions.SubscriptionInactiveException;
 import com.engstrategy.alugai_api.exceptions.UniqueConstraintViolationException;
 import com.engstrategy.alugai_api.mapper.AgendamentoMapper;
 import com.engstrategy.alugai_api.model.*;
 import com.engstrategy.alugai_api.model.enums.*;
-import com.engstrategy.alugai_api.repository.AgendamentoRepository;
-import com.engstrategy.alugai_api.repository.AtletaRepository;
-import com.engstrategy.alugai_api.repository.QuadraRepository;
-import com.engstrategy.alugai_api.repository.SlotHorarioRepository;
+import com.engstrategy.alugai_api.repository.*;
 import com.engstrategy.alugai_api.repository.specs.AgendamentoSpecs;
 import com.engstrategy.alugai_api.service.AgendamentoService;
 import jakarta.persistence.EntityNotFoundException;
@@ -44,7 +42,20 @@ public class AgendamentoServiceImpl implements AgendamentoService {
     private final AgendamentoMapper agendamentoMapper;
     private final EmailService emailService;
     private final QuadraRepository quadraRepository;
+    private final ArenaRepository arenaRepository;
     private final ZoneId fusoHorarioPadrao = ZoneId.of("America/Sao_Paulo");
+
+    private void validarStatusAssinaturaDaArena(Quadra quadra) {
+        // Buscamos a Arena pelo ID para garantir que temos o objeto completo e atualizado
+        Arena arena = arenaRepository.findById(quadra.getArena().getId())
+                .orElseThrow(() -> new EntityNotFoundException("Arena associada à quadra não foi encontrada."));
+
+        if (arena.getStatusAssinatura() != StatusAssinatura.ATIVA) {
+            throw new SubscriptionInactiveException(
+                    "Não é possível realizar agendamentos. A assinatura desta arena não está ativa."
+            );
+        }
+    }
 
     @Override
     @Transactional
@@ -76,6 +87,9 @@ public class AgendamentoServiceImpl implements AgendamentoService {
         // Recuperar quadra
         Quadra quadra = quadraRepository.findById(dto.getQuadraId())
                 .orElseThrow(() -> new EntityNotFoundException("Quadra não encontrada com ID: " + dto.getQuadraId()));
+
+        // Valida o status da assinatura da arena
+        validarStatusAssinaturaDaArena(quadra);
 
         // Converter DTO para entidade
         Agendamento agendamento = agendamentoMapper.fromCreateToAgendamento(dto, slots, atleta);

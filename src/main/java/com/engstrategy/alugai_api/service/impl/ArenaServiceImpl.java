@@ -3,12 +3,14 @@ package com.engstrategy.alugai_api.service.impl;
 import com.engstrategy.alugai_api.dto.agendamento.AgendamentoDashboardDTO;
 import com.engstrategy.alugai_api.dto.agendamento.arena.CidadeDTO;
 import com.engstrategy.alugai_api.dto.arena.*;
+import com.engstrategy.alugai_api.exceptions.SubscriptionInactiveException;
 import com.engstrategy.alugai_api.exceptions.UniqueConstraintViolationException;
 import com.engstrategy.alugai_api.exceptions.UserNotFoundException;
 import com.engstrategy.alugai_api.mapper.ArenaMapper;
 import com.engstrategy.alugai_api.mapper.EnderecoMapper;
 import com.engstrategy.alugai_api.model.*;
 import com.engstrategy.alugai_api.model.enums.DiaDaSemana;
+import com.engstrategy.alugai_api.model.enums.StatusAssinatura;
 import com.engstrategy.alugai_api.repository.*;
 import com.engstrategy.alugai_api.repository.specs.ArenaSpecs;
 import com.engstrategy.alugai_api.service.ArenaService;
@@ -45,11 +47,22 @@ public class ArenaServiceImpl implements ArenaService {
     private final AvaliacaoRepository avaliacaoRepository;
     private final ArenaMapper arenaMapper;
 
+    private void verificarAssinaturaAtiva(UUID arenaId) {
+        Arena arena = arenaRepository.findById(arenaId)
+                .orElseThrow(() -> new UserNotFoundException("Arena não encontrada."));
+
+        if (arena.getStatusAssinatura() != StatusAssinatura.ATIVA) {
+            throw new SubscriptionInactiveException("Sua assinatura não está ativa. Por favor, regularize seu plano.");
+        }
+    }
+
     @Override
     @Transactional
     public Arena criarArena(Arena arena) {
         validarDadosUnicos(arena.getEmail(), arena.getTelefone(),
                 arena.getCpfProprietario(), arena.getCnpj());
+
+        arena.setStatusAssinatura(StatusAssinatura.INATIVA);
 
         encodePassword(arena);
         Arena savedArena = arenaRepository.save(arena);
@@ -103,7 +116,8 @@ public class ArenaServiceImpl implements ArenaService {
         } else {
 
             // --- Caminho B: Busca por Filtros Tradicionais ---
-            Specification<Arena> spec = ArenaSpecs.isAtivo();
+            Specification<Arena> spec = ArenaSpecs.isAtivo()
+                    .and(ArenaSpecs.isAssinaturaAtiva());
             if (cidade != null && !cidade.trim().isEmpty()) {
                 spec = spec.and(ArenaSpecs.hasCidade(cidade));
             }
@@ -148,6 +162,8 @@ public class ArenaServiceImpl implements ArenaService {
     @Override
     @Transactional
     public Arena atualizar(UUID id, ArenaUpdateDTO arenaUpdateDTO) {
+        verificarAssinaturaAtiva(id);
+
         Arena savedArena = arenaRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("Arena não encontrada com ID: " + id));
 
@@ -240,7 +256,8 @@ public class ArenaServiceImpl implements ArenaService {
     @Override
     @Transactional(readOnly = true)
     public ArenaDashboardDTO getDashboardData(UUID arenaId) {
-        // Busca a arena com todas as suas dependências
+        verificarAssinaturaAtiva(arenaId);
+
         Arena arena = arenaRepository.findByIdFetchingQuadrasAndHorarios(arenaId)
                 .orElseThrow(() -> new UserNotFoundException("Arena não encontrada com o ID: " + arenaId));
 

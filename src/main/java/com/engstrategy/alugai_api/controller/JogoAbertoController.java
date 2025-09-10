@@ -44,10 +44,16 @@ public class JogoAbertoController {
             @Parameter(description = "Filtrar por cidade")
             @RequestParam(required = false) String cidade,
             @Parameter(description = "Filtrar por esporte (valores possíveis: FUTEBOL_SOCIETY, FUTSAL, BEACHTENNIS, etc.)")
-            @RequestParam(required = false) String esporte
+            @RequestParam(required = false) String esporte,
+            @Parameter(description = "Latitude do usuário para busca por proximidade")
+            @RequestParam(required = false) Double latitude,
+            @Parameter(description = "Longitude do usuário para busca por proximidade")
+            @RequestParam(required = false) Double longitude,
+            @Parameter(description = "Raio da busca em quilômetros (km)")
+            @RequestParam(required = false) Double raioKm
     ) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(direction), sort));
-        Page<JogoAbertoResponseDTO> jogosAbertos = jogoAbertoService.listarJogosAbertos(pageable, cidade, esporte);
+        Page<JogoAbertoResponseDTO> jogosAbertos = jogoAbertoService.listarJogosAbertos(pageable, cidade, esporte, latitude, longitude, raioKm);
         return ResponseEntity.ok(jogosAbertos);
     }
 

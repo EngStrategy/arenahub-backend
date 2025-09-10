@@ -91,7 +91,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex) {
         ErrorResponse error = new ErrorResponse("ACCESS_DENIED", ex.getMessage());
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
@@ -160,5 +160,17 @@ public class GlobalExceptionHandler {
                 ex.getMessage()
         );
         return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(SubscriptionInactiveException.class)
+    public ResponseEntity<ErrorResponse> handleSubscriptionInactive(SubscriptionInactiveException ex) {
+        ErrorResponse error = new ErrorResponse("SUBSCRIPTION_INACTIVE", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
+    @ExceptionHandler(LimiteDeQuadrasExcedidoException.class)
+    public ResponseEntity<ErrorResponse> handleLimiteDeQuadrasExcedido(LimiteDeQuadrasExcedidoException ex) {
+        ErrorResponse error = new ErrorResponse("LIMIT_EXCEEDED", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
     }
 }

@@ -10,4 +10,4 @@ WORKDIR /app
 COPY --from=builder ./app/target/*.jar ./application.jar
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-jar", "-Dspring.profiles.active=dev", "application.jar"]
+ENTRYPOINT ["java", "-jar", "application.jar"]

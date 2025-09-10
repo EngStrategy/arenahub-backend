@@ -11,7 +11,7 @@ import java.util.UUID;
 
 public interface JogoAbertoService {
 
-    Page<JogoAbertoResponseDTO> listarJogosAbertos(Pageable pageable, String cidade, String esporte);
+    Page<JogoAbertoResponseDTO> listarJogosAbertos(Pageable pageable, String cidade, String esporte, Double latitude, Double longitude, Double raioKm);
 
     SolicitacaoEntradaDTO solicitarEntrada(Long agendamentoId, UUID atletaId);
 

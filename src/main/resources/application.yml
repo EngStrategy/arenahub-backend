@@ -1,29 +1,20 @@
+# =================================================
+# SEÇÃO BASE - Carregada em TODOS os ambientes
+# =================================================
+app:
+  frontend-url: ${ARENAHUB_FRONTEND_URL_PROD}
 server:
-  tomcat:
-    threads:
-      max: 20
+  port: ${PORT:8080}
 springdoc:
-  server-url: https://arenahub-d665d54c598e.herokuapp.com
+  server-url: ${ARENAHUB_BACKEND_URL_PROD}
 arenahub:
-  admin-email: saviosoares0402@gmail.com
+  admin-email: ${DOCKER_PGADMIN_DEFAULT_EMAIL}
 spring:
   profiles:
     active: dev
----
-spring:
-  config:
-    activate:
-      on-profile: dev
-  datasource:
-    url: jdbc:postgresql://localhost:5432/alugai
-    username: postgres
-    password: ${DATABASE_ARENAHUB_PASSWORD}
-    hiraki:
-      maximun-pool-size: 5
   jpa:
-    hibernate:
-      ddl-auto: update
     show-sql: true
+    open-in-view: false
   mail:
     host: smtp.gmail.com
     port: 587
@@ -37,13 +28,51 @@ spring:
             enable: true
           ssl:
             trust: "smtp.gmail.com"
-          localhost: "localhost"
-        debug: false
+
 zenvia:
   api-token: ${ZENVIA_API_TOKEN}
   sender-id: ${ZENVIA_SENDER_ID}
+
 jwt:
   secret-key: ${JWT_SECRET_KEY_ARENAHUB}
+
 logging:
   level:
     org.springframework.security.config.annotation.authentication.configuration: ERROR
+
+stripe:
+  public-key: ${STRIPE_PUBLIC_KEY_PRODUCAO}
+  secret-key: ${STRIPE_SECRET_KEY_PRODUCAO}
+  webhook-secret: ${STRIPE_WEBHOOK_SECRET_PRODUCAO}
+
+---
+# =================================================
+# PERFIL 'dev' - Para rodar localmente SEM Docker
+# =================================================
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    url: jdbc:postgresql://localhost:5432/arenahub
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+---
+# =================================================
+# PERFIL 'docker' - Para rodar COM Docker Compose
+# =================================================
+spring:
+  config:
+    activate:
+      on-profile: docker
+  datasource:
+    url: jdbc:postgresql://db:5432/arenahub
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: update

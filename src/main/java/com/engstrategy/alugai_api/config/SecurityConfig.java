@@ -1,14 +1,17 @@
 package com.engstrategy.alugai_api.config;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.client.RestTemplate;
@@ -24,11 +27,8 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
+    private final AuthenticationProvider authenticationProvider;
+    private final AuthenticationEntryPoint unauthorizedHandler;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -59,8 +59,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/resend-verification").permitAll()
                         .requestMatchers("/api/v1/forgot-password").permitAll()
                         .requestMatchers("/api/v1/verify-reset-code").permitAll()
-                        .requestMatchers( "/api/v1/reset-password").permitAll()
-                        .requestMatchers( "/api/v1/feedback").permitAll()
+                        .requestMatchers("/api/v1/reset-password").permitAll()
+                        .requestMatchers("/api/v1/feedback").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/stripe/webhook").permitAll()
                         // endpoints com autorização
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/agendamentos/**").hasAnyRole("ATLETA", "ARENA")
                         .requestMatchers("/api/v1/jogos-abertos/**").hasRole("ATLETA")
@@ -75,8 +76,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/arenas/me/alterar-senha").hasRole("ARENA")
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-
+                .authenticationProvider(authenticationProvider)
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint(unauthorizedHandler)
+                );
         return http.build();
     }
 
@@ -86,16 +90,8 @@ public class SecurityConfig {
 
         // Origens permitidas para desenvolvimento e produção
         configuration.setAllowedOrigins(List.of(
-                "http://localhost:3000",    // React dev server
-                "http://localhost:5173",    // Vite dev server
-                "http://localhost:8080",    // Backend (para testes diretos)
-                "http://127.0.0.1:3000",   // Variação do localhost
-                "http://127.0.0.1:5173",   // Variação do localhost
-                "http://10.8.0.54:3000",   // Variação do localhost
-                "http://192.168.1.29:3000",   // Variação do localhost
-                "https://arenahub.vercel.app",
-                "https://alugaiapirest-10efa692a5d3.herokuapp.com",
-                "https://arenahub-d665d54c598e.herokuapp.com"
+                "http://localhost:3000",
+                "https://arenahub.app"
         ));
 
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
@@ -111,7 +107,7 @@ public class SecurityConfig {
         ));
 
         // Permite credenciais
-        configuration.setAllowCredentials(true);
+         configuration.setAllowCredentials(true);
 
         // Headers expostos para o frontend
         configuration.setExposedHeaders(List.of("Authorization"));

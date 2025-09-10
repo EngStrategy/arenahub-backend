@@ -1,5 +1,6 @@
 package com.engstrategy.alugai_api.model;
 
+import com.engstrategy.alugai_api.model.enums.StatusAssinatura;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -31,4 +32,11 @@ public class Arena extends Usuario {
     @Builder.Default
     @OneToMany(mappedBy = "arena", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Quadra> quadras = new HashSet<>();
+
+    @Column(name = "stripe_customer_id")
+    private String stripeCustomerId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status_assinatura")
+    private StatusAssinatura statusAssinatura;
 }

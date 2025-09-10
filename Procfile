@@ -1,1 +1,0 @@
-web: java -Dserver.port=$PORT -Xms280m -Xmx280m -XX:MaxMetaspaceSize=128m -Xss512k -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+UseStringDeduplication -jar target/alugai-api-0.0.1-SNAPSHOT.jar

@@ -1,5 +1,6 @@
 package com.engstrategy.alugai_api.config;
 
+import com.engstrategy.alugai_api.exceptions.GlobalExceptionHandler;
 import com.engstrategy.alugai_api.exceptions.InvalidTokenException;
 import com.engstrategy.alugai_api.jwt.CustomUserDetails;
 import com.engstrategy.alugai_api.jwt.JwtService;
@@ -54,7 +55,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             usuario.getId(),
                             Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + usuario.getRole().name())),
                             usuario.isAtivo(),
-                            usuario.getSenha()
+                            usuario.getSenha(),
+                            usuario.getRole()
                     );
 
                     UsernamePasswordAuthenticationToken authToken =
@@ -63,7 +65,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             }
         } catch (Exception e) {
-            throw new InvalidTokenException("Token inválido");
+            throw new InvalidTokenException("Token inválido ou expirado.");
         }
 
         filterChain.doFilter(request, response);

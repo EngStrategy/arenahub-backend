@@ -1,6 +1,7 @@
 package com.engstrategy.alugai_api.repository.specs;
 
 import com.engstrategy.alugai_api.model.Arena;
+import com.engstrategy.alugai_api.model.enums.StatusAssinatura;
 import com.engstrategy.alugai_api.model.enums.TipoEsporte;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
@@ -10,6 +11,10 @@ public class ArenaSpecs {
 
     public static Specification<Arena> isAtivo() {
         return (root, query, builder) -> builder.isTrue(root.get("ativo"));
+    }
+
+    public static Specification<Arena> isAssinaturaAtiva() {
+        return (root, query, builder) -> builder.equal(root.get("statusAssinatura"), StatusAssinatura.ATIVA);
     }
 
     public static Specification<Arena> hasCidade(String cidade) {

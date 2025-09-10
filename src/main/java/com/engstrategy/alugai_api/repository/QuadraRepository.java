@@ -10,4 +10,6 @@ import java.util.UUID;
 public interface QuadraRepository extends JpaRepository<Quadra, Long>, JpaSpecificationExecutor<Quadra> {
     boolean existsByNomeQuadraIgnoreCase(String nome);
     List<Quadra> findByArenaId(UUID arenaId);
+
+    Long countByArenaId(UUID arenaId);
 }

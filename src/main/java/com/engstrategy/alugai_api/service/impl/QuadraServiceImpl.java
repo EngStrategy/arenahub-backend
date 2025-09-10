@@ -1,7 +1,9 @@
 package com.engstrategy.alugai_api.service.impl;
 
 import com.engstrategy.alugai_api.dto.quadra.*;
+import com.engstrategy.alugai_api.dto.subscription.AssinaturaDetalhesDTO;
 import com.engstrategy.alugai_api.exceptions.*;
+import com.engstrategy.alugai_api.jwt.CustomUserDetails;
 import com.engstrategy.alugai_api.mapper.QuadraMapper;
 import com.engstrategy.alugai_api.model.*;
 import com.engstrategy.alugai_api.model.enums.DiaDaSemana;
@@ -9,6 +11,7 @@ import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
 import com.engstrategy.alugai_api.model.enums.StatusDisponibilidade;
 import com.engstrategy.alugai_api.repository.*;
 import com.engstrategy.alugai_api.service.QuadraService;
+import com.engstrategy.alugai_api.service.SubscriptionService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
@@ -38,6 +41,7 @@ public class QuadraServiceImpl implements QuadraService {
     private final IntervaloHorarioRepository intervaloHorarioRepository;
     private final AgendamentoSnapshotService agendamentoSnapshotService;
     private final AvaliacaoRepository avaliacaoRepository;
+    private final SubscriptionService subscriptionService;
 
     @Override
     @Transactional
@@ -51,6 +55,20 @@ public class QuadraServiceImpl implements QuadraService {
 
         Arena arena = arenaRepository.findById(arenaId)
                 .orElseThrow(() -> new UserNotFoundException("Arena não encontrada com ID: " + arenaId));
+
+        List<AssinaturaDetalhesDTO> assinaturas = subscriptionService.getMinhaAssinatura(new CustomUserDetails(arena));
+
+        Integer limiteQuadras = assinaturas.stream()
+                .filter(a -> a.getLimiteQuadras() != null)
+                .mapToInt(AssinaturaDetalhesDTO::getLimiteQuadras)
+                .max()
+                .orElse(0);
+
+        Long quadrasAtuais = quadraRepository.countByArenaId((arenaId));
+
+        if (limiteQuadras >= 0 && quadrasAtuais >= limiteQuadras) {
+            throw new LimiteDeQuadrasExcedidoException("Você atingiu o limite de " + limiteQuadras + " quadras para o seu plano atual. Para adicionar mais, faça o upgrade do seu plano.");
+        }
 
         quadra.getHorariosFuncionamento().forEach(horario -> horario.setQuadra(quadra));
         quadra.setArena(arena);

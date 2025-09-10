@@ -21,7 +21,7 @@ import java.time.LocalDateTime;
 @RestController
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
-@Tag(name = "Verificação", description = "Endpoints para verificação de email")
+@Tag(name = "Verificação Email", description = "Endpoints para verificação de email")
 public class CodigoVerificacaoController {
     private final CodigoVerificacaoService codigoVerificacaoService;
     private final ResetSenhaService resetSenhaService;

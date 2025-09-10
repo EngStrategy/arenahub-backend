@@ -108,4 +108,29 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Long>,
             @Param("dataAtual") LocalDate dataAtual,
             @Param("horaAtual") LocalTime horaAtual
     );
+
+    // --- MÉTODO PARA BUSCA DE JOGOS ABERTOS POR PROXIMIDADE ---
+    @Query(
+            value = "SELECT ag.*, (6371 * acos(cos(radians(:latitude)) * cos(radians(a.latitude)) * cos(radians(a.longitude) - radians(:longitude)) + sin(radians(:latitude)) * sin(radians(a.latitude)))) AS distance " +
+                    "FROM agendamento ag " +
+                    "JOIN quadra q ON ag.quadra_id = q.id " +
+                    "JOIN arena a ON q.arena_id = a.id " +
+                    "WHERE ag.is_publico = true " +
+                    "AND ag.status = 'PENDENTE' " +
+                    "AND ag.vagas_disponiveis > 0 " +
+                    "AND ag.data_agendamento >= CURRENT_DATE " +
+                    "AND (6371 * acos(cos(radians(:latitude)) * cos(radians(a.latitude)) * cos(radians(a.longitude) - radians(:longitude)) + sin(radians(:latitude)) * sin(radians(a.latitude)))) < :raioKm " +
+                    "ORDER BY distance ASC",
+            countQuery = "SELECT count(ag.id) " +
+                    "FROM agendamento ag " +
+                    "JOIN quadra q ON ag.quadra_id = q.id " +
+                    "JOIN arena a ON q.arena_id = a.id " +
+                    "WHERE ag.is_publico = true " +
+                    "AND ag.status = 'PENDENTE' " +
+                    "AND ag.vagas_disponiveis > 0 " +
+                    "AND ag.data_agendamento >= CURRENT_DATE " +
+                    "AND (6371 * acos(cos(radians(:latitude)) * cos(radians(a.latitude)) * cos(radians(a.longitude) - radians(:longitude)) + sin(radians(:latitude)) * sin(radians(a.latitude)))) < :raioKm",
+            nativeQuery = true
+    )
+    Page<Agendamento> findJogosAbertosByProximity(@Param("latitude") Double latitude, @Param("longitude") Double longitude, @Param("raioKm") Double raioKm, Pageable pageable);
 }

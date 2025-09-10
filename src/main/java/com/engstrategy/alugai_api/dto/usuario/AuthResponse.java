@@ -1,5 +1,6 @@
 package com.engstrategy.alugai_api.dto.usuario;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -13,6 +14,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class AuthResponse {
 
     @Schema(description = "Token JWT para autenticação",
@@ -38,5 +40,8 @@ public class AuthResponse {
 
     @Schema(description = "URL da foto do usuário", example = "https://imagem.com.br")
     private String imageUrl;
+
+    @Schema(description = "Status da assinatura (apenas para Arenas)", example = "ATIVA")
+    private String statusAssinatura;
 
 }

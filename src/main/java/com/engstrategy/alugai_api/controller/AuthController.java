@@ -4,20 +4,20 @@ import com.engstrategy.alugai_api.dto.usuario.AuthResponse;
 import com.engstrategy.alugai_api.dto.usuario.LoginRequest;
 import com.engstrategy.alugai_api.exceptions.InvalidCredentialsException;
 import com.engstrategy.alugai_api.exceptions.UserNotFoundException;
+import com.engstrategy.alugai_api.jwt.CustomUserDetails;
 import com.engstrategy.alugai_api.service.impl.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
@@ -52,6 +52,18 @@ public class AuthController {
         } catch (InvalidCredentialsException e) {
             throw new InvalidCredentialsException(e.getMessage());
         }
+    }
+
+    @GetMapping("/me")
+    @Operation(summary = "Retorna os dados do usuário autenticado", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<AuthResponse> getMe(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        if (userDetails == null) {
+            throw new UserNotFoundException("Nenhum usuário autenticado encontrado.");
+        }
+
+        AuthResponse userResponse = authService.findById(userDetails.getUserId(), userDetails.getRole());
+
+        return ResponseEntity.ok(userResponse);
     }
 }
 
