@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.validator.constraints.URL;
 
 import java.util.List;
+import java.util.Set;
 
 @Data
 @NoArgsConstructor
@@ -30,14 +31,11 @@ public class QuadraUpdateDTO {
     private String urlFotoQuadra;
 
     @Schema(description = "Tipos de esporte suportados pela quadra", example = "[\"FUTEBOL_SOCIETY\", \"FUTSAL\"]")
-    private List<TipoEsporte> tipoQuadra;
+    private Set<TipoEsporte> tipoQuadra;
 
     @Schema(description = "Descrição da quadra", example = "Quadra coberta para futebol society e futsal")
     @Size(max = 500, message = "Descrição deve ter no máximo 500 caracteres")
     private String descricao;
-
-    @Schema(description = "Duração da reserva", example = "UMA_HORA")
-    private DuracaoReserva duracaoReserva;
 
     @Schema(description = "Indica se a quadra possui cobertura", example = "true")
     private Boolean cobertura;
@@ -46,9 +44,9 @@ public class QuadraUpdateDTO {
     private Boolean iluminacaoNoturna;
 
     @Schema(description = "Materiais esportivos fornecidos", example = "[\"BOLA\", \"COLETE\"]")
-    private List<MaterialEsportivo> materiaisFornecidos;
+    private Set<MaterialEsportivo> materiaisFornecidos;
 
     @Schema(description = "Horários de funcionamento da quadra")
     @Valid
-    private List<HorarioFuncionamentoUpdateDTO> horariosFuncionamento;
+    private Set<HorarioFuncionamentoUpdateDTO> horariosFuncionamento;
 }

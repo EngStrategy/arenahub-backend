@@ -3,6 +3,8 @@ package com.engstrategy.alugai_api.service.impl;
 import com.engstrategy.alugai_api.dto.agendamento.AgendamentoCreateDTO;
 import com.engstrategy.alugai_api.dto.agendamento.AgendamentoExternoCreateDTO;
 import com.engstrategy.alugai_api.dto.agendamento.NovoAtletaExternoDTO;
+import com.engstrategy.alugai_api.dto.agendamento.PixPagamentoResponseDTO;
+import com.engstrategy.alugai_api.dto.asaas.*;
 import com.engstrategy.alugai_api.exceptions.AccessDeniedException;
 import com.engstrategy.alugai_api.exceptions.SubscriptionInactiveException;
 import com.engstrategy.alugai_api.exceptions.UniqueConstraintViolationException;
@@ -15,20 +17,18 @@ import com.engstrategy.alugai_api.service.AgendamentoService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.HttpClientErrorException;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.ZoneId;
+import java.math.BigDecimal;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -43,7 +43,11 @@ public class AgendamentoServiceImpl implements AgendamentoService {
     private final EmailService emailService;
     private final QuadraRepository quadraRepository;
     private final ArenaRepository arenaRepository;
+    private final AsaasService asaasService;
     private final ZoneId fusoHorarioPadrao = ZoneId.of("America/Sao_Paulo");
+
+    @Value("${stripe.secret-key}")
+    private String stripeSecretKey;
 
     private void validarStatusAssinaturaDaArena(Quadra quadra) {
         // Buscamos a Arena pelo ID para garantir que temos o objeto completo e atualizado
@@ -70,7 +74,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
         validarDataAgendamento(dto.getDataAgendamento());
 
         // Buscar e validar slots
-        List<SlotHorario> slots = buscarEValidarSlots(dto.getSlotHorarioIds());
+        Set<SlotHorario> slots = buscarEValidarSlots(dto.getSlotHorarioIds());
 
         // Verifica se slots são subsequentes
         if (!slotHorarioService.saoSlotsSubsequentes(dto.getSlotHorarioIds())) {
@@ -138,12 +142,13 @@ public class AgendamentoServiceImpl implements AgendamentoService {
         }
     }
 
-    private List<SlotHorario> buscarEValidarSlots(List<Long> slotIds) {
+    private Set<SlotHorario> buscarEValidarSlots(List<Long> slotIds) {
         if (slotIds == null || slotIds.isEmpty()) {
             throw new IllegalArgumentException("Deve ser informado pelo menos um slot de horário");
         }
 
-        List<SlotHorario> slots = slotHorarioRepository.findAllById(slotIds);
+        List<SlotHorario> slotsList = slotHorarioRepository.findAllById(slotIds);
+        Set<SlotHorario> slots = new HashSet<>(slotsList);
 
         if (slots.size() != slotIds.size()) {
             throw new IllegalArgumentException("Um ou mais slots informados não foram encontrados");
@@ -156,7 +161,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
     /**
      * Verifica se os slots estão disponíveis na data específica do agendamento
      */
-    protected void verificarDisponibilidadeSlotsParaData(List<SlotHorario> slots,
+    protected void verificarDisponibilidadeSlotsParaData(Set<SlotHorario> slots,
                                                          LocalDate dataAgendamento,
                                                          Long quadraId) {
 
@@ -298,33 +303,40 @@ public class AgendamentoServiceImpl implements AgendamentoService {
                                                StatusAgendamento status,
                                                Pageable pageable) {
 
-        Specification<Agendamento> spec = AgendamentoSpecs.hasAtletaId(atletaId);
 
-        if (dataInicio != null) {
-            spec = Specification.allOf(spec, AgendamentoSpecs.dataInicioAfterOrEqual(dataInicio));
-        }
-        if (dataFim != null) {
-            spec = Specification.allOf(spec, AgendamentoSpecs.dataFimBeforeOrEqual(dataFim));
-        }
-
-        // Lógica especial para status FINALIZADO
-        if (status != null) {
-            if (status == StatusAgendamento.FINALIZADO) {
-                // Para FINALIZADO, buscar por múltiplos status
-                spec = Specification.allOf(spec, AgendamentoSpecs.hasStatusIn(
-                        Arrays.asList(StatusAgendamento.CANCELADO, StatusAgendamento.PAGO, StatusAgendamento.AUSENTE)
-                ));
-            } else {
-                // Para outros status, usar a lógica normal
-                spec = Specification.allOf(spec, AgendamentoSpecs.hasStatus(status));
-            }
+        Boolean isFixoFiltro = null;
+        if (tipoAgendamento == TipoAgendamento.FIXO) {
+            isFixoFiltro = Boolean.TRUE;
+        } else if (tipoAgendamento == TipoAgendamento.NORMAL) {
+            isFixoFiltro = Boolean.FALSE;
         }
 
-        if (tipoAgendamento != null && tipoAgendamento != TipoAgendamento.AMBOS) {
-            spec = Specification.allOf(spec, AgendamentoSpecs.isTipoAgendamento(tipoAgendamento));
+        List<StatusAgendamento> statusFilter;
+
+        if (status == StatusAgendamento.FINALIZADO) {
+            statusFilter = Arrays.asList(StatusAgendamento.CANCELADO, StatusAgendamento.PAGO, StatusAgendamento.AUSENTE);
+        } else if (status != null) {
+            statusFilter = Arrays.asList(status);
+        } else {
+            statusFilter = Arrays.asList(
+                    StatusAgendamento.PENDENTE,
+                    StatusAgendamento.AGUARDANDO_PAGAMENTO,
+                    StatusAgendamento.PAGO
+            );
         }
 
-        return agendamentoRepository.findAll(spec, pageable);
+        if (status == null && dataInicio == null) {
+            dataInicio = LocalDate.now(fusoHorarioPadrao);
+        }
+
+        return agendamentoRepository.findByAtletaIdWithDetails(
+                atletaId,
+                dataInicio,
+                dataFim,
+                isFixoFiltro,
+                statusFilter,
+                pageable
+        );
     }
 
     @Override
@@ -341,33 +353,26 @@ public class AgendamentoServiceImpl implements AgendamentoService {
                                               Long quadraId,
                                               Pageable pageable) {
 
-        Specification<Agendamento> spec = AgendamentoSpecs.hasArenaId(arenaId);
+        List<StatusAgendamento> statusesParaFiltrar = null; // null significa que não filtraremos por status
 
-        if (dataInicio != null) {
-            spec = Specification.allOf(spec, AgendamentoSpecs.dataInicioAfterOrEqual(dataInicio));
-        }
-        if (dataFim != null) {
-            spec = Specification.allOf(spec, AgendamentoSpecs.dataFimBeforeOrEqual(dataFim));
-        }
-
-        // Lógica especial para status FINALIZADO
         if (status != null) {
             if (status == StatusAgendamento.FINALIZADO) {
-                // Para FINALIZADO, buscar por múltiplos status
-                spec = Specification.allOf(spec, AgendamentoSpecs.hasStatusIn(
-                        Arrays.asList(StatusAgendamento.CANCELADO, StatusAgendamento.PAGO, StatusAgendamento.AUSENTE)
-                ));
+                // Se o filtro for FINALIZADO, buscamos por todos estes status
+                statusesParaFiltrar = Arrays.asList(StatusAgendamento.CANCELADO, StatusAgendamento.PAGO, StatusAgendamento.AUSENTE);
             } else {
-                // Para outros status, usar a lógica normal
-                spec = Specification.allOf(spec, AgendamentoSpecs.hasStatus(status));
+                // Para qualquer outro status, buscamos apenas por ele
+                statusesParaFiltrar = List.of(status);
             }
         }
 
-        if (quadraId != null) {
-            spec = Specification.allOf(spec, AgendamentoSpecs.hasQuadraId(quadraId));
-        }
-
-        return agendamentoRepository.findAll(spec, pageable);
+        return agendamentoRepository.findByArenaIdWithFilters(
+                arenaId,
+                dataInicio,
+                dataFim,
+                quadraId,
+                statusesParaFiltrar,
+                pageable
+        );
     }
 
     @Override
@@ -466,14 +471,14 @@ public class AgendamentoServiceImpl implements AgendamentoService {
 
         // Logica para determinar um esporte para o agendamento
         TipoEsporte esporteAgendado;
-        List<TipoEsporte> esportesDaQuadra = quadra.getTipoQuadra();
+        Set<TipoEsporte> esportesDaQuadra = quadra.getTipoQuadra();
 
         if (esportesDaQuadra == null || esportesDaQuadra.isEmpty()) {
             throw new IllegalStateException("Esta quadra não tem nenhum esporte configurado e não pode ser agendada.");
 
         } else if (esportesDaQuadra.size() == 1) {
             // Se a quadra só tem 1 esporte, ele é selecionado automaticamente.
-            esporteAgendado = esportesDaQuadra.get(0);
+            esporteAgendado = esportesDaQuadra.iterator().next();
 
         } else {
             // Se a quadra tem múltiplos esportes, o DTO PRECISA especificar um.
@@ -481,7 +486,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
                 throw new IllegalArgumentException("Esta quadra suporta múltiplos esportes. Especifique o esporte a ser agendado.");
             }
             if (!esportesDaQuadra.contains(dto.getEsporte())) {
-                throw new IllegalArgumentException("O esporte '"+ dto.getEsporte() + "' não é válido para esta quadra.");
+                throw new IllegalArgumentException("O esporte '" + dto.getEsporte() + "' não é válido para esta quadra.");
             }
             esporteAgendado = dto.getEsporte();
         }
@@ -493,5 +498,124 @@ public class AgendamentoServiceImpl implements AgendamentoService {
         agendamentoCoreDto.setEsporte(esporteAgendado);
 
         return this.criarAgendamento(agendamentoCoreDto, atleta.getId());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public StatusAgendamento verificarStatus(Long agendamentoId) {
+        return agendamentoRepository.findById(agendamentoId)
+                .map(Agendamento::getStatus)
+                .orElseThrow(() -> new EntityNotFoundException("Agendamento não encontrado."));
+    }
+
+    @Override
+    @Transactional
+    public PixPagamentoResponseDTO criarPagamentoPix(AgendamentoCreateDTO dto, UUID atletaId) {
+        // CRIAR O AGENDAMENTO PROVISÓRIO COM STATUS 'AGUARDANDO_PAGAMENTO'
+        log.info("Iniciando criação de pagamento PIX para atleta ID: {} na data: {}", atletaId, dto.getDataAgendamento());
+
+        validarDataAgendamento(dto.getDataAgendamento());
+        Set<SlotHorario> slots = buscarEValidarSlots(dto.getSlotHorarioIds());
+
+        Atleta atleta = atletaRepository.findById(atletaId)
+                .orElseThrow(() -> new EntityNotFoundException("Atleta não encontrado"));
+
+        String cpfParaAsaas = atleta.getCpfCnpj();
+
+        if (cpfParaAsaas == null || cpfParaAsaas.isBlank()) {
+            cpfParaAsaas = dto.getCpfCnpjPagamento();
+
+            if (cpfParaAsaas == null || cpfParaAsaas.isBlank()) {
+                throw new IllegalArgumentException("CPF/CNPJ é obrigatório para gerar pagamento PIX.");
+
+            }
+
+            String cpfLimpo = cpfParaAsaas.replaceAll("[^0-9]", ""); // Garante que apenas números serão salvos
+
+            // Atualiza a entidade Atleta com o CPF limpo
+            atleta.setCpfCnpj(cpfLimpo);
+
+            atletaRepository.save(atleta);
+
+            cpfParaAsaas = cpfLimpo;
+        } else {
+            // Se o CPF já existe no cadastro, apenas limpamos para a API do Asaas.
+            cpfParaAsaas = cpfParaAsaas.replaceAll("[^0-9]", "");
+        }
+
+        Quadra quadra = quadraRepository.findById(dto.getQuadraId())
+                .orElseThrow(() -> new EntityNotFoundException("Quadra não encontrada"));
+
+        validarStatusAssinaturaDaArena(quadra);
+
+        Agendamento agendamento = agendamentoMapper.fromCreateToAgendamento(dto, slots, atleta);
+        agendamento.setStatus(StatusAgendamento.AGUARDANDO_PAGAMENTO);
+        agendamento.criarSnapshot();
+
+        Agendamento agendamentoProvisorio = agendamentoRepository.save(agendamento);
+        log.info("Agendamento provisório criado com ID: {}", agendamentoProvisorio.getId());
+
+        try {
+            String cpfLimpo = cpfParaAsaas.replaceAll("[^0-9]", "");
+
+            String telefoneOriginal = atleta.getTelefone();
+            String telefoneLimpo = (telefoneOriginal != null && !telefoneOriginal.isBlank())
+                    ? telefoneOriginal.replaceAll("[^0-9]", "")
+                    : null;
+
+            String nomeLimpo = atleta.getNome().replaceAll("[^a-zA-ZáàâãéèêíìîóòôõúùûüçÇ\\s]", "");
+
+            AsaasCreateCustomerRequest customerRequest = AsaasCreateCustomerRequest.builder()
+                    .name(nomeLimpo)
+                    .email(atleta.getEmail())
+                    .phone(telefoneLimpo)
+                    .cpfCnpj(cpfLimpo)
+                    .build();
+            AsaasCustomerResponse customer = asaasService.createCustomer(customerRequest);
+
+            // 2. CRIAR A COBRANÇA PIX
+            BigDecimal valorTotal = agendamentoProvisorio.getValorTotalSnapshot();
+            String dataVencimento = LocalDate.now().toString();
+
+            AsaasCreatePaymentRequest paymentRequest = AsaasCreatePaymentRequest.builder()
+                    .customer(customer.getId())
+                    .value(valorTotal)
+                    .dueDate(dataVencimento)
+                    .description("Agendamento de quadra #" + agendamentoProvisorio.getId())
+                    .build();
+
+            AsaasPaymentResponse paymentResponse = asaasService.createPixPayment(paymentRequest);
+
+            agendamentoProvisorio.setAsaasPaymentId(paymentResponse.getId()); // Define o ID retornado
+            agendamentoRepository.save(agendamentoProvisorio); // Salva o agendamento com o ID do Asaas
+
+            AsaasPixQrCodeResponse pixDataResponse = asaasService.getPixQrCode(paymentResponse.getId());
+
+            String dataExpiracaoStr = pixDataResponse.getExpirationDate(); // Agora pega a String
+            String qrCodeDataString = pixDataResponse.getPayload(); // Copia e Cola
+            String qrCodeBase64 = pixDataResponse.getQrCodeBase64(); // Nome do campo ajustado no DTO
+
+            if (qrCodeDataString == null || qrCodeBase64 == null || dataExpiracaoStr == null) {
+                log.error("Dados de PIX retornados do Asaas estão incompletos para o pagamento {}", paymentResponse.getId());
+                throw new RuntimeException("Falha ao gerar QR Code PIX. Dados incompletos. (Data de expiração ausente)");
+            }
+
+            LocalDateTime expiraEmForcada = LocalDateTime.now(fusoHorarioPadrao).plusMinutes(10);
+            String expiraEmFormatada = expiraEmForcada.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"));
+
+            return PixPagamentoResponseDTO.builder()
+                    .agendamentoId(agendamentoProvisorio.getId())
+                    .statusAgendamento(agendamentoProvisorio.getStatus().name())
+                    .qrCodeData(qrCodeBase64) // Imagem Base64 do QR Code
+                    .copiaECola(qrCodeDataString) // Código Copia e Cola
+                    .expiraEm(expiraEmFormatada)
+                    .build();
+
+        } catch (HttpClientErrorException.BadRequest e) {
+            log.error("Erro 400 do Asaas: {}", e.getResponseBodyAsString());
+            throw new RuntimeException("Erro de validação do provedor de pagamento. Verifique o CPF/CNPJ.", e);
+        } catch (Exception e) {
+            throw new RuntimeException("Erro ao gerar pagamento Pix junto ao nosso provedor.", e);
+        }
     }
 }

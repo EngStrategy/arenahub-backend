@@ -3,6 +3,7 @@ package com.engstrategy.alugai_api.repository;
 import com.engstrategy.alugai_api.model.Agendamento;
 import com.engstrategy.alugai_api.model.Quadra;
 import com.engstrategy.alugai_api.model.SlotHorario;
+import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -16,6 +17,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -69,7 +71,7 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Long>,
             "WHERE a.quadra.arena.id = :arenaId " +
             "AND a.dataAgendamento = :dataAtual " +
             "AND a.horarioInicioSnapshot > :horarioAtual " +
-            "AND a.status IN ('PENDENTE') " +
+            "AND a.status IN ('PENDENTE', 'AGUARDANDO_PAGAMENTO', 'PAGO') " +
             "ORDER BY a.horarioInicioSnapshot ASC " +
             "LIMIT 5")
     List<Agendamento> findProximosAgendamentosDoDia(@Param("arenaId") UUID arenaId,
@@ -80,7 +82,11 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Long>,
      * Busca agendamentos de um atleta que já terminaram,
      * não foram cancelados e ainda não possuem uma avaliação.
      */
-    @Query("SELECT a FROM Agendamento a WHERE a.atleta.id = :atletaId " +
+    @Query("SELECT DISTINCT a FROM Agendamento a " +
+            "JOIN FETCH a.slotsHorario sh " +
+            "LEFT JOIN FETCH a.solicitacoes sol " +
+            "LEFT JOIN FETCH a.avaliacao avaliacao " +
+            "WHERE a.atleta.id = :atletaId " +
             "AND a.avaliacao IS NULL " +
             "AND (a.avaliacaoDispensada IS NULL OR a.avaliacaoDispensada = false) " +
             "AND a.status IN ('PAGO', 'CONFIRMADO') " +
@@ -116,7 +122,7 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Long>,
                     "JOIN quadra q ON ag.quadra_id = q.id " +
                     "JOIN arena a ON q.arena_id = a.id " +
                     "WHERE ag.is_publico = true " +
-                    "AND ag.status = 'PENDENTE' " +
+                    "AND ag.status IN ('PENDENTE', 'AGUARDANDO_PAGAMENTO', 'PAGO') " +
                     "AND ag.vagas_disponiveis > 0 " +
                     "AND ag.data_agendamento >= CURRENT_DATE " +
                     "AND (6371 * acos(cos(radians(:latitude)) * cos(radians(a.latitude)) * cos(radians(a.longitude) - radians(:longitude)) + sin(radians(:latitude)) * sin(radians(a.latitude)))) < :raioKm " +
@@ -126,11 +132,93 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Long>,
                     "JOIN quadra q ON ag.quadra_id = q.id " +
                     "JOIN arena a ON q.arena_id = a.id " +
                     "WHERE ag.is_publico = true " +
-                    "AND ag.status = 'PENDENTE' " +
+                    "AND ag.status IN ('PENDENTE', 'AGUARDANDO_PAGAMENTO', 'PAGO') " +
                     "AND ag.vagas_disponiveis > 0 " +
                     "AND ag.data_agendamento >= CURRENT_DATE " +
                     "AND (6371 * acos(cos(radians(:latitude)) * cos(radians(a.latitude)) * cos(radians(a.longitude) - radians(:longitude)) + sin(radians(:latitude)) * sin(radians(a.latitude)))) < :raioKm",
             nativeQuery = true
     )
     Page<Agendamento> findJogosAbertosByProximity(@Param("latitude") Double latitude, @Param("longitude") Double longitude, @Param("raioKm") Double raioKm, Pageable pageable);
+
+    @Query(value = "SELECT DISTINCT a FROM Agendamento a " +
+            "LEFT JOIN FETCH a.atleta " +
+            "LEFT JOIN FETCH a.quadra " +
+            "LEFT JOIN FETCH a.slotsHorario " +
+            "LEFT JOIN FETCH a.participantes " +
+            "LEFT JOIN FETCH a.avaliacao avaliacao " +
+            "WHERE a.quadra.arena.id = :arenaId " +
+
+            // CORREÇÃO: Usar COALESCE para filtros de data opcionais na query principal
+            "AND a.dataAgendamento >= COALESCE(:dataInicio, a.dataAgendamento) " +
+            "AND a.dataAgendamento <= COALESCE(:dataFim, a.dataAgendamento) " +
+
+            "AND (:quadraId IS NULL OR a.quadra.id = :quadraId) " +
+            "AND (:statuses IS NULL OR a.status IN :statuses)",
+
+            // Count Query também deve usar COALESCE
+            countQuery = "SELECT COUNT(DISTINCT a) FROM Agendamento a " +
+                    "WHERE a.quadra.arena.id = :arenaId " +
+
+                    // CORREÇÃO NO COUNT QUERY
+                    "AND a.dataAgendamento >= COALESCE(:dataInicio, a.dataAgendamento) " +
+                    "AND a.dataAgendamento <= COALESCE(:dataFim, a.dataAgendamento) " +
+
+                    "AND (:quadraId IS NULL OR a.quadra.id = :quadraId) " +
+                    "AND (:statuses IS NULL OR a.status IN :statuses)")
+    Page<Agendamento> findByArenaIdWithFilters(
+            @Param("arenaId") UUID arenaId,
+            @Param("dataInicio") LocalDate dataInicio,
+            @Param("dataFim") LocalDate dataFim,
+            @Param("quadraId") Long quadraId,
+            @Param("statuses") List<StatusAgendamento> statuses,
+            Pageable pageable
+    );
+
+    @Query("SELECT COUNT(a) FROM Agendamento a " +
+            "WHERE a.quadra.id = :quadraId " +
+            "AND a.dataAgendamento >= :dataAtual " +
+            "AND a.status NOT IN ('CANCELADO', 'FINALIZADO', 'AUSENTE')")
+    long countAgendamentosPendentesPorQuadra(
+            @Param("quadraId") Long quadraId,
+            @Param("dataAtual") LocalDate dataAtual
+    );
+
+    @Query("SELECT a FROM Agendamento a WHERE a.status = :status AND a.dataSnapshot < :limite")
+    List<Agendamento> findExpirados(@Param("status") StatusAgendamento status, @Param("limite") LocalDateTime limite);
+
+    @Query("SELECT a FROM Agendamento a " +
+            "JOIN FETCH a.atleta atleta " +
+            "JOIN FETCH a.quadra quadra " +
+            "JOIN FETCH quadra.arena arena " +
+            "WHERE a.asaasPaymentId = :asaasPaymentId")
+    Optional<Agendamento> findByAsaasPaymentIdFetchRelations(@Param("asaasPaymentId") String asaasPaymentId);
+
+    /**
+     * Busca agendamentos de um atleta com os slotsHorario carregados (Eagerly).
+     */
+    @Query(value = "SELECT a FROM Agendamento a " +
+            "JOIN FETCH a.slotsHorario sh " +
+            "LEFT JOIN FETCH a.solicitacoes sol " +
+            "LEFT JOIN FETCH a.participantes p " +
+            "WHERE a.atleta.id = :atletaId " +
+            "AND a.dataAgendamento >= COALESCE(:dataInicio, a.dataAgendamento) " +
+            "AND a.dataAgendamento <= COALESCE(:dataFim, a.dataAgendamento) " +
+            "AND (:isFixoFiltro IS NULL OR a.isFixo = :isFixoFiltro) " +
+            "AND a.status IN :statusFilter",
+            countQuery = "SELECT COUNT(a) FROM Agendamento a " +
+                    "WHERE a.atleta.id = :atletaId " +
+                    "AND a.dataAgendamento >= COALESCE(:dataInicio, a.dataAgendamento) " +
+                    "AND a.dataAgendamento <= COALESCE(:dataFim, a.dataAgendamento) " +
+                    "AND (:isFixoFiltro IS NULL OR a.isFixo = :isFixoFiltro) " +
+                    "AND a.status IN :statusFilter"
+    )
+    Page<Agendamento> findByAtletaIdWithDetails(
+            @Param("atletaId") UUID atletaId,
+            @Param("dataInicio") LocalDate dataInicio,
+            @Param("dataFim") LocalDate dataFim,
+            @Param("isFixoFiltro") Boolean isFixoFiltro,
+            @Param("statusFilter") List<StatusAgendamento> statusFilter,
+            Pageable pageable
+    );
+
 }

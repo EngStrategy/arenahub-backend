@@ -27,6 +27,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -52,9 +53,8 @@ public class JogoAbertoServiceImpl implements JogoAbertoService {
             jogosAbertosPage = agendamentoRepository.findJogosAbertosByProximity(latitude, longitude, raioKm, proximityPageable);
 
         } else {
-            // --- Busca por Filtros Tradicionais ---
             Specification<Agendamento> spec = AgendamentoSpecs.isPublico()
-                    .and(AgendamentoSpecs.isPendente())
+                    .and(AgendamentoSpecs.isAtivoEstrategico())
                     .and(AgendamentoSpecs.hasVagas())
                     .and(AgendamentoSpecs.isUpcoming());
 

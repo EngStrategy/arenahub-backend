@@ -65,6 +65,7 @@ public class AuthService {
                 .expiresIn(jwtService.getExpirationInSeconds())
                 .imageUrl(usuario.getUrlFoto())
                 .statusAssinatura(statusAssinatura)
+                .cpfCnpj(usuario.getCpfCnpj())
                 .build();
     }
 

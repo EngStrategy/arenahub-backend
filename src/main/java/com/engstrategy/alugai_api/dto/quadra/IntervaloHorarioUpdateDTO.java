@@ -1,6 +1,7 @@
 package com.engstrategy.alugai_api.dto.quadra;
 
 import com.engstrategy.alugai_api.model.enums.StatusIntervalo;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMin;
 import lombok.AllArgsConstructor;
@@ -16,6 +17,7 @@ import java.time.LocalTime;
 @AllArgsConstructor
 @Builder
 @Schema(description = "Dados para atualização de um intervalo de horário")
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class IntervaloHorarioUpdateDTO {
 
     @Schema(description = "ID do intervalo de horário (para atualizações)", example = "1")

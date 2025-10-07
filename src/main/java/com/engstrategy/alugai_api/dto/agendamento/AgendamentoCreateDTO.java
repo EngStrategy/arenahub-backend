@@ -28,4 +28,5 @@ public class AgendamentoCreateDTO {
     private boolean isPublico;
     private PeriodoAgendamento periodoFixo;
     private Integer numeroJogadoresNecessarios;
+    private String cpfCnpjPagamento;
 }

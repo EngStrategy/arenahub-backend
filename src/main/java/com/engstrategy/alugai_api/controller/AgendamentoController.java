@@ -2,6 +2,7 @@ package com.engstrategy.alugai_api.controller;
 
 import com.engstrategy.alugai_api.dto.agendamento.AgendamentoCreateDTO;
 import com.engstrategy.alugai_api.dto.agendamento.AgendamentoResponseDTO;
+import com.engstrategy.alugai_api.dto.agendamento.PixPagamentoResponseDTO;
 import com.engstrategy.alugai_api.dto.avaliacao.AvaliacaoDTO;
 import com.engstrategy.alugai_api.dto.avaliacao.AvaliacaoResponseDTO;
 import com.engstrategy.alugai_api.jwt.CustomUserDetails;
@@ -29,11 +30,13 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -105,6 +108,7 @@ public class AgendamentoController {
 
     @GetMapping("/meus-agendamentos")
     @Operation(summary = "Listar meus agendamentos", security = @SecurityRequirement(name = "bearerAuth"))
+    @Transactional(readOnly = true)
     public ResponseEntity<Page<AgendamentoResponseDTO>> getMeusAgendamentos(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Parameter(description = "Número da página (iniciando em 0)")
@@ -164,6 +168,7 @@ public class AgendamentoController {
 
     @GetMapping("/avaliacoes-pendentes")
     @Operation(summary = "Listar meus agendamentos com avaliação pendente", security = @SecurityRequirement(name = "bearerAuth"))
+    @Transactional(readOnly = true)
     public ResponseEntity<List<AgendamentoResponseDTO>> getAgendamentosParaAvaliar(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
@@ -174,5 +179,22 @@ public class AgendamentoController {
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/criar-pagamento-pix")
+    @Operation(summary = "Cria um agendamento provisório e gera os dados para pagamento com Pix", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<PixPagamentoResponseDTO> criarPagamentoPix(
+            @RequestBody @Valid AgendamentoCreateDTO dto,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        PixPagamentoResponseDTO response = agendamentoService.criarPagamentoPix(dto, userDetails.getUserId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping("/{agendamentoId}/status")
+    @Operation(summary = "Verifica o status de um agendamento (para polling do frontend)", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<Map<String, String>> getAgendamentoStatus(@PathVariable Long agendamentoId) {
+        StatusAgendamento status = agendamentoService.verificarStatus(agendamentoId);
+        return ResponseEntity.ok(Map.of("status", status.name()));
     }
 }

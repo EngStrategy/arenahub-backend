@@ -47,4 +47,7 @@ public abstract class Usuario {
     @Builder.Default
     @Column(nullable = false)
     private boolean ativo = false;
+
+    @Column(name = "cpf_cnpj", nullable = true, unique = true)
+    private String cpfCnpj;
 }

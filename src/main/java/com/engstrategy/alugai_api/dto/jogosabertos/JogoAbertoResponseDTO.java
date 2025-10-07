@@ -2,6 +2,7 @@ package com.engstrategy.alugai_api.dto.jogosabertos;
 
 import com.engstrategy.alugai_api.model.enums.TipoEsporte;
 import com.engstrategy.alugai_api.util.LocalTimeSerializer;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Builder;
 import lombok.Data;
@@ -13,6 +14,8 @@ import java.time.LocalTime;
 @Builder
 public class JogoAbertoResponseDTO {
     private Long agendamentoId;
+
+    @JsonFormat(pattern = "dd/MM/yyyy")
     private LocalDate data;
 
     @JsonSerialize(using = LocalTimeSerializer.class)

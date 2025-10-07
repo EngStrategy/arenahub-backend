@@ -2,13 +2,13 @@
 # SEÇÃO BASE - Carregada em TODOS os ambientes
 # =================================================
 app:
-  frontend-url: ${ARENAHUB_FRONTEND_URL_PROD}
+  frontend-url: ${ARENAHUB_FRONTEND_URL_LOCAL}
 server:
   port: ${PORT:8080}
 springdoc:
-  server-url: ${ARENAHUB_BACKEND_URL_PROD}
+  server-url: ${ARENAHUB_BACKEND_URL_LOCAL}
 arenahub:
-  admin-email: ${DOCKER_PGADMIN_DEFAULT_EMAIL}
+  admin-email: ${ADMIN_EMAIL}
 spring:
   profiles:
     active: dev
@@ -18,8 +18,8 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: engstrategy05@gmail.com
-    password: ${EMAIL_ENGSTRATEGY_PASSWORD}
+    username: arenahub.2025@gmail.com
+    password: ${GMAIL_APP_PASSWORD}
     properties:
       mail:
         smtp:
@@ -39,11 +39,10 @@ jwt:
 logging:
   level:
     org.springframework.security.config.annotation.authentication.configuration: ERROR
-
-stripe:
-  public-key: ${STRIPE_PUBLIC_KEY_PRODUCAO}
-  secret-key: ${STRIPE_SECRET_KEY_PRODUCAO}
-  webhook-secret: ${STRIPE_WEBHOOK_SECRET_PRODUCAO}
+asaas:
+  api:
+    url: ${ASAAS_URL_SANDBOX}
+    token: ${ASAAS_TOKEN_SANDBOX}
 
 ---
 # =================================================
@@ -55,11 +54,15 @@ spring:
       on-profile: dev
   datasource:
     url: jdbc:postgresql://localhost:5432/arenahub
-    username: ${SPRING_DATASOURCE_USERNAME}
-    password: ${SPRING_DATASOURCE_PASSWORD}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: update
+stripe:
+  public-key: ${STRIPE_PUBLIC_KEY_TEST}
+  secret-key: ${STRIPE_SECRET_KEY_TEST}
+  webhook-secret: ${STRIPE_WEBHOOK_SECRET_TEST}
 
 ---
 # =================================================
@@ -71,8 +74,12 @@ spring:
       on-profile: docker
   datasource:
     url: jdbc:postgresql://db:5432/arenahub
-    username: ${SPRING_DATASOURCE_USERNAME}
-    password: ${SPRING_DATASOURCE_PASSWORD}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: update
+stripe:
+  public-key: ${STRIPE_PUBLIC_KEY_PROD}
+  secret-key: ${STRIPE_SECRET_KEY_PROD}
+  webhook-secret: ${STRIPE_WEBHOOK_SECRET_PROD}

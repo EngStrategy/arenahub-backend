@@ -29,11 +29,12 @@ public class Quadra {
     @Column(name = "nome_quadra")
     private String nomeQuadra;
 
-    @Builder.Default
-    @ElementCollection(targetClass = TipoEsporte.class)
-    @CollectionTable(joinColumns = @JoinColumn(name = "quadra_id"))
+    @ElementCollection(targetClass = TipoEsporte.class, fetch = FetchType.LAZY)
+    @CollectionTable(name = "quadra_tipo_quadra", joinColumns = @JoinColumn(name = "quadra_id"))
     @Enumerated(EnumType.STRING)
-    private List<TipoEsporte> tipoQuadra = new ArrayList<>();
+    @Column(name = "tipo_quadra", nullable = false)
+    @Builder.Default
+    private Set<TipoEsporte> tipoQuadra = new HashSet<>();
 
     private String descricao;
 
@@ -46,14 +47,15 @@ public class Quadra {
     private boolean iluminacaoNoturna;
 
     @Builder.Default
-    @OneToMany(mappedBy = "quadra", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "quadra", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<HorarioFuncionamento> horariosFuncionamento = new HashSet<>();
 
-    @Builder.Default
-    @ElementCollection(targetClass = MaterialEsportivo.class)
-    @CollectionTable(name = "materiais_quadra", joinColumns = @JoinColumn(name = "quadra_id"))
+    @ElementCollection(targetClass = MaterialEsportivo.class, fetch = FetchType.LAZY)
+    @CollectionTable(name = "quadra_materiais_fornecidos", joinColumns = @JoinColumn(name = "quadra_id"))
     @Enumerated(EnumType.STRING)
-    private List<MaterialEsportivo> materiaisFornecidos = new ArrayList<>();
+    @Column(name = "material_fornecido", nullable = false)
+    @Builder.Default
+    private Set<MaterialEsportivo> materiaisFornecidos = new HashSet<>();
 
     @ManyToOne
     @JoinColumn(name = "arena_id", nullable = false)

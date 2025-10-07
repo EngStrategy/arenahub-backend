@@ -13,6 +13,7 @@ import org.springframework.data.jpa.domain.Specification;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -67,25 +68,30 @@ public class AgendamentoSpecs {
     public static Specification<Agendamento> hasCidade(String cidade) {
         return (root, query, builder) -> {
             if (cidade == null || cidade.trim().isEmpty()) {
-                return null; // Nenhum filtro aplicado se a cidade for nula/vazia
+                return null;
             }
-            // Join: Agendamento -> Quadra -> Arena -> Endereco
-            Join<Object, Object> quadraJoin = root.join("quadra");
-            Join<Object, Object> arenaJoin = quadraJoin.join("arena");
-            return builder.like(builder.lower(arenaJoin.get("endereco").get("cidade")), "%" + cidade.toLowerCase() + "%");
+
+            // CORREÇÃO: Usamos o JOIN para navegar na relação
+            Join quadra = root.join("quadra");
+            Join arena = quadra.join("arena");
+            // Endereco é embutido ou Join (verifique seu mapeamento da Arena)
+            // Se Endereco for uma classe @Embeddable, o get("endereco") está correto.
+            return builder.like(
+                    builder.lower(arena.get("endereco").get("cidade")),
+                    "%" + cidade.toLowerCase() + "%" // Usa LIKE para busca parcial
+            );
         };
     }
 
     public static Specification<Agendamento> hasEsporte(String esporte) {
         return (root, query, builder) -> {
             if (esporte == null || esporte.trim().isEmpty()) {
-                return null; // Nenhum filtro aplicado se o esporte for nulo/vazio
+                return null;
             }
             try {
                 TipoEsporte tipoEsporte = TipoEsporte.valueOf(esporte.toUpperCase());
                 return builder.equal(root.get("esporte"), tipoEsporte);
             } catch (IllegalArgumentException e) {
-                // Retorna uma condição que sempre será falsa se o esporte for inválido
                 return builder.disjunction();
             }
         };
@@ -147,5 +153,14 @@ public class AgendamentoSpecs {
             }
             return criteriaBuilder.equal(root.get("quadra").get("id"), quadraId);
         };
+    }
+
+    public static Specification<Agendamento> isAtivoEstrategico() {
+        List<StatusAgendamento> statusAtivo = Arrays.asList(
+                StatusAgendamento.PENDENTE,
+                StatusAgendamento.AGUARDANDO_PAGAMENTO,
+                StatusAgendamento.PAGO
+        );
+        return (root, query, cb) -> root.get("status").in(statusAtivo);
     }
 }

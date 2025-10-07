@@ -3,6 +3,7 @@ package com.engstrategy.alugai_api.dto.arena;
 import com.engstrategy.alugai_api.dto.quadra.QuadraResponseDTO;
 import com.engstrategy.alugai_api.model.Quadra;
 import com.engstrategy.alugai_api.model.enums.Role;
+import com.engstrategy.alugai_api.model.enums.StatusAssinatura;
 import com.engstrategy.alugai_api.model.enums.TipoEsporte;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
@@ -62,4 +63,10 @@ public class ArenaResponseDTO {
 
     @Schema(description = "Quantidade de avaliações", example = "10")
     private Long quantidadeAvaliacoes;
+
+    @Schema(description = "ID do cliente no Stripe", example = "cus_J5tX1e2eZvKYlo2")
+    private String stripeCustomerId;
+
+    @Schema(description = "Status da assinatura", example = "ATIVO")
+    private StatusAssinatura statusAssinatura;
 }

@@ -41,7 +41,6 @@ public class SecurityConfig {
                         .requestMatchers("/v3/api-docs/**", "/v3/api-docs.yaml").permitAll()
                         .requestMatchers("/swagger-resources/**").permitAll()
                         .requestMatchers("/webjars/**").permitAll()
-                        // endpoints públicos
                         .requestMatchers("/api/v1/usuarios/auth").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/atletas").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/atletas/iniciar-ativacao").permitAll()
@@ -62,6 +61,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/reset-password").permitAll()
                         .requestMatchers("/api/v1/feedback").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/stripe/webhook").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/asaas/webhook/**").permitAll()
+
                         // endpoints com autorização
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/agendamentos/**").hasAnyRole("ATLETA", "ARENA")
                         .requestMatchers("/api/v1/jogos-abertos/**").hasRole("ATLETA")

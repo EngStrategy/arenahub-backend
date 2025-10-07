@@ -22,10 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -113,7 +110,7 @@ public class AgendamentoFixoServiceImpl implements AgendamentoFixoService {
 
     private boolean verificarDisponibilidadeParaData(Agendamento agendamentoBase, LocalDate data) {
         // Verificar se os slots correspondentes existem e estão disponíveis
-        List<SlotHorario> slotsNecessarios = buscarSlotsCorrespondentesParaData(
+        Set<SlotHorario> slotsNecessarios = buscarSlotsCorrespondentesParaData(
                 agendamentoBase.getSlotsHorario(), data);
 
         if (slotsNecessarios.size() != agendamentoBase.getSlotsHorario().size()) {
@@ -137,10 +134,10 @@ public class AgendamentoFixoServiceImpl implements AgendamentoFixoService {
         return true;
     }
 
-    private List<SlotHorario> buscarSlotsCorrespondentesParaData(List<SlotHorario> slotsOriginais,
+    private Set<SlotHorario> buscarSlotsCorrespondentesParaData(Set<SlotHorario> slotsOriginais,
                                                                  LocalDate data) {
         DiaDaSemana diaSemana = DiaDaSemana.values()[data.getDayOfWeek().getValue() - 1];
-        List<SlotHorario> slotsCorrespondentes = new ArrayList<>();
+        Set<SlotHorario> slotsCorrespondentes = new HashSet<>();
 
         for (SlotHorario slotOriginal : slotsOriginais) {
             Optional<SlotHorario> slotCorrespondente = slotHorarioRepository
@@ -154,7 +151,7 @@ public class AgendamentoFixoServiceImpl implements AgendamentoFixoService {
                 slotsCorrespondentes.add(slotCorrespondente.get());
             } else {
                 // Se não encontrar o slot correspondente, retorna lista vazia
-                return new ArrayList<>();
+                return new HashSet<>();
             }
         }
 
@@ -164,7 +161,7 @@ public class AgendamentoFixoServiceImpl implements AgendamentoFixoService {
     private Agendamento criarAgendamentoFuturo(Agendamento agendamentoBase,
                                                LocalDate novaData,
                                                AgendamentoFixo agendamentoFixo) {
-        List<SlotHorario> slotsCorrespondentes = buscarSlotsCorrespondentesParaData(
+        Set<SlotHorario> slotsCorrespondentes = buscarSlotsCorrespondentesParaData(
                 agendamentoBase.getSlotsHorario(), novaData);
 
         return Agendamento.builder()

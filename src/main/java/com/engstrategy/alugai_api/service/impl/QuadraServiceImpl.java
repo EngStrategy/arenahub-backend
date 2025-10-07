@@ -9,6 +9,7 @@ import com.engstrategy.alugai_api.model.*;
 import com.engstrategy.alugai_api.model.enums.DiaDaSemana;
 import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
 import com.engstrategy.alugai_api.model.enums.StatusDisponibilidade;
+import com.engstrategy.alugai_api.model.enums.TipoEsporte;
 import com.engstrategy.alugai_api.repository.*;
 import com.engstrategy.alugai_api.service.QuadraService;
 import com.engstrategy.alugai_api.service.SubscriptionService;
@@ -18,7 +19,6 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -43,6 +43,8 @@ public class QuadraServiceImpl implements QuadraService {
     private final AvaliacaoRepository avaliacaoRepository;
     private final SubscriptionService subscriptionService;
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(QuadraServiceImpl.class);
+
     @Override
     @Transactional
     public Quadra criarQuadra(Quadra quadra, UUID arenaId) {
@@ -62,11 +64,11 @@ public class QuadraServiceImpl implements QuadraService {
                 .filter(a -> a.getLimiteQuadras() != null)
                 .mapToInt(AssinaturaDetalhesDTO::getLimiteQuadras)
                 .max()
-                .orElse(0);
+                .orElse(-1); // -1 indica ilimitado
 
         Long quadrasAtuais = quadraRepository.countByArenaId((arenaId));
 
-        if (limiteQuadras >= 0 && quadrasAtuais >= limiteQuadras) {
+        if (limiteQuadras != -1 && quadrasAtuais >= limiteQuadras) {
             throw new LimiteDeQuadrasExcedidoException("Você atingiu o limite de " + limiteQuadras + " quadras para o seu plano atual. Para adicionar mais, faça o upgrade do seu plano.");
         }
 
@@ -121,10 +123,6 @@ public class QuadraServiceImpl implements QuadraService {
             quadra.setDescricao(updateDTO.getDescricao());
         }
 
-        if (updateDTO.getDuracaoReserva() != null) {
-            quadra.setDuracaoReserva(updateDTO.getDuracaoReserva());
-        }
-
         if (updateDTO.getCobertura() != null) {
             quadra.setCobertura(updateDTO.getCobertura());
         }
@@ -138,7 +136,7 @@ public class QuadraServiceImpl implements QuadraService {
         }
     }
 
-    private void atualizarHorariosFuncionamento(Quadra quadra, List<HorarioFuncionamentoUpdateDTO> horariosDTO) {
+    private void atualizarHorariosFuncionamento(Quadra quadra, Set<HorarioFuncionamentoUpdateDTO> horariosDTO) {
         for (HorarioFuncionamentoUpdateDTO horarioDTO : horariosDTO) {
             HorarioFuncionamento horarioExistente = quadra.getHorariosFuncionamento().stream()
                     .filter(h -> h.getDiaDaSemana().equals(horarioDTO.getDiaDaSemana()))
@@ -287,23 +285,28 @@ public class QuadraServiceImpl implements QuadraService {
 
     @Override
     public Quadra buscarPorId(Long id) {
-        return quadraRepository.findById(id)
+        return quadraRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new UserNotFoundException("Quadra não encontrada com ID: " + id));
     }
 
     @Override
     public Page<Quadra> listarTodos(Pageable pageable, UUID arenaId, String esporte) {
-        Specification<Quadra> spec = (root, query, builder) -> null;
-
-        if (arenaId != null) {
-            spec = spec.and((root, query, builder) -> builder.equal(root.get("arena").get("id"), arenaId));
-        }
-
+        // Converte a String 'esporte' para o Enum TipoEsporte.
+        // Se a string for inválida ou nula, o enum será nulo, e a query irá ignorar o filtro.
+        TipoEsporte tipoEsporte = null;
         if (esporte != null && !esporte.trim().isEmpty()) {
-            spec = spec.and((root, query, builder) -> builder.isMember(esporte, root.get("tipoQuadra")));
+            try {
+                tipoEsporte = TipoEsporte.valueOf(esporte.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                // Loga um aviso se um valor de esporte inválido for passado, mas não quebra a busca
+                log.warn("Valor de esporte inválido recebido: {}", esporte);
+                // Retorna uma página vazia se o filtro de esporte for obrigatório e inválido
+                return Page.empty(pageable);
+            }
         }
 
-        return quadraRepository.findAll(spec, pageable);
+        // Chama o novo método do repositório que faz todo o trabalho pesado.
+        return quadraRepository.findQuadrasByFiltersWithDetails(arenaId, tipoEsporte, pageable);
     }
 
     private void validarDadosUnicos(String nome) {
@@ -367,10 +370,21 @@ public class QuadraServiceImpl implements QuadraService {
     @Transactional
     public void excluir(Long id, UUID arenaId) {
         Quadra quadra = quadraRepository.findById(id)
-                .orElseThrow(() -> new UserNotFoundException("Quadra não encontrada com ID: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Quadra não encontrada com ID: " + id));
 
         if (!quadra.getArena().getId().equals(arenaId)) {
             throw new AccessDeniedException("Usuário não autorizado para excluir esta quadra");
+        }
+
+        long agendamentosPendentes = agendamentoRepository.countAgendamentosPendentesPorQuadra(
+                id,
+                LocalDate.now(ZoneId.of("America/Sao_Paulo"))
+        );
+
+        if (agendamentosPendentes > 0) {
+            throw new IllegalStateException(
+                    "Não é possível excluir esta quadra, pois ela possui " + agendamentosPendentes + " agendamento(s) futuro(s)."
+            );
         }
 
         quadraRepository.delete(quadra);
@@ -379,7 +393,7 @@ public class QuadraServiceImpl implements QuadraService {
     @Override
     public List<QuadraResponseDTO> buscarPorArenaId(UUID arenaId) {
         // Busca todas as quadras da arena
-        List<Quadra> quadras = quadraRepository.findByArenaId(arenaId);
+        List<Quadra> quadras = quadraRepository.findByArenaIdWithDetails(arenaId);
         if (quadras.isEmpty()) {
             return new ArrayList<>();
         }
@@ -413,11 +427,8 @@ public class QuadraServiceImpl implements QuadraService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Consulta disponibilidade de slots para uma data específica
-     */
     public List<SlotHorarioResponseDTO> consultarDisponibilidade(Long quadraId, LocalDate data) {
-        Quadra quadra = quadraRepository.findById(quadraId)
+        Quadra quadra = quadraRepository.findByIdWithDetails(quadraId)
                 .orElseThrow(() -> new EntityNotFoundException("Quadra não encontrada com ID: " + quadraId));
 
         // Determinar o dia da semana
@@ -439,6 +450,8 @@ public class QuadraServiceImpl implements QuadraService {
                 .getIntervalosDeHorario()
                 .stream()
                 .flatMap(intervalo -> intervalo.getSlotsHorario().stream())
+                .collect(Collectors.toSet())
+                .stream()
                 .toList();
 
         // Se não há slots para o dia, retorna lista vazia

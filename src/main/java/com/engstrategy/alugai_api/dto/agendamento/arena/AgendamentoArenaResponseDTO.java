@@ -15,6 +15,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Data
@@ -51,5 +52,5 @@ public class AgendamentoArenaResponseDTO {
     private List<ParticipanteDTO> participantes;
 
     // Informações dos slots
-    private List<SlotHorarioResponseDTO> slotsHorario;
+    private Set<SlotHorarioResponseDTO> slotsHorario;
 }

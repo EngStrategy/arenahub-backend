@@ -81,7 +81,7 @@ public class Agendamento {
             joinColumns = @JoinColumn(name = "agendamento_id"),
             inverseJoinColumns = @JoinColumn(name = "slot_horario_id")
     )
-    private List<SlotHorario> slotsHorario = new ArrayList<>();
+    private Set<SlotHorario> slotsHorario = new HashSet<>();
 
     @Builder.Default
     @OneToMany(mappedBy = "agendamento", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -101,6 +101,9 @@ public class Agendamento {
 
     @Builder.Default
     private Boolean avaliacaoDispensada = false;
+
+    @Column(name = "asaas_payment_id")
+    private String asaasPaymentId;
 
     // Métodos utilitários
     public LocalTime getHorarioInicio() {

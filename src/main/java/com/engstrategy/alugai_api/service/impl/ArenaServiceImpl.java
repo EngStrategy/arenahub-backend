@@ -76,17 +76,14 @@ public class ArenaServiceImpl implements ArenaService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ArenaResponseDTO buscarPorId(UUID id) {
-        Arena arena = arenaRepository.findById(id)
+        Arena arena = arenaRepository.findByIdWithQuadras(id)
                 .orElseThrow(() -> new UserNotFoundException("Arena não encontrada com ID: " + id));
 
-        // Busca as informações de avaliação
         ArenaRatingInfo ratingInfo = avaliacaoRepository.findArenaRatingInfoByArenaId(id);
-
-        // Mapeia a arena para o DTO
         ArenaResponseDTO responseDTO = arenaMapper.mapArenaToArenaResponseDTO(arena);
 
-        // Adiciona as informações de avaliação ao DTO, se existirem
         if (ratingInfo != null && ratingInfo.getQuantidadeAvaliacoes() > 0) {
             responseDTO.setNotaMedia(ratingInfo.getNotaMedia());
             responseDTO.setQuantidadeAvaliacoes(ratingInfo.getQuantidadeAvaliacoes());
@@ -138,9 +135,9 @@ public class ArenaServiceImpl implements ArenaService {
 
         // Busca as informações de avaliação para todas as arenas da página em UMA ÚNICA QUERY
         List<Map<String, Object>> ratings = avaliacaoRepository.findArenaRatingInfoForArenas(arenaIds);
-        Map<Long, ArenaRatingInfo> ratingsMap = ratings.stream()
+        Map<UUID, ArenaRatingInfo> ratingsMap = ratings.stream()
                 .collect(Collectors.toMap(
-                        r -> (Long) r.get("arenaId"),
+                        r -> (UUID) r.get("arenaId"),
                         r -> new ArenaRatingInfo((Double) r.get("notaMedia"), (Long) r.get("quantidadeAvaliacoes"))
                 ));
 
@@ -190,7 +187,13 @@ public class ArenaServiceImpl implements ArenaService {
             savedArena.setUrlFoto(null);
         }
 
-        return arenaRepository.save(savedArena);
+        if (savedArena.getQuadras() != null) {
+            savedArena.getQuadras().size();
+        }
+
+        Arena updatedArena = arenaRepository.save(savedArena);
+
+        return updatedArena;
     }
 
     @Override

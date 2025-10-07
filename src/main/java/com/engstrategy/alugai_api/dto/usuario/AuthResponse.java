@@ -44,4 +44,7 @@ public class AuthResponse {
     @Schema(description = "Status da assinatura (apenas para Arenas)", example = "ATIVA")
     private String statusAssinatura;
 
+    @Schema(description = "CPF ou CNPJ do usuário", example = "123.456.789-00 ou 12.345.678/0001-00")
+    private String cpfCnpj;
+
 }

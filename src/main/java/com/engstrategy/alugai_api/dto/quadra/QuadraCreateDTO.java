@@ -16,6 +16,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.validator.constraints.URL;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Data
@@ -36,7 +37,7 @@ public class QuadraCreateDTO {
 
     @Schema(description = "Tipos de esporte suportados pela quadra", example = "[\"FUTEBOL_SOCIETY\", \"FUTSAL\"]", required = true)
     @NotEmpty(message = "Pelo menos um tipo de esporte deve ser informado")
-    private List<TipoEsporte> tipoQuadra;
+    private Set<TipoEsporte> tipoQuadra;
 
     @Schema(description = "Descrição da quadra", example = "Quadra coberta para futebol society e futsal")
     @Size(max = 500, message = "Descrição deve ter no máximo 500 caracteres")
@@ -53,7 +54,7 @@ public class QuadraCreateDTO {
     private boolean iluminacaoNoturna;
 
     @Schema(description = "Materiais esportivos fornecidos", example = "[\"BOLA\", \"COLETE\"]")
-    private List<MaterialEsportivo> materiaisFornecidos;
+    private Set<MaterialEsportivo> materiaisFornecidos;
 
     @Schema(description = "ID da arena associada", example = "1", required = true)
     @NotNull(message = "ID da arena é obrigatório")
@@ -61,5 +62,5 @@ public class QuadraCreateDTO {
 
     @Schema(description = "Horários de funcionamento da quadra", required = true)
     @Valid
-    private List<HorarioFuncionamentoCreateDTO> horariosFuncionamento;
+    private Set<HorarioFuncionamentoCreateDTO> horariosFuncionamento;
 }

@@ -2,7 +2,11 @@ package com.engstrategy.alugai_api.service.impl;
 
 import com.engstrategy.alugai_api.dto.subscription.AssinaturaDetalhesDTO;
 import com.engstrategy.alugai_api.jwt.CustomUserDetails;
+import com.engstrategy.alugai_api.model.Agendamento;
 import com.engstrategy.alugai_api.model.Arena;
+import com.engstrategy.alugai_api.model.enums.Role;
+import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
+import com.engstrategy.alugai_api.repository.AgendamentoRepository;
 import com.engstrategy.alugai_api.repository.ArenaRepository;
 import com.engstrategy.alugai_api.service.SubscriptionService;
 import com.stripe.Stripe;
@@ -30,6 +34,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -46,6 +51,8 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     private String webhookSecret;
 
     private final ArenaRepository arenaRepository;
+    private final AgendamentoRepository agendamentoRepository;
+    private final EmailService emailService;
 
     @PostConstruct
     public void init() {
@@ -114,7 +121,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         }
 
         try {
-            // ETAPA 1: Buscar TODAS as assinaturas do cliente, expandindo a ÚLTIMA FATURA
+            // Busca TODAS as assinaturas do cliente, expandindo a ÚLTIMA FATURA
             SubscriptionListParams listParams = SubscriptionListParams.builder()
                     .setCustomer(arena.getStripeCustomerId())
                     .setStatus(SubscriptionListParams.Status.ALL)
@@ -127,17 +134,17 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                 return new ArrayList<>();
             }
 
-            // ETAPA 2: Filtrar a lista para manter apenas as relevantes
+            // Filtra a lista para manter apenas as relevantes
             List<String> statusRelevantes = List.of("active", "trialing", "past_due");
             List<Subscription> assinaturasRelevantes = todasAsAssinaturas.stream()
                     .filter(sub -> statusRelevantes.contains(sub.getStatus()))
                     .collect(Collectors.toList());
 
 
-            // ETAPA 3: Iterar sobre a lista filtrada e extrair os detalhes
+            // Itera sobre a lista filtrada e extrair os detalhes
             return assinaturasRelevantes.stream().map(sub -> {
                         try {
-                            // Buscamos o preço e o nome do plano da mesma forma (isto precisará de uma segunda chamada)
+                            // Buscamos o preço e o nome do plano da mesma forma
                             String priceId = sub.getItems().getData().get(0).getPrice().getId();
                             PriceRetrieveParams priceParams = PriceRetrieveParams.builder()
                                     .addExpand("product")
@@ -146,6 +153,11 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                             Product product = price.getProductObject();
                             String planoNome = price.getProductObject().getName();
                             BigDecimal valor = BigDecimal.valueOf(price.getUnitAmount()).divide(new BigDecimal("100"));
+
+                            Long proximaCobrancaTimestamp = sub.getTrialEnd() != null ? sub.getTrialEnd() : sub.getLatestInvoiceObject().getPeriodEnd();
+                            LocalDate proximaCobranca = Instant.ofEpochSecond(proximaCobrancaTimestamp).atZone(ZoneId.systemDefault()).toLocalDate();
+//                          LocalDate proximaCobranca = Instant.ofEpochSecond(latestInvoice.getPeriodEnd()).atZone(ZoneId.systemDefault()).toLocalDate();
+
 
                             Integer limiteQuadras = null;
                             if (product.getMetadata().containsKey("limite_quadras")) {
@@ -161,8 +173,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                             if (latestInvoice == null) {
                                 throw new IllegalStateException("A assinatura não possui uma fatura para determinar a próxima cobrança.");
                             }
-                            // O fim do período da última fatura é a data da próxima cobrança
-                            LocalDate proximaCobranca = Instant.ofEpochSecond(latestInvoice.getPeriodEnd()).atZone(ZoneId.systemDefault()).toLocalDate();
+
 
                             StatusAssinatura statusFinal;
                             LocalDate dataCancelamento = null;
@@ -249,6 +260,13 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                 com.stripe.model.checkout.Session session = (com.stripe.model.checkout.Session) stripeObject;
                 handleCheckoutSessionCompleted(session);
                 break;
+
+            case "payment_intent.succeeded":
+                log.info("Recebido evento payment_intent.succeeded!");
+                PaymentIntent paymentIntent = (PaymentIntent) stripeObject;
+                handlePaymentIntentSucceeded(paymentIntent);
+                break;
+
             default:
                 log.warn("Evento não tratado do Stripe recebido: {}", event.getType());
         }
@@ -272,5 +290,29 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             case "canceled" -> StatusAssinatura.CANCELADA;
             default -> StatusAssinatura.INATIVA;
         };
+    }
+
+    private void handlePaymentIntentSucceeded(PaymentIntent paymentIntent) {
+        String agendamentoIdStr = paymentIntent.getMetadata().get("agendamento_id");
+        if (agendamentoIdStr == null) {
+            log.warn("Recebido payment_intent.succeeded sem agendamento_id nos metadatas. ID: {}", paymentIntent.getId());
+        }
+
+        Long agendamentoId = Long.parseLong(agendamentoIdStr);
+
+        Agendamento agendamento = agendamentoRepository.findById(agendamentoId)
+                .orElseThrow(() -> new EntityNotFoundException("Agendamento não encontrado para o PaymentIntent: " + paymentIntent.getId()));
+
+        // Altera o status do agendamento para PAGO se estiver AGUARDANDO_PAGAMENTO, para evitar reprocessamento
+        if (agendamento.getStatus() == StatusAgendamento.AGUARDANDO_PAGAMENTO) {
+            agendamento.setStatus(StatusAgendamento.PAGO); // ou CONFIRMADO, dependendo da sua regra
+            agendamentoRepository.save(agendamento);
+
+            // Envia os e-mails de confirmação
+            emailService.enviarEmailAgendamento(agendamento.getAtleta().getEmail(), agendamento.getAtleta().getNome(), agendamento, Role.ATLETA);
+            emailService.enviarEmailAgendamento(agendamento.getQuadra().getArena().getEmail(), agendamento.getQuadra().getArena().getNome(), agendamento, Role.ARENA);
+
+            log.info("Agendamento ID {} atualizado para PAGO via webhook do PaymentIntent.", agendamento.getId());
+        }
     }
 }

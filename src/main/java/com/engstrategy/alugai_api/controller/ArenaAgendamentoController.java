@@ -27,6 +27,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -46,6 +47,7 @@ public class ArenaAgendamentoController {
 
     @GetMapping
     @Operation(summary = "Listar todos os agendamentos da arena", security = @SecurityRequirement(name = "bearerAuth"))
+    @Transactional(readOnly = true)
     public ResponseEntity<Page<AgendamentoArenaResponseDTO>> listarAgendamentosArena(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Parameter(description = "Número da página (iniciando em 0)")

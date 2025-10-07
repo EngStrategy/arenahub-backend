@@ -16,10 +16,8 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Set;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
@@ -28,7 +26,7 @@ public class AgendamentoMapper {
 
     private final QuadraRepository quadraRepository;
 
-    public Agendamento fromCreateToAgendamento(AgendamentoCreateDTO dto, List<SlotHorario> slots, Atleta atleta) {
+    public Agendamento fromCreateToAgendamento(AgendamentoCreateDTO dto, Set<SlotHorario> slots, Atleta atleta) {
         Quadra quadra = quadraRepository.findById(dto.getQuadraId())
                 .orElseThrow(() -> new UserNotFoundException("Quadra não encontrada com ID: " + dto.getQuadraId()));
 
@@ -47,6 +45,8 @@ public class AgendamentoMapper {
     }
 
     public AgendamentoResponseDTO fromAgendamentoToResponseDTO(Agendamento agendamento) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
         if (agendamento == null) {
             return null;
         }
@@ -63,7 +63,7 @@ public class AgendamentoMapper {
 
         return AgendamentoResponseDTO.builder()
                 .id(agendamento.getId())
-                .dataAgendamento(agendamento.getDataAgendamento())
+                .dataAgendamento(agendamento.getDataAgendamento().format(formatter))
                 .horarioInicio(agendamento.getHorarioInicio())
                 .horarioFim(agendamento.getHorarioFim())
                 .valorTotal(agendamento.getValorTotal())
@@ -72,7 +72,7 @@ public class AgendamentoMapper {
                 .numeroJogadoresNecessarios(agendamento.getVagasDisponiveis())
                 .slotsHorario(agendamento.getSlotsHorario().stream()
                         .map(this::mapearSlotParaResponse)
-                        .collect(Collectors.toList()))
+                        .collect(Collectors.toSet()))
                 .quadraId(agendamento.getQuadra().getId())
                 .nomeQuadra(agendamento.getQuadra().getNomeQuadra())
                 .nomeArena(agendamento.getQuadra().getArena().getNome())
@@ -147,15 +147,15 @@ public class AgendamentoMapper {
                 .build();
     }
 
-    private List<SlotHorarioResponseDTO> mapSlotsHorario(List<SlotHorario> slotsHorario) {
+    private Set<SlotHorarioResponseDTO> mapSlotsHorario(Set<SlotHorario> slotsHorario) {
         if (slotsHorario == null || slotsHorario.isEmpty()) {
-            return new ArrayList<>();
+            return new HashSet<>();
         }
 
         return slotsHorario.stream()
                 .map(this::mapSlotHorario)
                 .sorted(Comparator.comparing(SlotHorarioResponseDTO::getHorarioInicio))
-                .collect(Collectors.toList());
+                .collect(Collectors.toSet());
     }
 
     private SlotHorarioResponseDTO mapSlotHorario(SlotHorario slotHorario) {

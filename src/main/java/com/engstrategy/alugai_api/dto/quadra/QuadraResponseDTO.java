@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Data
@@ -30,7 +31,7 @@ public class QuadraResponseDTO {
     private String urlFotoQuadra;
 
     @Schema(description = "Tipos de esporte suportados pela quadra", example = "[\"FUTEBOL_SOCIETY\", \"FUTSAL\"]")
-    private List<TipoEsporte> tipoQuadra;
+    private Set<TipoEsporte> tipoQuadra;
 
     @Schema(description = "Descrição da quadra", example = "Quadra coberta para futebol society e futsal")
     private String descricao;
@@ -45,7 +46,7 @@ public class QuadraResponseDTO {
     private boolean iluminacaoNoturna;
 
     @Schema(description = "Materiais esportivos fornecidos", example = "[\"BOLA\", \"COLETE\"]")
-    private List<MaterialEsportivo> materiaisFornecidos;
+    private Set<MaterialEsportivo> materiaisFornecidos;
 
     @Schema(description = "ID da arena associada", example = "1")
     private UUID arenaId;
@@ -54,7 +55,7 @@ public class QuadraResponseDTO {
     private String nomeArena;
 
     @Schema(description = "Horários de funcionamento da quadra")
-    private List<HorarioFuncionamentoResponseDTO> horariosFuncionamento;
+    private Set<HorarioFuncionamentoResponseDTO> horariosFuncionamento;
 
     @Schema(description = "Nota média das avaliações da quadra", example = "4.7")
     private Double notaMedia;

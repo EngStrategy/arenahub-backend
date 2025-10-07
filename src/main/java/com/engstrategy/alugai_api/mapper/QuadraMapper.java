@@ -89,10 +89,11 @@ public class QuadraMapper {
     }
 
     public QuadraResponseDTO mapQuadraToQuadraResponseDTOComHorarioFuncionamento(Quadra quadra) {
-        List<HorarioFuncionamentoResponseDTO> horariosFuncionamento = quadra.getHorariosFuncionamento()
+        Set<HorarioFuncionamentoResponseDTO> horariosFuncionamento = quadra.getHorariosFuncionamento()
                 .stream()
                 .map(this::mapHorarioFuncionamentoToResponseDto)
-                .collect(Collectors.toList());
+                .sorted(Comparator.comparing(dto -> dto.getDiaDaSemana().ordinal()))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
 
         return QuadraResponseDTO.builder()
                 .id(quadra.getId())

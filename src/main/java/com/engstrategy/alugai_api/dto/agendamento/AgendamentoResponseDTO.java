@@ -13,6 +13,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Set;
 
 @Data
 @NoArgsConstructor
@@ -21,7 +22,7 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class AgendamentoResponseDTO {
     private Long id;
-    private LocalDate dataAgendamento;
+    private String dataAgendamento;
     @JsonSerialize(using = LocalTimeSerializer.class)
     private LocalTime horarioInicio;
     @JsonSerialize(using = LocalTimeSerializer.class)
@@ -30,7 +31,7 @@ public class AgendamentoResponseDTO {
     private TipoEsporte esporte;
     private StatusAgendamento status;
     private Integer numeroJogadoresNecessarios;
-    private List<SlotHorarioResponseDTO> slotsHorario;
+    private Set<SlotHorarioResponseDTO> slotsHorario;
     private Long quadraId;
     private String nomeQuadra;
     private String nomeArena;

@@ -8,7 +8,6 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -43,7 +42,6 @@ public class SubscriptionController {
         return ResponseEntity.ok(response);
     }
 
-    // --- NOVO ENDPOINT ---
     @GetMapping("/me")
     @Operation(summary = "Buscar detalhes da assinatura da arena logada", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<List<AssinaturaDetalhesDTO>> getMinhaAssinatura(
@@ -53,7 +51,6 @@ public class SubscriptionController {
         return ResponseEntity.ok(assinatura);
     }
 
-    // --- NOVO ENDPOINT ---
     @PostMapping("/customer-portal")
     @Operation(summary = "Criar sessão para o portal do cliente Stripe", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<Map<String, String>> createCustomerPortalSession(

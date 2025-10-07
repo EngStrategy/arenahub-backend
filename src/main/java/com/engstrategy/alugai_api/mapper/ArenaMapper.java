@@ -73,6 +73,8 @@ public class ArenaMapper {
                 .role(arena.getRole())
                 .esportes(esportes)
                 .horasCancelarAgendamento(arena.getHorasCancelarAgendamento())
+                .stripeCustomerId(arena.getStripeCustomerId())
+                .statusAssinatura(arena.getStatusAssinatura())
                 .build();
     }
 

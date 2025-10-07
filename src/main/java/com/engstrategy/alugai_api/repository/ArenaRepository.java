@@ -40,6 +40,9 @@ public interface ArenaRepository extends JpaRepository<Arena, UUID>, JpaSpecific
             "WHERE a.id = :arenaId")
     Optional<Arena> findByIdFetchingQuadrasAndHorarios(@Param("arenaId") UUID arenaId);
 
+    @Query("SELECT a FROM Arena a LEFT JOIN FETCH a.quadras WHERE a.id = :id")
+    Optional<Arena> findByIdWithQuadras(@Param("id") UUID id);
+
     @Query(
             value = "SELECT *, (6371 * acos(cos(radians(:latitude)) * cos(radians(a.latitude)) * cos(radians(a.longitude) - radians(:longitude)) + sin(radians(:latitude)) * sin(radians(a.latitude)))) AS distance " +
                     "FROM arena a " +
