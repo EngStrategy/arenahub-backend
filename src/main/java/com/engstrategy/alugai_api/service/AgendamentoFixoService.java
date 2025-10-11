@@ -12,7 +12,5 @@ public interface AgendamentoFixoService {
 
     void cancelarAgendamentoFixo(Long agendamentoFixoId, UUID usuarioId);
 
-    List<AgendamentoFixo> listarAgendamentosFixosAtivos(UUID atletaId);
-
     AgendamentoFixo buscarPorId(Long id);
 }

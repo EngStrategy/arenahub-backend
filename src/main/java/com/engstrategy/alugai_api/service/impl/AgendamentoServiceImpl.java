@@ -6,6 +6,7 @@ import com.engstrategy.alugai_api.dto.agendamento.NovoAtletaExternoDTO;
 import com.engstrategy.alugai_api.dto.agendamento.PixPagamentoResponseDTO;
 import com.engstrategy.alugai_api.dto.asaas.*;
 import com.engstrategy.alugai_api.exceptions.AccessDeniedException;
+import com.engstrategy.alugai_api.exceptions.AgendamentoCreationException;
 import com.engstrategy.alugai_api.exceptions.SubscriptionInactiveException;
 import com.engstrategy.alugai_api.exceptions.UniqueConstraintViolationException;
 import com.engstrategy.alugai_api.mapper.AgendamentoMapper;
@@ -13,13 +14,16 @@ import com.engstrategy.alugai_api.model.*;
 import com.engstrategy.alugai_api.model.enums.*;
 import com.engstrategy.alugai_api.repository.*;
 import com.engstrategy.alugai_api.repository.specs.AgendamentoSpecs;
+import com.engstrategy.alugai_api.service.AgendamentoFixoService;
 import com.engstrategy.alugai_api.service.AgendamentoService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +41,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
 
     private final AgendamentoRepository agendamentoRepository;
     private final AtletaRepository atletaRepository;
+    private final AgendamentoFixoService agendamentoFixoService;
     private final SlotHorarioService slotHorarioService;
     private final SlotHorarioRepository slotHorarioRepository;
     private final AgendamentoMapper agendamentoMapper;
@@ -102,6 +107,12 @@ public class AgendamentoServiceImpl implements AgendamentoService {
         agendamento.criarSnapshot();
         agendamento = agendamentoRepository.save(agendamento);
 
+        // Se o agendamento for fixo, chama o serviço para criar as recorrências
+        if (agendamento.isFixo()) {
+            log.info("Agendamento base é fixo. Iniciando criação de agendamentos futuros.");
+            agendamentoFixoService.criarAgendamentosFixos(agendamento);
+        }
+
         log.info("Agendamento criado com sucesso. ID: {}", agendamento.getId());
 
         emailService.enviarEmailAgendamento(atleta.getEmail(), atleta.getNome(), agendamento, Role.ATLETA);
@@ -112,7 +123,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
 
     private void validarRegrasNegocio(AgendamentoCreateDTO dto) {
         if (dto.isFixo() && dto.isPublico()) {
-            throw new IllegalArgumentException("Um agendamento não pode ser fixo e público simultaneamente");
+            throw new AgendamentoCreationException("Um agendamento não pode ser fixo e público simultaneamente");
         }
 
         if (dto.isPublico() && dto.getNumeroJogadoresNecessarios() == null) {

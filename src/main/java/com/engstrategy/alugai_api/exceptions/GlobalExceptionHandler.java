@@ -173,4 +173,10 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse("LIMIT_EXCEEDED", ex.getMessage());
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
     }
+
+    @ExceptionHandler(AgendamentoCreationException.class)
+    public ResponseEntity<ErrorResponse> handleAgendamentoCreation(AgendamentoCreationException ex) {
+        ErrorResponse error = new ErrorResponse("AGENDAMENTO_CREATION_FAILED", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
 }
