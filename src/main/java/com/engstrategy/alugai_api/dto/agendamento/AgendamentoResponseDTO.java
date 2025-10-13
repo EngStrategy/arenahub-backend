@@ -38,6 +38,7 @@ public class AgendamentoResponseDTO {
     private String urlFotoQuadra;
     private String urlFotoArena;
     private boolean fixo;
+    private Long agendamentoFixoId;
     private boolean publico;
     private boolean possuiSolicitacoes;
     private AvaliacaoDetalhesDTO avaliacao;

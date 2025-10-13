@@ -5,6 +5,7 @@ import com.engstrategy.alugai_api.dto.agendamento.AgendamentoResponseDTO;
 import com.engstrategy.alugai_api.dto.agendamento.PixPagamentoResponseDTO;
 import com.engstrategy.alugai_api.dto.avaliacao.AvaliacaoDTO;
 import com.engstrategy.alugai_api.dto.avaliacao.AvaliacaoResponseDTO;
+import com.engstrategy.alugai_api.exceptions.AgendamentoCreationException;
 import com.engstrategy.alugai_api.jwt.CustomUserDetails;
 import com.engstrategy.alugai_api.mapper.AgendamentoMapper;
 import com.engstrategy.alugai_api.model.Agendamento;
@@ -57,27 +58,15 @@ public class AgendamentoController {
     @PostMapping
     @Operation(summary = "Criar novo agendamento", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<AgendamentoResponseDTO> criarAgendamento(
-            @RequestBody @Valid AgendamentoCreateDTO dto,
-            @AuthenticationPrincipal CustomUserDetails customUserDetails) {
+        @RequestBody @Valid AgendamentoCreateDTO dto,
+        @AuthenticationPrincipal CustomUserDetails customUserDetails) {
 
         UUID atletaId = customUserDetails.getUserId();
 
-        try {
-            Agendamento agendamento = agendamentoService.criarAgendamento(dto, atletaId);
+        Agendamento agendamento = agendamentoService.criarAgendamento(dto, atletaId);
 
-            // Se for agendamento fixo, criar os recorrentes
-            if (dto.isFixo()) {
-                AgendamentoFixo agendamentoFixo = agendamentoFixoService.criarAgendamentosFixos(agendamento);
-                log.info("Agendamento fixo criado com ID: {}", agendamentoFixo.getId());
-            }
-
-            AgendamentoResponseDTO response = agendamentoMapper.fromAgendamentoToResponseDTO(agendamento);
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            log.error("Erro ao criar agendamento: {}", e.getMessage(), e);
-            throw e;
-        }
+        AgendamentoResponseDTO response = agendamentoMapper.fromAgendamentoToResponseDTO(agendamento);
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{id}")
@@ -118,7 +107,7 @@ public class AgendamentoController {
             @Parameter(description = "Campo para ordenação (ex: dataAgendamento)")
             @RequestParam(defaultValue = "dataAgendamento") String sort,
             @Parameter(description = "Direção da ordenação (asc/desc)")
-            @RequestParam(defaultValue = "desc") String direction,
+            @RequestParam(defaultValue = "asc") String direction,
             @Parameter(description = "Data de início do filtro (opcional, formato: yyyy-MM-dd)")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
             @Parameter(description = "Data de fim do filtro (opcional, formato: yyyy-MM-dd)")

@@ -6,10 +6,7 @@ import com.engstrategy.alugai_api.model.Agendamento;
 import com.engstrategy.alugai_api.model.AgendamentoFixo;
 import com.engstrategy.alugai_api.model.Atleta;
 import com.engstrategy.alugai_api.model.SlotHorario;
-import com.engstrategy.alugai_api.model.enums.DiaDaSemana;
-import com.engstrategy.alugai_api.model.enums.PeriodoAgendamento;
-import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
-import com.engstrategy.alugai_api.model.enums.StatusAgendamentoFixo;
+import com.engstrategy.alugai_api.model.enums.*;
 import com.engstrategy.alugai_api.repository.AgendamentoFixoRepository;
 import com.engstrategy.alugai_api.repository.AgendamentoRepository;
 import com.engstrategy.alugai_api.repository.AtletaRepository;
@@ -23,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -39,57 +35,71 @@ public class AgendamentoFixoServiceImpl implements AgendamentoFixoService {
 
     @Override
     public AgendamentoFixo criarAgendamentosFixos(Agendamento agendamentoBase) {
-        log.info("Iniciando criação de agendamentos fixos para o agendamento base ID: {}",
-                agendamentoBase.getId());
+        log.info("Iniciando criação de agendamentos fixos para o agendamento base ID: {}", agendamentoBase.getId());
 
-        // Criar entidade AgendamentoFixo
-        AgendamentoFixo agendamentoFixo = criarEntidadeAgendamentoFixo(agendamentoBase);
+        // Calcular o limite teórico para a geração dos agendamentos.
+        LocalDate dataLimite = calcularDataFim(agendamentoBase.getDataAgendamento(), agendamentoBase.getPeriodoAgendamentoFixo());
+
+        // Criar a entidade AgendamentoFixo EM MEMÓRIA, sem salvar ainda.
+        AgendamentoFixo agendamentoFixo = AgendamentoFixo.builder()
+                .dataInicio(agendamentoBase.getDataAgendamento())
+                .periodo(agendamentoBase.getPeriodoAgendamentoFixo())
+                .atleta(agendamentoBase.getAtleta())
+                .build();
+
+        // Gerar os agendamentos futuros passando o limite teórico.
+        List<Agendamento> agendamentosFuturos = gerarAgendamentosFuturos(agendamentoBase, dataLimite, agendamentoFixo);
+
+        // Determinar a data final REAL baseada no último agendamento criado com sucesso.
+        LocalDate dataFimReal;
+        if (!agendamentosFuturos.isEmpty()) {
+            // A data final é a data do último agendamento na lista gerada.
+            dataFimReal = agendamentosFuturos.get(agendamentosFuturos.size() - 1).getDataAgendamento();
+        } else {
+            // Se nenhum agendamento futuro pôde ser criado (todos deram conflito),
+            // a data final é a mesma da data de início.
+            dataFimReal = agendamentoBase.getDataAgendamento();
+        }
+        agendamentoFixo.setDataFim(dataFimReal);
+
+        // Salvar a entidade AgendamentoFixo com a data final correta.
         agendamentoFixo = agendamentoFixoRepository.save(agendamentoFixo);
 
-        // Associar agendamento base ao agendamento fixo
+        // Associar o pai (agendamentoFixo) a todos os filhos (base e futuros).
         agendamentoBase.setAgendamentoFixo(agendamentoFixo);
+        for (Agendamento futuro : agendamentosFuturos) {
+            futuro.setAgendamentoFixo(agendamentoFixo);
+        }
+
+        // Salvar as alterações no agendamento base e os novos agendamentos futuros.
         agendamentoRepository.save(agendamentoBase);
-
-        // Gerar agendamentos futuros
-        List<Agendamento> agendamentosFuturos = gerarAgendamentosFuturos(agendamentoBase, agendamentoFixo);
-
-        // Salvar agendamentos futuros
         agendamentoRepository.saveAll(agendamentosFuturos);
 
-        log.info("Agendamentos fixos criados com sucesso. Total: {} agendamentos",
-                agendamentosFuturos.size() + 1);
+        log.info("Agendamentos fixos criados com sucesso. Data de início: {}, Data de fim real: {}. Total: {} agendamentos.",
+                agendamentoFixo.getDataInicio(), agendamentoFixo.getDataFim(), agendamentosFuturos.size() + 1);
 
         return agendamentoFixo;
     }
 
-    private AgendamentoFixo criarEntidadeAgendamentoFixo(Agendamento agendamentoBase) {
-        LocalDate dataInicio = agendamentoBase.getDataAgendamento();
-        LocalDate dataFim = calcularDataFim(dataInicio, agendamentoBase.getPeriodoAgendamentoFixo());
-
-        return AgendamentoFixo.builder()
-                .dataInicio(dataInicio)
-                .dataFim(dataFim)
-                .periodo(agendamentoBase.getPeriodoAgendamentoFixo())
-                .atleta(agendamentoBase.getAtleta())
-                .build();
-    }
-
     private List<Agendamento> gerarAgendamentosFuturos(Agendamento agendamentoBase,
-                                                       AgendamentoFixo agendamentoFixo) {
+                                                       LocalDate dataLimite,
+                                                       AgendamentoFixo agendamentoFixoPai) {
         List<Agendamento> agendamentosFuturos = new ArrayList<>();
         List<LocalDate> datasConflito = new ArrayList<>();
 
         LocalDate dataInicio = agendamentoBase.getDataAgendamento();
-        LocalDate dataFim = agendamentoFixo.getDataFim();
         LocalDate dataAtual = dataInicio.plusWeeks(1); // Próxima semana
 
-        while (!dataAtual.isAfter(dataFim)) {
+        while (!dataAtual.isAfter(dataLimite)) { // Usa o limite teórico passado como parâmetro
+            log.info("RECORRENCIA LOOP: Verificando data: {}", dataAtual);
             try {
-                // Verificar disponibilidade dos slots para a data
                 if (verificarDisponibilidadeParaData(agendamentoBase, dataAtual)) {
-                    Agendamento novoAgendamento = criarAgendamentoFuturo(agendamentoBase, dataAtual, agendamentoFixo);
+                    // Passamos o objeto pai (ainda não salvo) para o construtor
+                    log.info("RECORRENCIA SUCESSO: Data {} está livre.", dataAtual);
+                    Agendamento novoAgendamento = criarAgendamentoFuturo(agendamentoBase, dataAtual, agendamentoFixoPai);
                     agendamentosFuturos.add(novoAgendamento);
                 } else {
+                    log.warn("RECORRENCIA FALHA: Conflito de slot/Disponibilidade na data: {}", dataAtual);
                     datasConflito.add(dataAtual);
                     log.warn("Conflito encontrado na data: {} - slots não disponíveis", dataAtual);
                 }
@@ -114,7 +124,17 @@ public class AgendamentoFixoServiceImpl implements AgendamentoFixoService {
                 agendamentoBase.getSlotsHorario(), data);
 
         if (slotsNecessarios.size() != agendamentoBase.getSlotsHorario().size()) {
-            return false; // Nem todos os slots existem para esta data
+            log.error("PRE-VALIDATION ERRO: Slot(s) para {} não encontrados/configurados.", data);
+            return false;
+        }
+
+        for (SlotHorario slot : slotsNecessarios) {
+            // Verifica se o slot está fisicamente disponível (manutenção/indisponível)
+            if (slot.getStatusDisponibilidade() == StatusDisponibilidade.MANUTENCAO ||
+                    slot.getStatusDisponibilidade() == StatusDisponibilidade.INDISPONIVEL) {
+                log.warn("PRE-VALIDATION FALHA: Slot ID {} está indisponível (Manutenção/Bloqueado) para {}", slot.getId(), data);
+                return false;
+            }
         }
 
         // Verificar se há conflitos de agendamento
@@ -127,6 +147,7 @@ public class AgendamentoFixoServiceImpl implements AgendamentoFixoService {
             );
 
             if (temConflito) {
+                log.error("PRE-VALIDATION FALHA: Slot ID {} já possui um agendamento conflitante em {}", slot.getId(), data);
                 return false;
             }
         }
@@ -135,22 +156,26 @@ public class AgendamentoFixoServiceImpl implements AgendamentoFixoService {
     }
 
     private Set<SlotHorario> buscarSlotsCorrespondentesParaData(Set<SlotHorario> slotsOriginais,
-                                                                 LocalDate data) {
+                                                                LocalDate data) {
         DiaDaSemana diaSemana = DiaDaSemana.values()[data.getDayOfWeek().getValue() - 1];
         Set<SlotHorario> slotsCorrespondentes = new HashSet<>();
 
         for (SlotHorario slotOriginal : slotsOriginais) {
-            Optional<SlotHorario> slotCorrespondente = slotHorarioRepository
+            List<SlotHorario> slotsCorrespondentesList = slotHorarioRepository
                     .findByIntervaloHorario_HorarioFuncionamento_DiaDaSemanaAndHorarioInicioAndHorarioFim(
                             diaSemana,
                             slotOriginal.getHorarioInicio(),
                             slotOriginal.getHorarioFim()
                     );
 
-            if (slotCorrespondente.isPresent()) {
-                slotsCorrespondentes.add(slotCorrespondente.get());
+            if (!slotsCorrespondentesList.isEmpty()) {
+                // Pegamos o PRIMEIRO slot e logamos um WARN se houver duplicidade
+                if (slotsCorrespondentesList.size() > 1) {
+                    log.warn("ATENÇÃO: Slot duplicado encontrado para {}. Usando o ID: {}", data, slotsCorrespondentesList.get(0).getId());
+                }
+                slotsCorrespondentes.add(slotsCorrespondentesList.get(0));
             } else {
-                // Se não encontrar o slot correspondente, retorna lista vazia
+                // Se o slot não foi encontrado para este dia da semana (falha de inventário), falha a pré-validação
                 return new HashSet<>();
             }
         }
@@ -161,22 +186,28 @@ public class AgendamentoFixoServiceImpl implements AgendamentoFixoService {
     private Agendamento criarAgendamentoFuturo(Agendamento agendamentoBase,
                                                LocalDate novaData,
                                                AgendamentoFixo agendamentoFixo) {
+
         Set<SlotHorario> slotsCorrespondentes = buscarSlotsCorrespondentesParaData(
                 agendamentoBase.getSlotsHorario(), novaData);
 
-        return Agendamento.builder()
+        Agendamento novoAgendamento = Agendamento.builder()
                 .dataAgendamento(novaData)
                 .esporte(agendamentoBase.getEsporte())
                 .isFixo(true)
-                .isPublico(false) // Agendamentos fixos não podem ser públicos
+                .isPublico(false)
                 .periodoAgendamentoFixo(agendamentoBase.getPeriodoAgendamentoFixo())
                 .vagasDisponiveis(agendamentoBase.getVagasDisponiveis())
-                .status(StatusAgendamento.PENDENTE)
+                .status(agendamentoBase.getStatus())
                 .quadra(agendamentoBase.getQuadra())
                 .atleta(agendamentoBase.getAtleta())
                 .agendamentoFixo(agendamentoFixo)
+                .asaasPaymentId(agendamentoBase.getAsaasPaymentId())
                 .slotsHorario(slotsCorrespondentes)
                 .build();
+
+        novoAgendamento.criarSnapshot();
+
+        return novoAgendamento;
     }
 
     private LocalDate calcularDataFim(LocalDate dataInicio, PeriodoAgendamento periodo) {
@@ -228,13 +259,44 @@ public class AgendamentoFixoServiceImpl implements AgendamentoFixoService {
     }
 
     @Override
-    public List<AgendamentoFixo> listarAgendamentosFixosAtivos(UUID atletaId) {
-        return agendamentoFixoRepository.findByAtletaIdAndStatus(atletaId, StatusAgendamentoFixo.ATIVO);
-    }
-
-    @Override
     public AgendamentoFixo buscarPorId(Long id) {
         return agendamentoFixoRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Agendamento fixo não encontrado"));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<LocalDate> preValidarAgendamentoFixo(Agendamento agendamentoBase) {
+
+        if (!agendamentoBase.isFixo() || agendamentoBase.getPeriodoAgendamentoFixo() == null) {
+            return Collections.emptyList();
+        }
+
+        LocalDate dataLimite = calcularDataFim(agendamentoBase.getDataAgendamento(), agendamentoBase.getPeriodoAgendamentoFixo());
+        List<LocalDate> datasConflito = new ArrayList<>();
+
+        LocalDate dataInicio = agendamentoBase.getDataAgendamento();
+        LocalDate dataAtual = dataInicio.plusWeeks(1); // Começa a checar a partir da Semana 1
+
+        log.info("PRE-VALIDATION: Iniciando pré-validação de agendamento fixo para a base: {}", dataInicio);
+
+        while (!dataAtual.isAfter(dataLimite)) {
+            try {
+                if (!verificarDisponibilidadeParaData(agendamentoBase, dataAtual)) {
+                    // Conflito encontrado (outro agendamento ou slot indisponível)
+                    datasConflito.add(dataAtual);
+                    log.warn("PRE-VALIDATION FALHA: Conflito de slot/Disponibilidade na data: {}", dataAtual);
+                }
+            } catch (Exception e) {
+                log.error("PRE-VALIDATION ERRO: Erro ao processar data {}: {}", dataAtual, e.getMessage());
+                datasConflito.add(dataAtual);
+            }
+
+            dataAtual = dataAtual.plusWeeks(1);
+        }
+
+        log.info("PRE-VALIDATION FINALIZADA: Encontrados {} conflitos.", datasConflito.size());
+
+        return datasConflito;
     }
 }

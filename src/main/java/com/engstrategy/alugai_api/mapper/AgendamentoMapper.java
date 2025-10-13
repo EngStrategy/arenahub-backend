@@ -80,6 +80,7 @@ public class AgendamentoMapper {
                 .urlFotoArena(agendamento.getQuadra().getArena().getUrlFoto())
                 .nomeQuadra(agendamento.getQuadra().getNomeQuadra())
                 .fixo(agendamento.isFixo())
+                .agendamentoFixoId(agendamento.getAgendamentoFixo() != null ? agendamento.getAgendamentoFixo().getId() : null)
                 .publico(agendamento.isPublico())
                 .possuiSolicitacoes(agendamento.possuiSolicitacoes())
                 .avaliacao(avaliacaoDTO)
