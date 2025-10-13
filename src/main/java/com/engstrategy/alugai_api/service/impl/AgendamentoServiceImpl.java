@@ -5,10 +5,7 @@ import com.engstrategy.alugai_api.dto.agendamento.AgendamentoExternoCreateDTO;
 import com.engstrategy.alugai_api.dto.agendamento.NovoAtletaExternoDTO;
 import com.engstrategy.alugai_api.dto.agendamento.PixPagamentoResponseDTO;
 import com.engstrategy.alugai_api.dto.asaas.*;
-import com.engstrategy.alugai_api.exceptions.AccessDeniedException;
-import com.engstrategy.alugai_api.exceptions.AgendamentoCreationException;
-import com.engstrategy.alugai_api.exceptions.SubscriptionInactiveException;
-import com.engstrategy.alugai_api.exceptions.UniqueConstraintViolationException;
+import com.engstrategy.alugai_api.exceptions.*;
 import com.engstrategy.alugai_api.mapper.AgendamentoMapper;
 import com.engstrategy.alugai_api.model.*;
 import com.engstrategy.alugai_api.model.enums.*;
@@ -33,6 +30,7 @@ import java.math.BigDecimal;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -103,6 +101,22 @@ public class AgendamentoServiceImpl implements AgendamentoService {
         // Converter DTO para entidade
         Agendamento agendamento = agendamentoMapper.fromCreateToAgendamento(dto, slots, atleta);
 
+        if (agendamento.isFixo()) {
+            List<LocalDate> conflitos = agendamentoFixoService.preValidarAgendamentoFixo(agendamento);
+
+            if (!conflitos.isEmpty()) {
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+                String datasStr = conflitos.stream()
+                        .map(data -> data.format(formatter))
+                        .collect(Collectors.joining(", "));
+
+                String msg = "O agendamento fixo não pode ser criado devido a conflitos nas seguintes datas: " + datasStr;
+                log.error("Agendamento fixo falhou na pré-validação (Pagar na Arena): {}", msg);
+                throw new IntervaloComAgendamentosException(msg);
+            }
+        }
+
+        agendamento.setStatus(StatusAgendamento.PENDENTE);
         // Salvar o agendamento
         agendamento.criarSnapshot();
         agendamento = agendamentoRepository.save(agendamento);
@@ -526,6 +540,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
         log.info("Iniciando criação de pagamento PIX para atleta ID: {} na data: {}", atletaId, dto.getDataAgendamento());
 
         validarDataAgendamento(dto.getDataAgendamento());
+
         Set<SlotHorario> slots = buscarEValidarSlots(dto.getSlotHorarioIds());
 
         Atleta atleta = atletaRepository.findById(atletaId)
@@ -563,9 +578,30 @@ public class AgendamentoServiceImpl implements AgendamentoService {
         agendamento.setStatus(StatusAgendamento.AGUARDANDO_PAGAMENTO);
         agendamento.criarSnapshot();
 
-        Agendamento agendamentoProvisorio = agendamentoRepository.save(agendamento);
+        Agendamento agendamentoProvisorio = agendamento;
+
+        if (agendamentoProvisorio.isFixo()) {
+
+            List<LocalDate> conflitos = agendamentoFixoService.preValidarAgendamentoFixo(agendamentoProvisorio);
+
+            if (!conflitos.isEmpty()) {
+                String datasStr = conflitos.stream()
+                        .map(data -> data.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")))
+                        .collect(Collectors.joining(", "));
+
+                String msg = "O agendamento fixo não pode ser criado devido a conflitos nas seguintes datas: " + datasStr;
+                log.error("Agendamento fixo falhou na pré-validação: {}", msg);
+                throw new IntervaloComAgendamentosException(msg);
+            }
+        }
+
+        agendamentoProvisorio = agendamentoRepository.save(agendamento);
         log.info("Agendamento provisório criado com ID: {}", agendamentoProvisorio.getId());
 
+        log.info("PIX INFO: Agendamento ID {} criado. Status: {}. É Fixo: {}.",
+                agendamentoProvisorio.getId(),
+                agendamentoProvisorio.getStatus(),
+                agendamentoProvisorio.isFixo());
         try {
             String cpfLimpo = cpfParaAsaas.replaceAll("[^0-9]", "");
 
@@ -584,8 +620,17 @@ public class AgendamentoServiceImpl implements AgendamentoService {
                     .build();
             AsaasCustomerResponse customer = asaasService.createCustomer(customerRequest);
 
-            // 2. CRIAR A COBRANÇA PIX
-            BigDecimal valorTotal = agendamentoProvisorio.getValorTotalSnapshot();
+            // CRIAR A COBRANÇA PIX
+            BigDecimal valorBase = agendamentoProvisorio.getValorTotalSnapshot();
+            BigDecimal valorTotal;
+
+            if (agendamentoProvisorio.isFixo()) {
+                int multiplier = getMultiplier(agendamentoProvisorio.getPeriodoAgendamentoFixo());
+                valorTotal = valorBase.multiply(new BigDecimal(multiplier));
+            } else {
+                valorTotal = valorBase;
+            }
+
             String dataVencimento = LocalDate.now().toString();
 
             AsaasCreatePaymentRequest paymentRequest = AsaasCreatePaymentRequest.builder()
@@ -624,9 +669,23 @@ public class AgendamentoServiceImpl implements AgendamentoService {
 
         } catch (HttpClientErrorException.BadRequest e) {
             log.error("Erro 400 do Asaas: {}", e.getResponseBodyAsString());
-            throw new RuntimeException("Erro de validação do provedor de pagamento. Verifique o CPF/CNPJ.", e);
+            throw new AccessDeniedException("Erro 400 do Asaas: " + e.getResponseBodyAsString());
         } catch (Exception e) {
-            throw new RuntimeException("Erro ao gerar pagamento Pix junto ao nosso provedor.", e);
+            throw new AgendamentoCreationException("Erro ao gerar pagamento Pix junto ao nosso provedor. " + e.getMessage());
+        }
+    }
+
+    private int getMultiplier(PeriodoAgendamento periodo) {
+        if (periodo == null) return 1;
+        switch (periodo) {
+            case UM_MES:
+                return 5; // 5 ocorrências (semanas) em um mês
+            case TRES_MESES:
+                return 14; // 14 ocorrências em três meses
+            case SEIS_MESES:
+                return 26; // 26 ocorrências em seis meses
+            default:
+                return 1;
         }
     }
 }
