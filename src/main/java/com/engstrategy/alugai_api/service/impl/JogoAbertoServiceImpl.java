@@ -24,10 +24,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -48,7 +46,7 @@ public class JogoAbertoServiceImpl implements JogoAbertoService {
         Page<Agendamento> jogosAbertosPage;
 
         if (latitude != null && longitude != null && raioKm != null && raioKm > 0) {
-            // --- Busca por Proximidade ---
+            // Busca por Proximidade
             Pageable proximityPageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
             jogosAbertosPage = agendamentoRepository.findJogosAbertosByProximity(latitude, longitude, raioKm, proximityPageable);
 

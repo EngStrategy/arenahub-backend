@@ -12,5 +12,4 @@ public class AsaasCustomerResponse {
     private String name;
     private String email;
     private String cpfCnpj;
-    // Adicionar mais campos se você for usar como: "cpfCnpj" ou "phone"
 }

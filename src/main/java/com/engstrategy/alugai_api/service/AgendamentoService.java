@@ -46,4 +46,24 @@ public interface AgendamentoService {
     PixPagamentoResponseDTO criarPagamentoPix(AgendamentoCreateDTO dto, UUID atletaId);
 
     StatusAgendamento verificarStatus(Long agendamentoId);
+
+    Page<Agendamento> buscarCardsMestrePorArenaId(
+            UUID arenaId,
+            LocalDate dataInicio,
+            LocalDate dataFim,
+            Long quadraId,
+            StatusAgendamento status,
+            Pageable pageable
+    );
+
+    List<Agendamento> buscarAgendamentosFixosFilhos(Long agendamentoFixoId, UUID arenaId);
+
+    Page<Agendamento> buscarCardsMestrePorAtletaId(UUID atletaId,
+                                                   LocalDate dataInicio,
+                                                   LocalDate dataFim,
+                                                   TipoAgendamento tipoAgendamento,
+                                                   StatusAgendamento status,
+                                                   Pageable pageable);
+
+    List<Agendamento> buscarAgendamentosFixosFilhosAtleta(Long agendamentoFixoId, UUID atletaId);
 }

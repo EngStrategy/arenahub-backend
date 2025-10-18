@@ -1,13 +1,11 @@
 package com.engstrategy.alugai_api.dto.atleta;
 
-import com.engstrategy.alugai_api.model.enums.Role;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.validator.constraints.URL;
 
 @Schema(description = "Dados para criação de um atleta")
 @Data

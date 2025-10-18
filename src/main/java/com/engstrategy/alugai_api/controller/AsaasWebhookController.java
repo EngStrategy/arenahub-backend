@@ -62,7 +62,6 @@ public class AsaasWebhookController {
 
                                 if (agendamento.isFixo()) {
                                     log.info("WEBHOOK: Acionando a criação de recorrências para o ID: {}", agendamento.getId());
-                                    // Esta chamada cria as instâncias semanais e persiste no banco.
                                     agendamentoFixoService.criarAgendamentosFixos(agendamento);
                                 }
 
@@ -84,7 +83,6 @@ public class AsaasWebhookController {
             }
         }
 
-        // O Asaas espera um retorno 200 OK
         return ResponseEntity.ok().build();
     }
 }

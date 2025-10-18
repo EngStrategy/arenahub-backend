@@ -16,4 +16,6 @@ public interface AgendamentoFixoService {
     AgendamentoFixo buscarPorId(Long id);
 
     List<LocalDate> preValidarAgendamentoFixo(Agendamento agendamentoBase);
+
+    void cancelarAgendamentoFixoPorArena(Long agendamentoFixoId, UUID arenaId);
 }

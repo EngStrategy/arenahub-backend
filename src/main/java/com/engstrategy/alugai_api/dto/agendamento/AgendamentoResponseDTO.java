@@ -10,9 +10,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.List;
 import java.util.Set;
 
 @Data

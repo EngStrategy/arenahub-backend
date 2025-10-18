@@ -7,7 +7,6 @@ import com.engstrategy.alugai_api.dto.quadra.QuadraUpdateDTO;
 import com.engstrategy.alugai_api.dto.quadra.SlotHorarioResponseDTO;
 import com.engstrategy.alugai_api.jwt.CustomUserDetails;
 import com.engstrategy.alugai_api.mapper.QuadraMapper;
-import com.engstrategy.alugai_api.model.Avaliacao;
 import com.engstrategy.alugai_api.model.Quadra;
 import com.engstrategy.alugai_api.service.AvaliacaoService;
 import com.engstrategy.alugai_api.service.QuadraService;
@@ -34,7 +33,6 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/quadras")

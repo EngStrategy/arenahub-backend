@@ -1,6 +1,5 @@
 package com.engstrategy.alugai_api.dto.arena;
 
-import com.engstrategy.alugai_api.model.enums.Role;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;

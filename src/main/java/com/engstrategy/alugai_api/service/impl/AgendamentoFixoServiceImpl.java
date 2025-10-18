@@ -22,14 +22,12 @@ import java.time.LocalDate;
 import java.util.*;
 
 @Service
-@Transactional
 @RequiredArgsConstructor
 @Slf4j
 public class AgendamentoFixoServiceImpl implements AgendamentoFixoService {
 
     private final AgendamentoRepository agendamentoRepository;
     private final AgendamentoFixoRepository agendamentoFixoRepository;
-    private final SlotHorarioService slotHorarioService;
     private final SlotHorarioRepository slotHorarioRepository;
     private final AtletaRepository atletaRepository;
 
@@ -220,42 +218,90 @@ public class AgendamentoFixoServiceImpl implements AgendamentoFixoService {
     }
 
     @Override
+    @Transactional
     public void cancelarAgendamentoFixo(Long agendamentoFixoId, UUID usuarioId) {
-        log.info("Cancelando agendamento fixo ID: {}", agendamentoFixoId);
+        log.info("Cancelando agendamento fixo ID: {} para usuário ID: {}", agendamentoFixoId, usuarioId);
 
+        // Busca a entidade AgendamentoFixo principal
         AgendamentoFixo agendamentoFixo = agendamentoFixoRepository.findById(agendamentoFixoId)
                 .orElseThrow(() -> new EntityNotFoundException("Agendamento fixo não encontrado com id: " + agendamentoFixoId));
 
+        // Valida a permissão (verifica se o usuário logado é o atleta proprietário)
         Atleta atleta = atletaRepository.findById(usuarioId)
-                .orElseThrow(() -> new UserNotFoundException("Usuário não encontrado com id: + " + usuarioId));
+                .orElseThrow(() -> new UserNotFoundException("Atleta não encontrado com id: " + usuarioId));
 
         if (!agendamentoFixo.getAtleta().getId().equals(atleta.getId())) {
-            throw new AccessDeniedException("Usuário não autorizado para cancelar este agendamento!");
+            throw new AccessDeniedException("Você não tem permissão para cancelar esta recorrência.");
         }
 
-        // Verificar se já não está cancelado
+        // Valida o status (se já está cancelado)
         if (agendamentoFixo.getStatus() == StatusAgendamentoFixo.CANCELADO) {
-            throw new IllegalArgumentException("Agendamento já está cancelado");
+            throw new IllegalArgumentException("Recorrência já está cancelada.");
         }
 
-        // Buscar todos os agendamentos futuros
-        List<Agendamento> agendamentosFuturos = agendamentoRepository
-                .findByAgendamentoFixoId(agendamentoFixoId);
+        // Busca todos os agendamentos filhos (inclui o base e os passados)
+        List<Agendamento> agendamentosFilhos = agendamentoRepository.findByAgendamentoFixoId(agendamentoFixoId);
 
+        // Data de corte: Amanhã. Não cancelamos agendamentos que já ocorreram ou que estão ocorrendo hoje.
         LocalDate hoje = LocalDate.now();
 
-        // Cancelar agendamentos futuros e liberar slots
-        for (Agendamento agendamento : agendamentosFuturos) {
-            if (agendamento.getDataAgendamento().isAfter(hoje)) {
+        int cancelamentosCount = 0;
+
+        // Cancela agendamentos futuros
+        for (Agendamento agendamento : agendamentosFilhos) {
+            // Cancela apenas se a data for estritamente DEPOIS de hoje E o status não for CANCELADO
+            if (agendamento.getDataAgendamento().isAfter(hoje) && agendamento.getStatus() != StatusAgendamento.CANCELADO) {
                 agendamento.setStatus(StatusAgendamento.CANCELADO);
+                agendamentoRepository.save(agendamento); // Salvando explicitamente
+                cancelamentosCount++;
             }
         }
 
-        // Marcar agendamento fixo como cancelado
+        // Marca Agendamento Fixo (pai) como cancelado
         agendamentoFixo.setStatus(StatusAgendamentoFixo.CANCELADO);
         agendamentoFixoRepository.save(agendamentoFixo);
 
-        log.info("Agendamento fixo cancelado com sucesso");
+        log.info("Agendamento fixo ID {} cancelado com sucesso pelo Atleta {}. Total de agendamentos cancelados: {}",
+                agendamentoFixoId, atleta.getNome(), cancelamentosCount);
+    }
+
+    @Override
+    public void cancelarAgendamentoFixoPorArena(Long agendamentoFixoId, UUID arenaId) {
+        log.info("Cancelando agendamento fixo ID: {} pela Arena {}", agendamentoFixoId, arenaId);
+
+        // Busca o agendamento fixo pai
+        Agendamento agendamentoBase = agendamentoRepository.findFirstByAgendamentoFixoId(agendamentoFixoId)
+                .orElseThrow(() -> new EntityNotFoundException("Agendamento Fixo não encontrado."));
+
+        // Valida se a recorrência pertence à Arena
+        if (!agendamentoBase.getQuadra().getArena().getId().equals(arenaId)) {
+            throw new AccessDeniedException("A Arena não tem permissão para cancelar esta recorrência.");
+        }
+
+        // Verifica se o Agendamento Fixo já foi cancelado
+        AgendamentoFixo agendamentoFixo = agendamentoBase.getAgendamentoFixo();
+        if (agendamentoFixo.getStatus() == StatusAgendamentoFixo.CANCELADO) {
+            throw new IllegalArgumentException("Recorrência já está cancelada");
+        }
+
+        // Busca todos os agendamentos futuros (ou apenas o Agendamento Base)
+        List<Agendamento> agendamentosFuturos = agendamentoRepository.findByAgendamentoFixoId(agendamentoFixoId);
+
+        LocalDate hoje = LocalDate.now();
+
+        // Cancela agendamentos futuros e liberar slots
+        for (Agendamento agendamento : agendamentosFuturos) {
+            if (!agendamento.getDataAgendamento().isBefore(hoje) && agendamento.getStatus() != StatusAgendamento.CANCELADO) {
+                agendamento.setStatus(StatusAgendamento.CANCELADO);
+                agendamentoRepository.save(agendamento);
+            }
+        }
+
+        // Marca agendamento fixo como cancelado
+        agendamentoFixo.setStatus(StatusAgendamentoFixo.CANCELADO);
+        agendamentoFixoRepository.save(agendamentoFixo);
+
+        log.info("Recorrência fixa ID {} cancelada com sucesso pela Arena.", agendamentoFixoId);
     }
 
     @Override

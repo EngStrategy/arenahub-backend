@@ -12,7 +12,6 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Set;
@@ -53,4 +52,5 @@ public class AgendamentoArenaResponseDTO {
 
     // Informações dos slots
     private Set<SlotHorarioResponseDTO> slotsHorario;
+    private Long agendamentoFixoId;
 }

@@ -58,8 +58,8 @@ public class AgendamentoController {
     @PostMapping
     @Operation(summary = "Criar novo agendamento", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<AgendamentoResponseDTO> criarAgendamento(
-        @RequestBody @Valid AgendamentoCreateDTO dto,
-        @AuthenticationPrincipal CustomUserDetails customUserDetails) {
+            @RequestBody @Valid AgendamentoCreateDTO dto,
+            @AuthenticationPrincipal CustomUserDetails customUserDetails) {
 
         UUID atletaId = customUserDetails.getUserId();
 
@@ -105,7 +105,7 @@ public class AgendamentoController {
             @Parameter(description = "Tamanho da página")
             @RequestParam(defaultValue = "10") int size,
             @Parameter(description = "Campo para ordenação (ex: dataAgendamento)")
-            @RequestParam(defaultValue = "dataAgendamento") String sort,
+            @RequestParam(defaultValue = "data_agendamento") String sort,
             @Parameter(description = "Direção da ordenação (asc/desc)")
             @RequestParam(defaultValue = "asc") String direction,
             @Parameter(description = "Data de início do filtro (opcional, formato: yyyy-MM-dd)")
@@ -117,15 +117,39 @@ public class AgendamentoController {
             @Parameter(description = "Status do agendamento (opcional)")
             @RequestParam(required = false) StatusAgendamento status) {
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(direction), sort));
-        Page<Agendamento> agendamentosPage = agendamentoService.buscarPorAtletaId(
-                userDetails.getUserId(),
+        UUID atletaId = userDetails.getUserId();
+
+        Pageable pageableSemSort = PageRequest.of(page, size);
+
+        Page<Agendamento> agendamentosPage = agendamentoService.buscarCardsMestrePorAtletaId(
+                atletaId,
                 dataInicio,
                 dataFim,
                 tipoAgendamento,
                 status,
-                pageable);
-        Page<AgendamentoResponseDTO> response = agendamentosPage.map(agendamentoMapper::fromAgendamentoToResponseDTO);
+                pageableSemSort);
+
+        Page<AgendamentoResponseDTO> response = agendamentosPage.map(
+                agendamentoMapper::fromAgendamentoToResponseDTO);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/fixo/{agendamentoFixoId}/filhos")
+    @Operation(summary = "Listar todos os agendamentos individuais de uma recorrência fixa para o Atleta", security = @SecurityRequirement(name = "bearerAuth"))
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<AgendamentoResponseDTO>> listarAgendamentosFixosFilhosAtleta(
+            @Parameter(description = "ID do Agendamento Fixo (pai da recorrência)")
+            @PathVariable Long agendamentoFixoId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        UUID atletaId = userDetails.getUserId();
+
+        List<Agendamento> filhos = agendamentoService.buscarAgendamentosFixosFilhosAtleta(agendamentoFixoId, atletaId);
+
+        List<AgendamentoResponseDTO> response = filhos.stream()
+                .map(agendamentoMapper::fromAgendamentoToResponseDTO)
+                .collect(Collectors.toList());
 
         return ResponseEntity.ok(response);
     }

@@ -71,11 +71,8 @@ public class AgendamentoSpecs {
                 return null;
             }
 
-            // CORREÇÃO: Usamos o JOIN para navegar na relação
             Join quadra = root.join("quadra");
             Join arena = quadra.join("arena");
-            // Endereco é embutido ou Join (verifique seu mapeamento da Arena)
-            // Se Endereco for uma classe @Embeddable, o get("endereco") está correto.
             return builder.like(
                     builder.lower(arena.get("endereco").get("cidade")),
                     "%" + cidade.toLowerCase() + "%" // Usa LIKE para busca parcial

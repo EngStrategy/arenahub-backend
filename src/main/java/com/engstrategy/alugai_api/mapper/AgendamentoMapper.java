@@ -125,6 +125,7 @@ public class AgendamentoMapper {
                         agendamento.getParticipantes().size() : 0)
                 .participantes(mapParticipantes(agendamento.getParticipantes()))
                 .slotsHorario(mapSlotsHorario(agendamento.getSlotsHorario()))
+                .agendamentoFixoId(agendamento.getAgendamentoFixo() != null ? agendamento.getAgendamentoFixo().getId() : null)
                 .build();
     }
 

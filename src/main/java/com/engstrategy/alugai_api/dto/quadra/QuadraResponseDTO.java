@@ -3,15 +3,12 @@ package com.engstrategy.alugai_api.dto.quadra;
 import com.engstrategy.alugai_api.model.enums.DuracaoReserva;
 import com.engstrategy.alugai_api.model.enums.MaterialEsportivo;
 import com.engstrategy.alugai_api.model.enums.TipoEsporte;
-import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -20,7 +17,6 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @Schema(description = "Resposta com dados da quadra")
-@JsonInclude(JsonInclude.Include.NON_NULL)
 public class QuadraResponseDTO {
 
     @Schema(description = "ID da quadra", example = "1")

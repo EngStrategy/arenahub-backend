@@ -9,6 +9,7 @@ import com.engstrategy.alugai_api.jwt.CustomUserDetails;
 import com.engstrategy.alugai_api.mapper.AgendamentoMapper;
 import com.engstrategy.alugai_api.model.Agendamento;
 import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
+import com.engstrategy.alugai_api.service.AgendamentoFixoService;
 import com.engstrategy.alugai_api.service.AgendamentoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -21,7 +22,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -43,10 +43,11 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ArenaAgendamentoController {
     private final AgendamentoService agendamentoService;
+    private final AgendamentoFixoService agendamentoFixoService;
     private final AgendamentoMapper agendamentoMapper;
 
     @GetMapping
-    @Operation(summary = "Listar todos os agendamentos da arena", security = @SecurityRequirement(name = "bearerAuth"))
+    @Operation(summary = "Listar cards mestre de agendamentos da arena (Agendamentos normais + Próxima Recorrência)", security = @SecurityRequirement(name = "bearerAuth"))
     @Transactional(readOnly = true)
     public ResponseEntity<Page<AgendamentoArenaResponseDTO>> listarAgendamentosArena(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -55,26 +56,51 @@ public class ArenaAgendamentoController {
             @Parameter(description = "Tamanho da página")
             @RequestParam(defaultValue = "10") int size,
             @Parameter(description = "Campo para ordenação (ex: dataAgendamento)")
-            @RequestParam(defaultValue = "dataAgendamento") String sort,
+            @RequestParam(defaultValue = "data_agendamento") String sort,
             @Parameter(description = "Direção da ordenação (asc/desc)")
-            @RequestParam(defaultValue = "desc") String direction,
+            @RequestParam(defaultValue = "asc") String direction,
             @Parameter(description = "Data de início do filtro (opcional, formato: yyyy-MM-dd)")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
             @Parameter(description = "Data de fim do filtro (opcional, formato: yyyy-MM-dd)")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim,
-            @Parameter(description = "Status do agendamento (opcional)")
+            @Parameter(description = "Status do agendamento (PENDENTE, FINALIZADO, etc.)")
             @RequestParam(required = false) StatusAgendamento status,
             @Parameter(description = "ID da quadra (opcional)")
             @RequestParam(required = false) Long quadraId) {
 
         UUID arenaId = userDetails.getUserId();
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(direction), sort));
-        Page<Agendamento> agendamentosPage = agendamentoService.buscarPorArenaId(
-                arenaId, dataInicio, dataFim, status, quadraId, pageable);
+        Pageable pageableSemSort = PageRequest.of(page, size);
+
+        Page<Agendamento> agendamentosPage = agendamentoService.buscarCardsMestrePorArenaId(
+                arenaId,
+                dataInicio,
+                dataFim,
+                quadraId,
+                status,
+                pageableSemSort);
 
         Page<AgendamentoArenaResponseDTO> response = agendamentosPage.map(
                 agendamentoMapper::fromAgendamentoToArenaResponseDTO);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/fixo/{agendamentoFixoId}/filhos")
+    @Operation(summary = "Listar todos os agendamentos individuais de uma recorrência fixa (para o Drawer)", security = @SecurityRequirement(name = "bearerAuth"))
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<AgendamentoArenaResponseDTO>> listarAgendamentosFixosFilhos(
+            @Parameter(description = "ID do Agendamento Fixo (pai da recorrência)")
+            @PathVariable Long agendamentoFixoId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        UUID arenaId = userDetails.getUserId();
+
+        List<Agendamento> filhos = agendamentoService.buscarAgendamentosFixosFilhos(agendamentoFixoId, arenaId);
+
+        List<AgendamentoArenaResponseDTO> response = filhos.stream()
+                .map(agendamentoMapper::fromAgendamentoToArenaResponseDTO)
+                .collect(Collectors.toList());
 
         return ResponseEntity.ok(response);
     }
@@ -101,6 +127,7 @@ public class ArenaAgendamentoController {
 
     @GetMapping("/pendentes-resolucao")
     @Operation(summary = "Listar agendamentos pendentes que exigem ação da arena", security = @SecurityRequirement(name = "bearerAuth"))
+    @Transactional(readOnly = true)
     public ResponseEntity<List<AgendamentoArenaResponseDTO>> listarAgendamentosPendentes(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
@@ -129,5 +156,23 @@ public class ArenaAgendamentoController {
         Agendamento agendamento = agendamentoService.criarAgendamentoExterno(dto, userDetails.getUserId());
         AgendamentoResponseDTO response = agendamentoMapper.fromAgendamentoToResponseDTO(agendamento);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @DeleteMapping("/fixo/{agendamentoFixoId}")
+    @Operation(summary = "Cancelar todos os agendamentos futuros de uma recorrência (por Agendamento Fixo ID)", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Recorrência cancelada com sucesso"),
+            @ApiResponse(responseCode = "403", description = "Arena não tem permissão"),
+            @ApiResponse(responseCode = "404", description = "Recorrência não encontrada")
+    })
+    public ResponseEntity<Void> cancelarRecorrencia(
+            @Parameter(description = "ID do Agendamento Fixo (pai da recorrência)", required = true)
+            @PathVariable Long agendamentoFixoId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        UUID arenaId = userDetails.getUserId();
+        agendamentoFixoService.cancelarAgendamentoFixoPorArena(agendamentoFixoId, arenaId);
+
+        return ResponseEntity.noContent().build();
     }
 }
