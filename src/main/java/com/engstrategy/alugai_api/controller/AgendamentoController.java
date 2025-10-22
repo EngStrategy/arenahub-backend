@@ -5,6 +5,7 @@ import com.engstrategy.alugai_api.dto.agendamento.AgendamentoResponseDTO;
 import com.engstrategy.alugai_api.dto.agendamento.PixPagamentoResponseDTO;
 import com.engstrategy.alugai_api.dto.avaliacao.AvaliacaoDTO;
 import com.engstrategy.alugai_api.dto.avaliacao.AvaliacaoResponseDTO;
+import com.engstrategy.alugai_api.exceptions.AgendamentoCreationException;
 import com.engstrategy.alugai_api.jwt.CustomUserDetails;
 import com.engstrategy.alugai_api.mapper.AgendamentoMapper;
 import com.engstrategy.alugai_api.model.Agendamento;
@@ -62,22 +63,10 @@ public class AgendamentoController {
 
         UUID atletaId = customUserDetails.getUserId();
 
-        try {
-            Agendamento agendamento = agendamentoService.criarAgendamento(dto, atletaId);
+        Agendamento agendamento = agendamentoService.criarAgendamento(dto, atletaId);
 
-            // Se for agendamento fixo, criar os recorrentes
-            if (dto.isFixo()) {
-                AgendamentoFixo agendamentoFixo = agendamentoFixoService.criarAgendamentosFixos(agendamento);
-                log.info("Agendamento fixo criado com ID: {}", agendamentoFixo.getId());
-            }
-
-            AgendamentoResponseDTO response = agendamentoMapper.fromAgendamentoToResponseDTO(agendamento);
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            log.error("Erro ao criar agendamento: {}", e.getMessage(), e);
-            throw e;
-        }
+        AgendamentoResponseDTO response = agendamentoMapper.fromAgendamentoToResponseDTO(agendamento);
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{id}")
@@ -116,9 +105,9 @@ public class AgendamentoController {
             @Parameter(description = "Tamanho da página")
             @RequestParam(defaultValue = "10") int size,
             @Parameter(description = "Campo para ordenação (ex: dataAgendamento)")
-            @RequestParam(defaultValue = "dataAgendamento") String sort,
+            @RequestParam(defaultValue = "data_agendamento") String sort,
             @Parameter(description = "Direção da ordenação (asc/desc)")
-            @RequestParam(defaultValue = "desc") String direction,
+            @RequestParam(defaultValue = "asc") String direction,
             @Parameter(description = "Data de início do filtro (opcional, formato: yyyy-MM-dd)")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
             @Parameter(description = "Data de fim do filtro (opcional, formato: yyyy-MM-dd)")
@@ -128,15 +117,39 @@ public class AgendamentoController {
             @Parameter(description = "Status do agendamento (opcional)")
             @RequestParam(required = false) StatusAgendamento status) {
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(direction), sort));
-        Page<Agendamento> agendamentosPage = agendamentoService.buscarPorAtletaId(
-                userDetails.getUserId(),
+        UUID atletaId = userDetails.getUserId();
+
+        Pageable pageableSemSort = PageRequest.of(page, size);
+
+        Page<Agendamento> agendamentosPage = agendamentoService.buscarCardsMestrePorAtletaId(
+                atletaId,
                 dataInicio,
                 dataFim,
                 tipoAgendamento,
                 status,
-                pageable);
-        Page<AgendamentoResponseDTO> response = agendamentosPage.map(agendamentoMapper::fromAgendamentoToResponseDTO);
+                pageableSemSort);
+
+        Page<AgendamentoResponseDTO> response = agendamentosPage.map(
+                agendamentoMapper::fromAgendamentoToResponseDTO);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/fixo/{agendamentoFixoId}/filhos")
+    @Operation(summary = "Listar todos os agendamentos individuais de uma recorrência fixa para o Atleta", security = @SecurityRequirement(name = "bearerAuth"))
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<AgendamentoResponseDTO>> listarAgendamentosFixosFilhosAtleta(
+            @Parameter(description = "ID do Agendamento Fixo (pai da recorrência)")
+            @PathVariable Long agendamentoFixoId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        UUID atletaId = userDetails.getUserId();
+
+        List<Agendamento> filhos = agendamentoService.buscarAgendamentosFixosFilhosAtleta(agendamentoFixoId, atletaId);
+
+        List<AgendamentoResponseDTO> response = filhos.stream()
+                .map(agendamentoMapper::fromAgendamentoToResponseDTO)
+                .collect(Collectors.toList());
 
         return ResponseEntity.ok(response);
     }

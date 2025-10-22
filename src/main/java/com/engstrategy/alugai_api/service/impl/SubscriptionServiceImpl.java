@@ -34,7 +34,6 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -156,8 +155,6 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
                             Long proximaCobrancaTimestamp = sub.getTrialEnd() != null ? sub.getTrialEnd() : sub.getLatestInvoiceObject().getPeriodEnd();
                             LocalDate proximaCobranca = Instant.ofEpochSecond(proximaCobrancaTimestamp).atZone(ZoneId.systemDefault()).toLocalDate();
-//                          LocalDate proximaCobranca = Instant.ofEpochSecond(latestInvoice.getPeriodEnd()).atZone(ZoneId.systemDefault()).toLocalDate();
-
 
                             Integer limiteQuadras = null;
                             if (product.getMetadata().containsKey("limite_quadras")) {
@@ -305,7 +302,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
         // Altera o status do agendamento para PAGO se estiver AGUARDANDO_PAGAMENTO, para evitar reprocessamento
         if (agendamento.getStatus() == StatusAgendamento.AGUARDANDO_PAGAMENTO) {
-            agendamento.setStatus(StatusAgendamento.PAGO); // ou CONFIRMADO, dependendo da sua regra
+            agendamento.setStatus(StatusAgendamento.PAGO);
             agendamentoRepository.save(agendamento);
 
             // Envia os e-mails de confirmação

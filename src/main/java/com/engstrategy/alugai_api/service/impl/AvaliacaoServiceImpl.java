@@ -20,9 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -92,7 +90,6 @@ public class AvaliacaoServiceImpl implements AvaliacaoService {
             throw new IllegalStateException("A avaliação só pode ser alterada em até 48 horas após a sua criação.");
         }
 
-        // Atualiza os dados da entidade
         avaliacao.setNota(avaliacaoDTO.getNota());
         avaliacao.setComentario(avaliacaoDTO.getComentario());
 
@@ -111,7 +108,6 @@ public class AvaliacaoServiceImpl implements AvaliacaoService {
         return avaliacoesPage.map(this::mapToResponseDTO);
     }
 
-    // Método auxiliar para mapear a Entidade para o DTO de resposta
     private AvaliacaoResponseDTO mapToResponseDTO(Avaliacao avaliacao) {
         Atleta atleta = avaliacao.getAtleta();
         return AvaliacaoResponseDTO.builder()

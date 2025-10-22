@@ -1,6 +1,5 @@
 package com.engstrategy.alugai_api.dto.asaas;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;

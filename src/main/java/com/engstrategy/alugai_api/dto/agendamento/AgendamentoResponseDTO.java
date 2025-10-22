@@ -10,9 +10,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.List;
 import java.util.Set;
 
 @Data
@@ -38,6 +36,7 @@ public class AgendamentoResponseDTO {
     private String urlFotoQuadra;
     private String urlFotoArena;
     private boolean fixo;
+    private Long agendamentoFixoId;
     private boolean publico;
     private boolean possuiSolicitacoes;
     private AvaliacaoDetalhesDTO avaliacao;

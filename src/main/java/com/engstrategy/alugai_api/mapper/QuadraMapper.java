@@ -73,6 +73,13 @@ public class QuadraMapper {
     }
 
     public QuadraResponseDTO mapQuadraToQuadraResponseDTO(Quadra quadra) {
+
+        Set<HorarioFuncionamentoResponseDTO> horariosMapeados = quadra.getHorariosFuncionamento()
+                .stream()
+                .map(this::mapHorarioFuncionamentoToResponseDto)
+                .sorted(Comparator.comparing(dto -> dto.getDiaDaSemana().ordinal()))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
         return QuadraResponseDTO.builder()
                 .id(quadra.getId())
                 .nomeQuadra(quadra.getNomeQuadra())
@@ -85,6 +92,7 @@ public class QuadraMapper {
                 .materiaisFornecidos(quadra.getMateriaisFornecidos())
                 .arenaId(quadra.getArena().getId())
                 .nomeArena(quadra.getArena().getNome())
+                .horariosFuncionamento(horariosMapeados)
                 .build();
     }
 

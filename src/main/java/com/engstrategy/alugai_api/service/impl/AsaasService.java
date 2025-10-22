@@ -1,7 +1,6 @@
 package com.engstrategy.alugai_api.service.impl;
 
 import com.engstrategy.alugai_api.dto.asaas.*;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,25 +34,21 @@ public class AsaasService {
                 .build();
     }
 
-    // --- CRIA CLIENTE ---
+    // Cria Cliente
     public AsaasCustomerResponse createCustomer(AsaasCreateCustomerRequest request) {
         String url = asaasUrl + "/customers";
         try {
             return restTemplate.postForObject(url, request, AsaasCustomerResponse.class);
         } catch (HttpClientErrorException e) {
-            // Tratar erros, como cliente já existente (e-mail/CPF/CNPJ duplicado)
             throw new RuntimeException("Erro ao criar cliente no Asaas: " + e.getResponseBodyAsString(), e);
         }
     }
 
-    // --- CRIA COBRANÇA PIX ---
-    // Dentro do método createPixPayment
+    // Cria cobrança PIX
     public AsaasPaymentResponse createPixPayment(AsaasCreatePaymentRequest request) {
         String url = asaasUrl + "/payments";
 
         try {
-            // --- ADICIONE O LOG DA REQUISIÇÃO (OPCIONAL, MAS ÚTIL) ---
-            // Se estiver usando @Builder, você precisa do ObjectMapper para imprimir o objeto request
             String requestBody = new ObjectMapper().writeValueAsString(request);
             log.info("Requisição Asaas para Pagamento: {}", requestBody);
             // -----------------------------------------------------------
@@ -63,44 +58,39 @@ public class AsaasService {
 
             String responseBody = responseEntity.getBody();
 
-            // --- ADICIONE O LOG DA RESPOSTA BRUTA ---
             if (responseBody != null) {
                 log.info("Resposta BRUTA do Asaas para Pagamento: {}", responseBody);
             }
-            // ----------------------------------------
 
-            // Use o ObjectMapper para tentar converter a string JSON bruta
+            // Uso de ObjectMapper para tentar converter a string JSON bruta
             ObjectMapper mapper = new ObjectMapper();
-            mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false); // Já deve ter sido corrigido com a anotação
+            mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
             return mapper.readValue(responseBody, AsaasPaymentResponse.class);
 
         } catch (HttpClientErrorException e) {
-            // ... (seu tratamento de erro 4xx/5xx) ...
             throw new RuntimeException("Erro ao criar pagamento PIX no Asaas: " + e.getMessage(), e);
-        } catch (Exception e) { // Captura JsonProcessingException, JsonMappingException, etc.
+        } catch (Exception e) {
             log.error("Erro no mapeamento da resposta do Asaas.", e);
             throw new RuntimeException("Falha ao processar a resposta do provedor de pagamento.", e);
         }
     }
 
-    // --- OBTER DADOS DO PIX ---
+    // --- Obtem dados do PIX ---
     public AsaasPixQrCodeResponse getPixQrCode(String paymentId) {
         String url = asaasUrl + "/payments/" + paymentId + "/pixQrCode";
 
         try {
             log.info("Buscando PIX QrCode para o pagamento ID: {}", paymentId);
 
-            // 1. Usamos postForEntity para obter a string bruta (mais seguro)
+            // Usamos postForEntity para obter a string bruta (mais seguro)
             ResponseEntity<String> responseEntity = restTemplate.getForEntity(url, String.class);
             String responseBody = responseEntity.getBody();
 
-            // 2. Log da Resposta BRUTA
             if (responseBody != null) {
-                log.info("Resposta BRUTA do Asaas para PIX QR Code: {}", responseBody); // <<< NOVO LOG
+                log.info("Resposta BRUTA do Asaas para PIX QR Code: {}", responseBody);
             }
 
-            // 3. Mapeamento (use o mapper da classe ou crie um novo se for necessário o registro JSR-310)
             ObjectMapper mapper = new ObjectMapper();
             mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 

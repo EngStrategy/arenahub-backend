@@ -12,12 +12,12 @@ public class LocalTimeSerializer extends StdSerializer<LocalTime> {
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
-    public LocalTimeSerializer() {
-        this(null);
-    }
-
     public LocalTimeSerializer(Class<LocalTime> t) {
         super(t);
+    }
+
+    public LocalTimeSerializer() {
+        super(LocalTime.class);
     }
 
     @Override

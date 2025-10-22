@@ -3,8 +3,8 @@ services:
     image: postgres:latest
     container_name: postgres_arenahub
     environment:
-      POSTGRES_USER: ${SPRING_DATASOURCE_USERNAME}
-      POSTGRES_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: arenahub
     ports:
       - '5432:5432'
@@ -13,18 +13,18 @@ services:
     networks:
       - arenahubnetwork
 
-  #  pgadmin:
-  #    image: dpage/pgadmin4
-  #    container_name: pgadmin_arenahub
-  #    environment:
-  #      PGADMIN_DEFAULT_EMAIL: ${DOCKER_PGADMIN_DEFAULT_EMAIL}
-  #      PGADMIN_DEFAULT_PASSWORD: ${DOCKER_PGADMIN_DEFAULT_PASSWORD}
-  #    ports:
-  #      - '15432:80'
-  #    depends_on:
-  #      - db
-  #    networks:
-  #      - arenahubnetwork
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin_arenahub
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${DOCKER_PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${DOCKER_PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      - '15432:80'
+    depends_on:
+      - db
+    networks:
+      - arenahubnetwork
 
   app:
     env_file:
@@ -38,6 +38,10 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: docker
       JAVA_TOOL_OPTIONS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/arenahub
+      SPRING_DATASOURCE_USERNAME: ${DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      ASAAS_TOKEN_PROD: ${ASAAS_TOKEN_PROD}
     ports:
       - '8080:8080'
       - '5005:5005'
@@ -53,7 +57,7 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
     depends_on:
       - app
     networks:

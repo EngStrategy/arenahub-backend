@@ -32,7 +32,7 @@ public class AgendamentoCleanerJob {
         );
 
         for (Agendamento agendamento : agendamentosExpirados) {
-            agendamento.setStatus(StatusAgendamento.CANCELADO); // Marcar como CANCELADO
+            agendamento.setStatus(StatusAgendamento.CANCELADO);
             log.info("Agendamento {} expirado e cancelado.", agendamento.getId());
         }
         agendamentoRepository.saveAll(agendamentosExpirados);

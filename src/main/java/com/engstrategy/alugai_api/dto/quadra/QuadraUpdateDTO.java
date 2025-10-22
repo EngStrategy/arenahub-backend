@@ -1,6 +1,5 @@
 package com.engstrategy.alugai_api.dto.quadra;
 
-import com.engstrategy.alugai_api.model.enums.DuracaoReserva;
 import com.engstrategy.alugai_api.model.enums.MaterialEsportivo;
 import com.engstrategy.alugai_api.model.enums.TipoEsporte;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -12,7 +11,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.validator.constraints.URL;
 
-import java.util.List;
 import java.util.Set;
 
 @Data

@@ -5,14 +5,12 @@ import com.engstrategy.alugai_api.dto.agendamento.AgendamentoExternoCreateDTO;
 import com.engstrategy.alugai_api.dto.agendamento.NovoAtletaExternoDTO;
 import com.engstrategy.alugai_api.dto.agendamento.PixPagamentoResponseDTO;
 import com.engstrategy.alugai_api.dto.asaas.*;
-import com.engstrategy.alugai_api.exceptions.AccessDeniedException;
-import com.engstrategy.alugai_api.exceptions.SubscriptionInactiveException;
-import com.engstrategy.alugai_api.exceptions.UniqueConstraintViolationException;
+import com.engstrategy.alugai_api.exceptions.*;
 import com.engstrategy.alugai_api.mapper.AgendamentoMapper;
 import com.engstrategy.alugai_api.model.*;
 import com.engstrategy.alugai_api.model.enums.*;
 import com.engstrategy.alugai_api.repository.*;
-import com.engstrategy.alugai_api.repository.specs.AgendamentoSpecs;
+import com.engstrategy.alugai_api.service.AgendamentoFixoService;
 import com.engstrategy.alugai_api.service.AgendamentoService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +18,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpClientErrorException;
@@ -29,6 +26,7 @@ import java.math.BigDecimal;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +35,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
 
     private final AgendamentoRepository agendamentoRepository;
     private final AtletaRepository atletaRepository;
+    private final AgendamentoFixoService agendamentoFixoService;
     private final SlotHorarioService slotHorarioService;
     private final SlotHorarioRepository slotHorarioRepository;
     private final AgendamentoMapper agendamentoMapper;
@@ -45,9 +44,6 @@ public class AgendamentoServiceImpl implements AgendamentoService {
     private final ArenaRepository arenaRepository;
     private final AsaasService asaasService;
     private final ZoneId fusoHorarioPadrao = ZoneId.of("America/Sao_Paulo");
-
-    @Value("${stripe.secret-key}")
-    private String stripeSecretKey;
 
     private void validarStatusAssinaturaDaArena(Quadra quadra) {
         // Buscamos a Arena pelo ID para garantir que temos o objeto completo e atualizado
@@ -98,9 +94,31 @@ public class AgendamentoServiceImpl implements AgendamentoService {
         // Converter DTO para entidade
         Agendamento agendamento = agendamentoMapper.fromCreateToAgendamento(dto, slots, atleta);
 
+        if (agendamento.isFixo()) {
+            List<LocalDate> conflitos = agendamentoFixoService.preValidarAgendamentoFixo(agendamento);
+
+            if (!conflitos.isEmpty()) {
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+                String datasStr = conflitos.stream()
+                        .map(data -> data.format(formatter))
+                        .collect(Collectors.joining(", "));
+
+                String msg = "O agendamento fixo não pode ser criado devido a conflitos nas seguintes datas: " + datasStr;
+                log.error("Agendamento fixo falhou na pré-validação (Pagar na Arena): {}", msg);
+                throw new IntervaloComAgendamentosException(msg);
+            }
+        }
+
+        agendamento.setStatus(StatusAgendamento.PENDENTE);
         // Salvar o agendamento
         agendamento.criarSnapshot();
         agendamento = agendamentoRepository.save(agendamento);
+
+        // Se o agendamento for fixo, chama o serviço para criar as recorrências
+        if (agendamento.isFixo()) {
+            log.info("Agendamento base é fixo. Iniciando criação de agendamentos futuros.");
+            agendamentoFixoService.criarAgendamentosFixos(agendamento);
+        }
 
         log.info("Agendamento criado com sucesso. ID: {}", agendamento.getId());
 
@@ -112,7 +130,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
 
     private void validarRegrasNegocio(AgendamentoCreateDTO dto) {
         if (dto.isFixo() && dto.isPublico()) {
-            throw new IllegalArgumentException("Um agendamento não pode ser fixo e público simultaneamente");
+            throw new AgendamentoCreationException("Um agendamento não pode ser fixo e público simultaneamente");
         }
 
         if (dto.isPublico() && dto.getNumeroJogadoresNecessarios() == null) {
@@ -136,7 +154,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
             throw new IllegalArgumentException("Não é possível criar agendamentos para datas passadas");
         }
 
-        // Opcional: limitar agendamentos muito distantes no futuro
+        // Limita agendamentos muito distantes no futuro
         if (dataAgendamento.isAfter(dataAtual.plusYears(1))) {
             throw new IllegalArgumentException("Não é possível criar agendamentos com mais de 1 ano de antecedência");
         }
@@ -169,7 +187,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
         LocalDate dataAtual = LocalDate.now(fusoHorarioPadrao);
         LocalTime horaAtual = LocalTime.now(fusoHorarioPadrao);
 
-        // Verificar se a data do agendamento é hoje
+        // Verifica se a data do agendamento é hoje
         boolean isDataAtual = dataAgendamento.equals(dataAtual);
 
         for (SlotHorario slot : slots) {
@@ -214,6 +232,128 @@ public class AgendamentoServiceImpl implements AgendamentoService {
                 );
             }
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Agendamento> buscarAgendamentosFixosFilhos(Long agendamentoFixoId, UUID arenaId) {
+        // 1. Busca o agendamento fixo pai para validação de Arena
+        Agendamento agendamentoBase = agendamentoRepository.findFirstByAgendamentoFixoId(agendamentoFixoId)
+                .orElseThrow(() -> new EntityNotFoundException("Recorrência não encontrada."));
+
+        // 2. Validação de Permissão
+        if (!agendamentoBase.getQuadra().getArena().getId().equals(arenaId)) {
+            throw new AccessDeniedException("Você não tem permissão para visualizar esta recorrência.");
+        }
+
+        // 3. Busca todos os agendamentos filhos (incluindo o base e os já cancelados)
+        List<Agendamento> filhos = agendamentoRepository.findByAgendamentoFixoId(agendamentoFixoId);
+
+        // 4. Inicializa as coleções necessárias antes que a transação termine (necessário para o Mapper)
+        for (Agendamento filho : filhos) {
+            // Inicializa slotsHorario (que o mapperArena usa)
+            if (filho.getSlotsHorario() != null) {
+                filho.getSlotsHorario().size();
+            }
+        }
+
+        return filhos;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<Agendamento> buscarCardsMestrePorAtletaId(UUID atletaId,
+                                                          LocalDate dataInicio,
+                                                          LocalDate dataFim,
+                                                          TipoAgendamento tipoAgendamento,
+                                                          StatusAgendamento status,
+                                                          Pageable pageable) {
+
+        // 1. Determina o filtro de Agendamento Fixo/Normal
+        Boolean isFixoFiltro = null;
+        if (tipoAgendamento == TipoAgendamento.FIXO) {
+            isFixoFiltro = Boolean.TRUE;
+        } else if (tipoAgendamento == TipoAgendamento.NORMAL) {
+            isFixoFiltro = Boolean.FALSE;
+        }
+
+        // 2. Determina a lista de Status Ativos/Histórico
+        List<StatusAgendamento> statusesParaFiltrar;
+
+        if (status == StatusAgendamento.FINALIZADO) {
+            // Histórico
+            statusesParaFiltrar = Arrays.asList(StatusAgendamento.CANCELADO, StatusAgendamento.PAGO, StatusAgendamento.AUSENTE);
+
+        } else if (status != null) {
+            // Status específico
+            statusesParaFiltrar = List.of(status);
+
+        } else {
+            // Padrão: Ativos (PENDENTE, PAGO, AGUARDANDO_PAGAMENTO, etc.)
+            statusesParaFiltrar = Arrays.asList(
+                    StatusAgendamento.PENDENTE,
+                    StatusAgendamento.AGUARDANDO_PAGAMENTO,
+                    StatusAgendamento.PAGO
+            );
+        }
+
+        // 3. Ajuste de data para Ativos (mostrar do futuro em diante)
+        if (status == null) {
+            dataInicio = dataInicio == null ? LocalDate.now() : dataInicio;
+        }
+
+        // 4. Converte para List<String> para o Repositório (se usarmos Native Query)
+        List<String> statusesComoString = statusesParaFiltrar.stream()
+                .map(StatusAgendamento::name)
+                .collect(Collectors.toList());
+
+        // 5. Chama o novo método do Repositório (findCardsMestreByAtletaId)
+        return agendamentoRepository.findCardsMestreByAtletaId(
+                atletaId,
+                dataInicio,
+                dataFim,
+                isFixoFiltro,
+                statusesComoString,
+                pageable
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Agendamento> buscarAgendamentosFixosFilhosAtleta(Long agendamentoFixoId, UUID atletaId) {
+        log.info("Buscando agendamentos fixos filhos para Atleta ID: {} e Recorrência ID: {}", atletaId, agendamentoFixoId);
+
+        // 1. Busca um agendamento da recorrência para validação de Atleta
+        Agendamento agendamentoBase = agendamentoRepository.findFirstByAgendamentoFixoId(agendamentoFixoId)
+                .orElseThrow(() -> new EntityNotFoundException("Recorrência não encontrada."));
+
+        // 2. Validação de Permissão (verifica se o atleta é o proprietário)
+        if (!agendamentoBase.getAtleta().getId().equals(atletaId)) {
+            throw new AccessDeniedException("Você não tem permissão para visualizar esta recorrência.");
+        }
+
+        // 3. Busca todos os agendamentos filhos (incluindo o base e os já cancelados)
+        List<Agendamento> filhos = agendamentoRepository.findByAgendamentoFixoId(agendamentoFixoId);
+
+        // 4. Inicializa as coleções necessárias antes que a transação termine (resolvendo LazyInitializationException)
+        for (Agendamento filho : filhos) {
+            // Inicializa slotsHorario
+            if (filho.getSlotsHorario() != null) {
+                filho.getSlotsHorario().size();
+            }
+            // Inicializa participantes (se necessário para o DTO de AgendamentoResponseDTO)
+            if (filho.getParticipantes() != null) {
+                filho.getParticipantes().size();
+            }
+            // Se a quadra for acessada (o DTO precisa dela), garanta que está carregada
+            if (filho.getQuadra() != null && filho.getQuadra().getArena() != null) {
+                // Força o carregamento da Arena, caso Lazy
+                filho.getQuadra().getArena().getId();
+            }
+        }
+
+        log.info("Encontrados {} agendamentos filhos para a recorrência ID {}.", filhos.size(), agendamentoFixoId);
+        return filhos;
     }
 
     @Override
@@ -409,7 +549,17 @@ public class AgendamentoServiceImpl implements AgendamentoService {
                 agendamento);
 
         agendamento.setStatus(novoStatus);
-        return agendamentoRepository.save(agendamento);
+
+        Agendamento agendamentoSalvo = agendamentoRepository.save(agendamento);
+
+        if (agendamentoSalvo.getSlotsHorario() != null) {
+            agendamentoSalvo.getSlotsHorario().size();
+        }
+
+        if (agendamentoSalvo.getParticipantes() != null) {
+            agendamentoSalvo.getParticipantes().size();
+        }
+        return agendamentoSalvo;
     }
 
     @Override
@@ -509,12 +659,55 @@ public class AgendamentoServiceImpl implements AgendamentoService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Page<Agendamento> buscarCardsMestrePorArenaId(UUID arenaId,
+                                                         LocalDate dataInicio,
+                                                         LocalDate dataFim,
+                                                         Long quadraId,
+                                                         StatusAgendamento status,
+                                                         Pageable pageable) {
+        List<StatusAgendamento> statusesParaFiltrar;
+
+        if (status == StatusAgendamento.FINALIZADO) {
+            statusesParaFiltrar = Arrays.asList(StatusAgendamento.CANCELADO, StatusAgendamento.PAGO, StatusAgendamento.AUSENTE);
+
+        } else if (status != null) {
+            statusesParaFiltrar = List.of(status);
+
+        } else {
+            statusesParaFiltrar = Arrays.asList(
+                    StatusAgendamento.PENDENTE,
+                    StatusAgendamento.AGUARDANDO_PAGAMENTO,
+                    StatusAgendamento.PAGO
+            );
+        }
+
+        List<String> statusesComoString = statusesParaFiltrar.stream()
+                .map(StatusAgendamento::name)
+                .collect(Collectors.toList());
+
+        if (status == null) {
+            dataInicio = dataInicio == null ? LocalDate.now() : dataInicio;
+        }
+
+        return agendamentoRepository.findCardsMestreByArenaId(
+                arenaId,
+                dataInicio,
+                dataFim,
+                quadraId,
+                statusesComoString,
+                pageable
+        );
+    }
+
+    @Override
     @Transactional
     public PixPagamentoResponseDTO criarPagamentoPix(AgendamentoCreateDTO dto, UUID atletaId) {
         // CRIAR O AGENDAMENTO PROVISÓRIO COM STATUS 'AGUARDANDO_PAGAMENTO'
         log.info("Iniciando criação de pagamento PIX para atleta ID: {} na data: {}", atletaId, dto.getDataAgendamento());
 
         validarDataAgendamento(dto.getDataAgendamento());
+
         Set<SlotHorario> slots = buscarEValidarSlots(dto.getSlotHorarioIds());
 
         Atleta atleta = atletaRepository.findById(atletaId)
@@ -552,9 +745,30 @@ public class AgendamentoServiceImpl implements AgendamentoService {
         agendamento.setStatus(StatusAgendamento.AGUARDANDO_PAGAMENTO);
         agendamento.criarSnapshot();
 
-        Agendamento agendamentoProvisorio = agendamentoRepository.save(agendamento);
+        Agendamento agendamentoProvisorio = agendamento;
+
+        if (agendamentoProvisorio.isFixo()) {
+
+            List<LocalDate> conflitos = agendamentoFixoService.preValidarAgendamentoFixo(agendamentoProvisorio);
+
+            if (!conflitos.isEmpty()) {
+                String datasStr = conflitos.stream()
+                        .map(data -> data.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")))
+                        .collect(Collectors.joining(", "));
+
+                String msg = "O agendamento fixo não pode ser criado devido a conflitos nas seguintes datas: " + datasStr;
+                log.error("Agendamento fixo falhou na pré-validação: {}", msg);
+                throw new IntervaloComAgendamentosException(msg);
+            }
+        }
+
+        agendamentoProvisorio = agendamentoRepository.save(agendamento);
         log.info("Agendamento provisório criado com ID: {}", agendamentoProvisorio.getId());
 
+        log.info("PIX INFO: Agendamento ID {} criado. Status: {}. É Fixo: {}.",
+                agendamentoProvisorio.getId(),
+                agendamentoProvisorio.getStatus(),
+                agendamentoProvisorio.isFixo());
         try {
             String cpfLimpo = cpfParaAsaas.replaceAll("[^0-9]", "");
 
@@ -573,8 +787,20 @@ public class AgendamentoServiceImpl implements AgendamentoService {
                     .build();
             AsaasCustomerResponse customer = asaasService.createCustomer(customerRequest);
 
-            // 2. CRIAR A COBRANÇA PIX
-            BigDecimal valorTotal = agendamentoProvisorio.getValorTotalSnapshot();
+            // CRIAR A COBRANÇA PIX
+            BigDecimal valorBase = agendamentoProvisorio.getValorTotalSnapshot();
+            BigDecimal valorTotal;
+
+            if (agendamentoProvisorio.isFixo()) {
+                int multiplier = getMultiplier(
+                        agendamentoProvisorio.getDataAgendamento(),
+                        agendamentoProvisorio.getPeriodoAgendamentoFixo()
+                );
+                valorTotal = valorBase.multiply(new BigDecimal(multiplier));
+            } else {
+                valorTotal = valorBase;
+            }
+
             String dataVencimento = LocalDate.now().toString();
 
             AsaasCreatePaymentRequest paymentRequest = AsaasCreatePaymentRequest.builder()
@@ -613,9 +839,35 @@ public class AgendamentoServiceImpl implements AgendamentoService {
 
         } catch (HttpClientErrorException.BadRequest e) {
             log.error("Erro 400 do Asaas: {}", e.getResponseBodyAsString());
-            throw new RuntimeException("Erro de validação do provedor de pagamento. Verifique o CPF/CNPJ.", e);
+            throw new AccessDeniedException("Erro 400 do Asaas: " + e.getResponseBodyAsString());
         } catch (Exception e) {
-            throw new RuntimeException("Erro ao gerar pagamento Pix junto ao nosso provedor.", e);
+            throw new AgendamentoCreationException("Erro ao gerar pagamento Pix junto ao nosso provedor. " + e.getMessage());
         }
+    }
+
+    private LocalDate calcularDataFim(LocalDate dataInicio, PeriodoAgendamento periodo) {
+        return switch (periodo) {
+            case UM_MES -> dataInicio.plusMonths(1);
+            case TRES_MESES -> dataInicio.plusMonths(3);
+            case SEIS_MESES -> dataInicio.plusMonths(6);
+            default -> throw new IllegalArgumentException("Período não reconhecido: " + periodo);
+        };
+    }
+
+    private int getMultiplier(LocalDate dataInicio, PeriodoAgendamento periodo) {
+        if (periodo == null) return 1;
+
+        LocalDate dataLimite = calcularDataFim(dataInicio, periodo);
+
+        int contador = 0;
+        LocalDate dataAtual = dataInicio.plusWeeks(1); // Começa na próxima semana (o primeiro já foi pago)
+
+        while (!dataAtual.isAfter(dataLimite)) {
+            contador++;
+            dataAtual = dataAtual.plusWeeks(1);
+        }
+
+        // Valor total de TODAS as ocorrências (base + futuras).
+        return 1 + contador;
     }
 }

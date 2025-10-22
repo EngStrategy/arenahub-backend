@@ -29,7 +29,6 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Long>,
             "AND a.vagasDisponiveis > 0 AND a.dataAgendamento >= :dataInicio")
     List<Agendamento> findAgendamentosPublicos(@Param("dataInicio") LocalDate dataInicio);
 
-    // Métodos para agendamentos fixos
     List<Agendamento> findByAgendamentoFixoId(Long agendamentoFixoId);
 
     // Verifica conflitos de agendamento em uma data específica
@@ -43,7 +42,7 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Long>,
                            @Param("fim") LocalTime fim);
 
 
-    // Para a Receita do Mês - Usando 'valorTotalSnapshot' e 'dataSnapshot'
+    // Para a Receita do Mês
     @Query("SELECT SUM(a.valorTotalSnapshot) FROM Agendamento a " +
             "WHERE a.quadra.arena.id = :arenaId " +
             "AND a.dataSnapshot BETWEEN :dataInicio AND :dataFim " +
@@ -53,20 +52,19 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Long>,
                                          @Param("dataFim") LocalDateTime dataFim);
 
 
-    // Para Agendamentos Hoje - A query está correta
+    // Para Agendamentos Hoje
     @Query("SELECT COUNT(a) FROM Agendamento a WHERE a.quadra.arena.id = :arenaId AND a.dataAgendamento = :dataAgendamento")
     int countByArenaIdAndDataAgendamento(@Param("arenaId") UUID arenaId, @Param("dataAgendamento") LocalDate dataAgendamento);
 
 
-    // Para Novos Clientes da Semana - Usando 'dataSnapshot'
-    // Esta  conta atletas (clientes) únicos que fizeram seu primeiro agendamento na arena dentro do período.
+    // Para Novos Clientes da Semana
     @Query("SELECT COUNT(DISTINCT a.atleta) FROM Agendamento a " +
             "WHERE a.quadra.arena.id = :arenaId AND a.dataSnapshot BETWEEN :dataInicio AND :dataFim")
     int countNovosClientesDaArenaPorPeriodo(@Param("arenaId") UUID arenaId,
                                             @Param("dataInicio") LocalDateTime dataInicio,
                                             @Param("dataFim") LocalDateTime dataFim);
 
-    // Para Próximos Agendamentos - A query está correta
+    // Para Próximos Agendamentos
     @Query("SELECT a FROM Agendamento a " +
             "WHERE a.quadra.arena.id = :arenaId " +
             "AND a.dataAgendamento = :dataAtual " +
@@ -104,6 +102,7 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Long>,
      * ordenados pela data e hora do agendamento.
      */
     @Query("SELECT a FROM Agendamento a " +
+            "LEFT JOIN FETCH a.participantes p " +
             "WHERE a.quadra.arena.id = :arenaId " +
             "AND a.status = 'PENDENTE' " +
             "AND ( a.dataAgendamento < :dataAtual OR " + // Critério 1: Agendamentos de dias anteriores
@@ -147,22 +146,15 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Long>,
             "LEFT JOIN FETCH a.participantes " +
             "LEFT JOIN FETCH a.avaliacao avaliacao " +
             "WHERE a.quadra.arena.id = :arenaId " +
-
-            // CORREÇÃO: Usar COALESCE para filtros de data opcionais na query principal
             "AND a.dataAgendamento >= COALESCE(:dataInicio, a.dataAgendamento) " +
             "AND a.dataAgendamento <= COALESCE(:dataFim, a.dataAgendamento) " +
-
             "AND (:quadraId IS NULL OR a.quadra.id = :quadraId) " +
             "AND (:statuses IS NULL OR a.status IN :statuses)",
 
-            // Count Query também deve usar COALESCE
             countQuery = "SELECT COUNT(DISTINCT a) FROM Agendamento a " +
                     "WHERE a.quadra.arena.id = :arenaId " +
-
-                    // CORREÇÃO NO COUNT QUERY
                     "AND a.dataAgendamento >= COALESCE(:dataInicio, a.dataAgendamento) " +
                     "AND a.dataAgendamento <= COALESCE(:dataFim, a.dataAgendamento) " +
-
                     "AND (:quadraId IS NULL OR a.quadra.id = :quadraId) " +
                     "AND (:statuses IS NULL OR a.status IN :statuses)")
     Page<Agendamento> findByArenaIdWithFilters(
@@ -221,4 +213,105 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Long>,
             Pageable pageable
     );
 
+    Optional<Agendamento> findFirstByAgendamentoFixoId(Long agendamentoFixoId);
+
+    @Query(value =
+            "SELECT a.* FROM agendamento a " +
+                    "JOIN quadra q ON a.quadra_id = q.id " +
+                    "WHERE q.arena_id = :arenaId " +
+                    "AND (" +
+                    // 1. Agendamentos Normais: APENAS aqueles que têm status na lista de ativos/históricos
+                    "   (a.agendamento_fixo_id IS NULL AND a.status IN :statuses) " +
+                    "   OR " +
+                    // 2. Agendamentos Fixos (Recorrência): Seleciona o Agendamento Mestre (MIN(data_agendamento) futuro)
+                    "   (a.agendamento_fixo_id IS NOT NULL AND a.id = (" +
+                    "       SELECT MIN(a_fixo.id) FROM agendamento a_fixo " +
+                    "       JOIN quadra q_fixo ON a_fixo.quadra_id = q_fixo.id " +
+                    "       WHERE a_fixo.agendamento_fixo_id = a.agendamento_fixo_id " +
+                    "       AND q_fixo.arena_id = :arenaId " +
+                    "       AND a_fixo.status IN :statuses " +
+                    // Filtrar aqui por datas futuras para garantir que o mestre seja o PRÓXIMO
+                    "       AND a_fixo.data_agendamento >= CURRENT_DATE" +
+                    "   ))" +
+                    ")" +
+                    // COALESCE (Garante que se data for nula, o filtro é ignorado)
+                    "AND a.data_agendamento >= COALESCE(:dataInicio, a.data_agendamento) " +
+                    "AND a.data_agendamento <= COALESCE(:dataFim, a.data_agendamento) " +
+                    "AND (:quadraId IS NULL OR a.quadra_id = :quadraId) " +
+                    "ORDER BY a.data_agendamento ASC, a.horario_inicio_snapshot ASC",
+
+            countQuery =
+                    "SELECT COUNT(a.id) FROM agendamento a " +
+                            "JOIN quadra q ON a.quadra_id = q.id " +
+                            "WHERE q.arena_id = :arenaId " +
+                            "AND (" +
+                            "   (a.agendamento_fixo_id IS NULL AND a.status IN :statuses) " +
+                            "   OR " +
+                            "   (a.agendamento_fixo_id IS NOT NULL AND a.id = (" +
+                            "       SELECT MIN(a_fixo.id) FROM agendamento a_fixo " +
+                            "       JOIN quadra q_fixo ON a_fixo.quadra_id = q_fixo.id " +
+                            "       WHERE a_fixo.agendamento_fixo_id = a.agendamento_fixo_id " +
+                            "       AND q_fixo.arena_id = :arenaId " +
+                            "       AND a_fixo.status IN :statuses " +
+                            "       AND a_fixo.data_agendamento >= CURRENT_DATE" +
+                            "   ))" +
+                            ")" +
+                            "AND a.data_agendamento >= COALESCE(:dataInicio, a.data_agendamento) " +
+                            "AND a.data_agendamento <= COALESCE(:dataFim, a.data_agendamento) " +
+                            "AND (:quadraId IS NULL OR a.quadra_id = :quadraId)",
+            nativeQuery = true
+    )
+    Page<Agendamento> findCardsMestreByArenaId(
+            @Param("arenaId") UUID arenaId,
+            @Param("dataInicio") LocalDate dataInicio,
+            @Param("dataFim") LocalDate dataFim,
+            @Param("quadraId") Long quadraId,
+            @Param("statuses") List<String> statuses,
+            Pageable pageable
+    );
+
+    @Query(value =
+            "SELECT a.* FROM agendamento a " +
+                    "WHERE a.atleta_id = :atletaId " +
+                    "AND (" +
+                    "   (a.agendamento_fixo_id IS NULL AND (:isFixoFiltro IS NULL OR a.is_fixo = :isFixoFiltro) AND a.status IN :statuses) " + // 1. Agendamentos Normais
+                    "   OR " +
+                    "   (a.agendamento_fixo_id IS NOT NULL AND a.id = (" + // 2. Agendamentos Fixos: selecionar APENAS o mais próximo
+                    "       SELECT MIN(a_fixo.id) FROM agendamento a_fixo " +
+                    "       WHERE a_fixo.agendamento_fixo_id = a.agendamento_fixo_id " +
+                    "       AND a_fixo.atleta_id = :atletaId " +
+                    "       AND a_fixo.status IN :statuses " +
+                    "       AND a_fixo.data_agendamento >= CURRENT_DATE" +
+                    "   ))" +
+                    ")" +
+                    "AND a.data_agendamento >= COALESCE(:dataInicio, a.data_agendamento) " +
+                    "AND a.data_agendamento <= COALESCE(:dataFim, a.data_agendamento) " +
+                    "ORDER BY a.data_agendamento ASC, a.horario_inicio_snapshot ASC",
+
+            countQuery =
+                    "SELECT COUNT(a.id) FROM agendamento a " +
+                            "WHERE a.atleta_id = :atletaId " +
+                            "AND (" +
+                            "   (a.agendamento_fixo_id IS NULL AND (:isFixoFiltro IS NULL OR a.is_fixo = :isFixoFiltro) AND a.status IN :statuses) " +
+                            "   OR " +
+                            "   (a.agendamento_fixo_id IS NOT NULL AND a.id = (" +
+                            "       SELECT MIN(a_fixo.id) FROM agendamento a_fixo " +
+                            "       WHERE a_fixo.agendamento_fixo_id = a.agendamento_fixo_id " +
+                            "       AND a_fixo.atleta_id = :atletaId " +
+                            "       AND a_fixo.status IN :statuses " +
+                            "       AND a_fixo.data_agendamento >= CURRENT_DATE" +
+                            "   ))" +
+                            ")" +
+                            "AND a.data_agendamento >= COALESCE(:dataInicio, a.data_agendamento) " +
+                            "AND a.data_agendamento <= COALESCE(:dataFim, a.data_agendamento)",
+            nativeQuery = true
+    )
+    Page<Agendamento> findCardsMestreByAtletaId(
+            @Param("atletaId") UUID atletaId,
+            @Param("dataInicio") LocalDate dataInicio,
+            @Param("dataFim") LocalDate dataFim,
+            @Param("isFixoFiltro") Boolean isFixoFiltro,
+            @Param("statuses") List<String> statuses,
+            Pageable pageable
+    );
 }

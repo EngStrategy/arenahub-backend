@@ -7,9 +7,7 @@ import com.engstrategy.alugai_api.model.enums.DuracaoReserva;
 import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
 import com.engstrategy.alugai_api.model.enums.StatusDisponibilidade;
 import com.engstrategy.alugai_api.model.enums.StatusIntervalo;
-import com.engstrategy.alugai_api.repository.AgendamentoRepository;
 import com.engstrategy.alugai_api.repository.SlotHorarioRepository;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,11 +24,8 @@ import java.util.List;
 public class SlotHorarioService {
 
     private final SlotHorarioRepository slotHorarioRepository;
-    private final AgendamentoRepository agendamentoRepository;
 
-    /**
-     * Gera slots de horário para um intervalo específico baseado na duração da reserva
-     */
+    // Gera slots de horário para um intervalo específico baseado na duração da reserva
     public List<SlotHorario> gerarSlotsParaIntervalo(IntervaloHorario intervaloHorario, DuracaoReserva duracaoReserva) {
         List<SlotHorario> slots = new ArrayList<>();
 
@@ -84,9 +79,7 @@ public class SlotHorarioService {
         });
     }
 
-    /**
-     * Verifica se os slots são subsequentes (para validação de agendamento)
-     */
+    // Verifica se os slots são subsequentes (para validação de agendamento)
     public boolean saoSlotsSubsequentes(List<Long> slotIds) {
         if (slotIds.size() <= 1) return true;
 
@@ -124,19 +117,27 @@ public class SlotHorarioService {
     // Métodos auxiliares privados
     private int getDuracaoEmMinutos(DuracaoReserva duracao) {
         switch (duracao) {
-            case TRINTA_MINUTOS: return 30;
-            case UMA_HORA: return 60;
-            case UMA_HORA_E_MEIA: return 90;
-            case DUAS_HORAS: return 120;
-            default: throw new IllegalArgumentException("Duração não reconhecida: " + duracao);
+            case TRINTA_MINUTOS:
+                return 30;
+            case UMA_HORA:
+                return 60;
+            case UMA_HORA_E_MEIA:
+                return 90;
+            case DUAS_HORAS:
+                return 120;
+            default:
+                throw new IllegalArgumentException("Duração não reconhecida: " + duracao);
         }
     }
 
     private StatusDisponibilidade mapearStatusDisponibilidade(StatusIntervalo statusIntervalo) {
         switch (statusIntervalo) {
-            case DISPONIVEL: return StatusDisponibilidade.DISPONIVEL;
-            case MANUTENCAO: return StatusDisponibilidade.MANUTENCAO;
-            default: return StatusDisponibilidade.INDISPONIVEL;
+            case DISPONIVEL:
+                return StatusDisponibilidade.DISPONIVEL;
+            case MANUTENCAO:
+                return StatusDisponibilidade.MANUTENCAO;
+            default:
+                return StatusDisponibilidade.INDISPONIVEL;
         }
     }
 }

@@ -6,7 +6,10 @@ import com.engstrategy.alugai_api.model.Quadra;
 import com.engstrategy.alugai_api.model.enums.Role;
 import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
 import com.engstrategy.alugai_api.repository.AgendamentoRepository;
+import com.engstrategy.alugai_api.service.AgendamentoFixoService;
 import com.engstrategy.alugai_api.service.impl.EmailService;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,12 +17,18 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/asaas/webhook")
+@Slf4j
+@Tag(name = "Asaas Webhook", description = "Endpoints para receber notificações do Asaas")
 public class AsaasWebhookController {
 
     @Autowired
     private AgendamentoRepository agendamentoRepository;
+
     @Autowired
     private EmailService emailService;
+
+    @Autowired
+    private AgendamentoFixoService agendamentoFixoService;
 
     @PostMapping("/cobranca-status")
     @Transactional
@@ -38,16 +47,25 @@ public class AsaasWebhookController {
                 // Usa o método de busca que carrega todas as relações
                 agendamentoRepository.findByAsaasPaymentIdFetchRelations(asaasPaymentId)
                         .ifPresent(agendamento -> {
+                            log.info("WEBHOOK: Agendamento recebido ID: {} | Status Atual: {} | É Fixo: {}",
+                                    agendamento.getId(),
+                                    agendamento.getStatus(),
+                                    agendamento.isFixo());
+
                             if (agendamento.getStatus() != StatusAgendamento.PAGO) {
 
                                 agendamento.setStatus(StatusAgendamento.PAGO);
                                 agendamentoRepository.save(agendamento);
 
-                                // 1. Extração das entidades carregadas
                                 Atleta atleta = agendamento.getAtleta();
                                 Quadra quadra = agendamento.getQuadra();
 
-                                // 2. Notificação do Atleta e Arena
+                                if (agendamento.isFixo()) {
+                                    log.info("WEBHOOK: Acionando a criação de recorrências para o ID: {}", agendamento.getId());
+                                    agendamentoFixoService.criarAgendamentosFixos(agendamento);
+                                }
+
+                                // Notificação do Atleta e Arena
                                 emailService.enviarEmailAgendamento(
                                         atleta.getEmail(),
                                         atleta.getNome(),
@@ -65,7 +83,6 @@ public class AsaasWebhookController {
             }
         }
 
-        // O Asaas espera um retorno 200 OK
         return ResponseEntity.ok().build();
     }
 }
