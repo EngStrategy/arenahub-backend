@@ -34,6 +34,7 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/v3/api-docs.yaml").permitAll()
                         .requestMatchers("/swagger-resources/**").permitAll()
@@ -91,7 +92,8 @@ public class SecurityConfig {
                 "http://localhost:3000",
                 "https://arenahub.app",
                 "https://www.arenahub.app",
-                "https://api.arenahub.app"
+                "https://api.arenahub.app",
+                "http://localhost:8081"
         ));
 
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
