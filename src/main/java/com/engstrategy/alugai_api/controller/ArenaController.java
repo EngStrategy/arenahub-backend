@@ -118,8 +118,7 @@ public class ArenaController {
             @PathVariable UUID id,
             @Valid @RequestBody ArenaUpdateDTO arenaUpdateDTO) {
 
-        Arena updatedArena = arenaService.atualizar(id, arenaUpdateDTO);
-        ArenaResponseDTO response = arenaMapper.mapArenaToArenaResponseDTO(updatedArena);
+        ArenaResponseDTO response = arenaService.atualizar(id, arenaUpdateDTO);
         return ResponseEntity.ok(response);
     }
 

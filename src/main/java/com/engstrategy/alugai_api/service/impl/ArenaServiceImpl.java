@@ -158,7 +158,7 @@ public class ArenaServiceImpl implements ArenaService {
 
     @Override
     @Transactional
-    public Arena atualizar(UUID id, ArenaUpdateDTO arenaUpdateDTO) {
+    public ArenaResponseDTO atualizar(UUID id, ArenaUpdateDTO arenaUpdateDTO) {
         verificarAssinaturaAtiva(id);
 
         Arena savedArena = arenaRepository.findById(id)
@@ -193,7 +193,7 @@ public class ArenaServiceImpl implements ArenaService {
 
         Arena updatedArena = arenaRepository.save(savedArena);
 
-        return updatedArena;
+        return arenaMapper.mapArenaToArenaResponseDTO(updatedArena);
     }
 
     @Override

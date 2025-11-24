@@ -89,6 +89,7 @@ public class SecurityConfig {
         // Origens permitidas para desenvolvimento e produção
         configuration.setAllowedOrigins(List.of(
                 "http://localhost:3000",
+                "http://localhost:8081",
                 "https://arenahub.app",
                 "https://www.arenahub.app",
                 "https://api.arenahub.app"

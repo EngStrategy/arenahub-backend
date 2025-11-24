@@ -17,7 +17,7 @@ public interface ArenaService {
     Arena criarArena(Arena arena);
     ArenaResponseDTO buscarPorId(UUID id);
     Page<ArenaResponseDTO> listarTodos(Pageable pageable, String cidade, String esporte, Double latitude, Double longitude, Double raioKm);
-    Arena atualizar(UUID id, ArenaUpdateDTO arenaUpdateDTO);
+    ArenaResponseDTO atualizar(UUID id, ArenaUpdateDTO arenaUpdateDTO);
     void excluir(UUID id);
     void redefinirSenha(Usuario usuario, String novaSenha);
     void alterarSenha(UUID arenaId, String senhaAtual, String novaSenha);

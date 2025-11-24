@@ -32,7 +32,6 @@ public class ArenaUpdateDTO {
     private EnderecoDTO endereco;
 
     @Schema(description = "Até quantas horas antes o atleta pode cancelar", required = true)
-    @NotNull(message = "Hora de antecedencia de cancelamento é obrigatório")
     @Min(value = 0, message = "O valor não pode ser negativo.")
     private Integer horasCancelarAgendamento;
 
