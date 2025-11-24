@@ -15,7 +15,7 @@ public interface QuadraService {
     Quadra criarQuadra(Quadra quadra, UUID arenaId);
     Quadra buscarPorId(Long id);
     Page<Quadra> listarTodos(Pageable pageable, UUID arenaId, String esporte);
-    Quadra atualizar(Long id, QuadraUpdateDTO quadraUpdateDTO, UUID arenaId);
+    QuadraResponseDTO atualizar(Long id, QuadraUpdateDTO quadraUpdateDTO, UUID arenaId);
     void excluir(Long id, UUID arenaId);
     List<QuadraResponseDTO> buscarPorArenaId(UUID arenaId);
     List<SlotHorarioResponseDTO> consultarDisponibilidade(Long quadraId, LocalDate data);

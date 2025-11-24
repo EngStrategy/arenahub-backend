@@ -82,7 +82,7 @@ public class QuadraServiceImpl implements QuadraService {
 
     @Override
     @Transactional
-    public Quadra atualizar(Long quadraId, QuadraUpdateDTO updateDTO, UUID arenaId) {
+    public QuadraResponseDTO atualizar(Long quadraId, QuadraUpdateDTO updateDTO, UUID arenaId) {
         Quadra quadra = quadraRepository.findById(quadraId)
                 .orElseThrow(() -> new UserNotFoundException("Quadra não encontrada com ID: " + quadraId));
 
@@ -98,7 +98,8 @@ public class QuadraServiceImpl implements QuadraService {
             atualizarHorariosFuncionamento(quadra, updateDTO.getHorariosFuncionamento());
         }
 
-        return quadraRepository.save(quadra);
+        Quadra updatedQuadra = quadraRepository.save(quadra);
+        return quadraMapper.mapQuadraToQuadraResponseDTO(updatedQuadra);
     }
 
     private void atualizarCamposBasicos(Quadra quadra, QuadraUpdateDTO updateDTO) {

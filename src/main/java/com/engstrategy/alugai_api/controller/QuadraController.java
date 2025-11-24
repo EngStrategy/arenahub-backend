@@ -113,8 +113,8 @@ public class QuadraController {
             @PathVariable Long id,
             @Valid @RequestBody QuadraUpdateDTO updateDTO,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        Quadra updatedQuadra = quadraService.atualizar(id, updateDTO, userDetails.getUserId());
-        QuadraResponseDTO response = quadraMapper.mapQuadraToQuadraResponseDTO(updatedQuadra);
+
+        QuadraResponseDTO response = quadraService.atualizar(id, updateDTO, userDetails.getUserId());
         return ResponseEntity.ok(response);
     }
 
