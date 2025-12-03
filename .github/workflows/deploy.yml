@@ -1,53 +1,53 @@
-name: Deploy to Google Cloud Run
-
-on:
-  push:
-    branches:
-      - main
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@v3
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-
-      - name: Cache Maven packages
-        uses: actions/cache@v3
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }} # se o arquivo pom.xml mudar, o cache é invalidado
-          restore-keys: |
-            ${{ runner.os }}-maven-
-
-      - name: Build with Maven
-        run: mvn clean package -DskipTests
-
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
-
-      - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker southamerica-east1-docker.pkg.dev --quiet
-
-      - name: Build Docker image
-        run: docker build --no-cache -t southamerica-east1-docker.pkg.dev/arenahub-470414/arenahub-backend-repo/arenahub-backend:latest .
-
-      - name: Push Docker image
-        run: docker push southamerica-east1-docker.pkg.dev/arenahub-470414/arenahub-backend-repo/arenahub-backend:latest
-
-      - name: Deploy to Cloud Run
-        run: |
-          gcloud run deploy arenahub-backend \
-            --image southamerica-east1-docker.pkg.dev/arenahub-470414/arenahub-backend-repo/arenahub-backend:latest \
-            --platform managed \
-            --region southamerica-east1 \
-            --allow-unauthenticated
+#name: Deploy to Google Cloud Run
+#
+#on:
+#  push:
+#    branches:
+#      - main
+#
+#jobs:
+#  deploy:
+#    runs-on: ubuntu-latest
+#
+#    steps:
+#      - name: Checkout repository
+#        uses: actions/checkout@v3
+#
+#      - name: Set up JDK 21
+#        uses: actions/setup-java@v3
+#        with:
+#          java-version: '21'
+#          distribution: 'temurin'
+#
+#      - name: Cache Maven packages
+#        uses: actions/cache@v3
+#        with:
+#          path: ~/.m2/repository
+#          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }} # se o arquivo pom.xml mudar, o cache é invalidado
+#          restore-keys: |
+#            ${{ runner.os }}-maven-
+#
+#      - name: Build with Maven
+#        run: mvn clean package -DskipTests
+#
+#      - name: Authenticate to Google Cloud
+#        uses: google-github-actions/auth@v2
+#        with:
+#          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+#
+#      - name: Configure Docker for Artifact Registry
+#        run: gcloud auth configure-docker southamerica-east1-docker.pkg.dev --quiet
+#
+#      - name: Build Docker image
+#        run: docker build --no-cache -t southamerica-east1-docker.pkg.dev/arenahub-470414/arenahub-backend-repo/arenahub-backend:latest .
+#
+#      - name: Push Docker image
+#        run: docker push southamerica-east1-docker.pkg.dev/arenahub-470414/arenahub-backend-repo/arenahub-backend:latest
+#
+#      - name: Deploy to Cloud Run
+#        run: |
+#          gcloud run deploy arenahub-backend \
+#            --image southamerica-east1-docker.pkg.dev/arenahub-470414/arenahub-backend-repo/arenahub-backend:latest \
+#            --platform managed \
+#            --region southamerica-east1 \
+#            --allow-unauthenticated
