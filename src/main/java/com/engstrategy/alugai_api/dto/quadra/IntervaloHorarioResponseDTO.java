@@ -1,6 +1,7 @@
 package com.engstrategy.alugai_api.dto.quadra;
 
 import com.engstrategy.alugai_api.model.enums.StatusIntervalo;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,9 +24,11 @@ public class IntervaloHorarioResponseDTO {
     private Long id;
 
     @Schema(description = "Hora de início do intervalo", example = "08:00")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "HH:mm")
     private LocalTime inicio;
 
     @Schema(description = "Hora de fim do intervalo", example = "12:00")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "HH:mm")
     private LocalTime fim;
 
     @Schema(description = "Valor da reserva para o intervalo", example = "100.00")

@@ -1,6 +1,7 @@
 package com.engstrategy.alugai_api.dto.jogosabertos;
 
 import com.engstrategy.alugai_api.model.enums.TipoEsporte;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Builder;
 import lombok.Data;
 
@@ -14,8 +15,10 @@ public class JogoAbertoResponseDTO {
 
     private LocalDate data;
 
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "HH:mm")
     private LocalTime horarioInicio;
 
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "HH:mm")
     private LocalTime horarioFim;
 
     private Integer vagasDisponiveis;

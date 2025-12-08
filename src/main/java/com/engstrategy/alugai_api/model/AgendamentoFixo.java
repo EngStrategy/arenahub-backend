@@ -5,6 +5,7 @@ import com.engstrategy.alugai_api.model.enums.StatusAgendamentoFixo;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -41,6 +42,27 @@ public class AgendamentoFixo {
     @JoinColumn(name = "atleta_id", nullable = false)
     private Atleta atleta;
 
+    @Column(name = "nome_aula")
+    private String nomeAula;
+
+    @Column(name = "limite_atletas")
+    private Integer limiteAtletas;
+
+    @Column(name = "valor_base_mensal")
+    private BigDecimal valorBaseMensal;
+
+    @Column(name = "valor_plano_trimestral")
+    private BigDecimal valorPlanoTrimestral;
+
+    @Column(name = "valor_plano_semestral")
+    private BigDecimal valorPlanoSemestral;
+
+    @Column(name = "is_elegivel_wellhub")
+    private boolean isElegivelWellhub;
+
+    @Column(name = "dias_e_slots_json")
+    private String diasESlotsJson;
+
     @Builder.Default
     @OneToMany(mappedBy = "agendamentoFixo", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Agendamento> agendamentos = new ArrayList<>();
@@ -48,7 +70,9 @@ public class AgendamentoFixo {
     @PrePersist
     protected void onCreate() {
         dataCriacao = LocalDateTime.now();
-        status = StatusAgendamentoFixo.ATIVO;
+        if (status == null) {
+            status = StatusAgendamentoFixo.ATIVO;
+        }
     }
 }
 

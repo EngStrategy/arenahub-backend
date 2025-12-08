@@ -5,6 +5,8 @@ import com.engstrategy.alugai_api.dto.agendamento.AgendamentoExternoCreateDTO;
 import com.engstrategy.alugai_api.dto.agendamento.NovoAtletaExternoDTO;
 import com.engstrategy.alugai_api.dto.agendamento.PixPagamentoResponseDTO;
 import com.engstrategy.alugai_api.dto.asaas.*;
+import com.engstrategy.alugai_api.dto.aula.AulaCreateDTO;
+import com.engstrategy.alugai_api.dto.aula.DetalheDiaAulaDTO;
 import com.engstrategy.alugai_api.exceptions.*;
 import com.engstrategy.alugai_api.mapper.AgendamentoMapper;
 import com.engstrategy.alugai_api.model.*;
@@ -34,6 +36,7 @@ import java.util.stream.Collectors;
 public class AgendamentoServiceImpl implements AgendamentoService {
 
     private final AgendamentoRepository agendamentoRepository;
+    private final AgendamentoFixoRepository agendamentoFixoRepository;
     private final AtletaRepository atletaRepository;
     private final AgendamentoFixoService agendamentoFixoService;
     private final SlotHorarioService slotHorarioService;
@@ -700,6 +703,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
         );
     }
 
+    // ! Tá muito complexo em uma única função, separar essa lógica depois
     @Override
     @Transactional
     public PixPagamentoResponseDTO criarPagamentoPix(AgendamentoCreateDTO dto, UUID atletaId) {
@@ -845,6 +849,155 @@ public class AgendamentoServiceImpl implements AgendamentoService {
         }
     }
 
+    private Set<SlotHorario> buscarSlotsParaAula(Long quadraId, LocalTime horarioInicio, DuracaoReserva duracao) {
+        Set<SlotHorario> slotsList = slotHorarioService.buscarSlotsPorHorarioDuracao(
+                quadraId,
+                horarioInicio,
+                duracao
+        );
+
+        return new HashSet<>(slotsList);
+    }
+
+    private String serializeDetalhes(List<DetalheDiaAulaDTO> detalhes) {
+        try {
+            return detalhes.stream()
+                    .map(d -> {
+                        LocalTime horarioFim = calcularHorarioFim(d.horarioInicio(), d.duracaoReserva());
+
+                        return String.format("%s: %s às %s",
+                                d.diaDaSemana().toReadableString(),
+                                d.horarioInicio().format(DateTimeFormatter.ofPattern("HH:mm")),
+                                horarioFim.format(DateTimeFormatter.ofPattern("HH:mm")));
+                    })
+                    .collect(Collectors.joining("; "));
+
+        } catch (Exception e) {
+            log.error("Erro ao serializar detalhes de dias da aula", e);
+            return null;
+        }
+    }
+
+    @Override
+    @Transactional
+    public AgendamentoFixo cadastrarAula(AulaCreateDTO dto, UUID proprietarioArenaId) {
+        log.info("Iniciando cadastro de nova aula na Arena ID: {} para a Quadra ID: {}", proprietarioArenaId, dto.quadraId());
+
+        // ? criar uma função para essa validação, pois é chamada em vários lugares
+        Quadra quadra = quadraRepository.findById(dto.quadraId())
+                .orElseThrow(() -> new EntityNotFoundException("Quadra não encontrada com ID: " + dto.quadraId()));
+
+        if (!quadra.getArena().getId().equals(proprietarioArenaId)) {
+            throw new AccessDeniedException("Esta quadra não pertence à sua Arena.");
+        }
+
+        validarStatusAssinaturaDaArena(quadra);
+
+        Atleta instrutor;
+        if (dto.instrutorExistenteId() != null) {
+            instrutor = atletaRepository.findById(dto.instrutorExistenteId())
+                    .orElseThrow(() -> new UserNotFoundException("Instrutor não encontrado com ID: " + dto.instrutorExistenteId()));
+        } else if (dto.novoInstrutorExterno() != null) {
+            NovoAtletaExternoDTO novoAtletaDto = NovoAtletaExternoDTO.builder()
+                    .nome(dto.novoInstrutorExterno().getNome())
+                    .telefone(dto.novoInstrutorExterno().getTelefone())
+                    .build();
+
+            if (atletaRepository.existsByTelefone(novoAtletaDto.getTelefone())) {
+                throw new UniqueConstraintViolationException("Já existe um usuário com este telefone.");
+            }
+
+            // Cria Atleta Externo
+            instrutor = Atleta.builder()
+                    .nome(novoAtletaDto.getNome())
+                    .telefone(novoAtletaDto.getTelefone())
+                    .tipoConta(TipoContaAtleta.EXTERNO)
+                    .role(Role.ATLETA)
+                    .ativo(true)
+                    .build();
+            instrutor = atletaRepository.save(instrutor);
+            log.info("Novo instrutor externo criado: {}", instrutor.getNome());
+
+        } else {
+            // Falha se nenhum instrutor for definido
+            throw new IllegalArgumentException("O instrutor deve ser selecionado ou um novo deve ser cadastrado.");
+        }
+
+        // Conjunto para armazenar TODOS os slots exclusivos de todos os dias da aula (para definir horarioInicio/Fim da aula)
+        Set<SlotHorario> todosSlotsDaAula = new HashSet<>();
+
+        for (DetalheDiaAulaDTO detalhe : dto.detalhesDias()) {
+
+            // Busca slots específicos para este detalhe de dia/horário
+            Set<SlotHorario> slotsParaODia = buscarSlotsParaAula(
+                    dto.quadraId(),
+                    detalhe.horarioInicio(),
+                    detalhe.duracaoReserva()
+            );
+
+            if (slotsParaODia.isEmpty()) {
+                throw new IllegalArgumentException(
+                        String.format("Não foi possível encontrar slots subsequentes para %s das %s por %s minutos.",
+                                detalhe.diaDaSemana().name(),
+                                detalhe.horarioInicio().format(DateTimeFormatter.ofPattern("HH:mm")),
+                                detalhe.duracaoReserva().getMinutos())
+                );
+            }
+
+            // Adiciona os slots encontrados ao conjunto total da Aula Fixo
+            todosSlotsDaAula.addAll(slotsParaODia);
+
+            // Cria Agendamento Base Provisório para validação
+            Agendamento agendamentoBaseProvisorio = agendamentoMapper.fromAulaDtoToAgendamentoBase(
+                    dto,
+                    quadra,
+                    instrutor,
+                    slotsParaODia,
+                    detalhe.diaDaSemana(),
+                    detalhe.horarioInicio(),
+                    detalhe.duracaoReserva()
+            );
+
+            // Validação de Conflitos
+            List<LocalDate> conflitos = agendamentoFixoService.preValidarAgendamentoFixo(agendamentoBaseProvisorio);
+
+            if (!conflitos.isEmpty()) {
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+                String datasStr = conflitos.stream()
+                        .map(data -> data.format(formatter))
+                        .collect(Collectors.joining(", "));
+
+                // Aborta o cadastro
+                String msg = String.format("A aula não pode ser cadastrada devido a conflitos de horário na %s, %s. Datas: %s",
+                        detalhe.diaDaSemana().name(),
+                        detalhe.horarioInicio().format(DateTimeFormatter.ofPattern("HH:mm")),
+                        datasStr);
+                log.error("Cadastro de Aula falhou na pré-validação: {}", msg);
+                throw new IntervaloComAgendamentosException(msg);
+            }
+        }
+
+        AgendamentoFixo aulaFixo = AgendamentoFixo.builder()
+                .dataInicio(dto.dataInicioPrevista())
+                .periodo(null)
+                .atleta(instrutor)
+                .nomeAula(dto.nomeAula())
+                .limiteAtletas(dto.limiteAtletas())
+                .valorBaseMensal(dto.valorBaseMensal())
+                .valorPlanoTrimestral(dto.valorPlanoTrimestral())
+                .valorPlanoSemestral(dto.valorPlanoSemestral())
+                .isElegivelWellhub(dto.isElegivelWellhub())
+                .status(StatusAgendamentoFixo.AGUARDANDO_CONFIRMACAO)
+                .diasESlotsJson(serializeDetalhes(dto.detalhesDias()))
+                .build();
+
+        aulaFixo = agendamentoFixoRepository.save(aulaFixo);
+
+        log.info("Aula '{}' cadastrada com sucesso. ID Fixo: {}. Aguardando Confirmação.", aulaFixo.getNomeAula(), aulaFixo.getId());
+
+        return aulaFixo;
+    }
+
     private LocalDate calcularDataFim(LocalDate dataInicio, PeriodoAgendamento periodo) {
         return switch (periodo) {
             case UM_MES -> dataInicio.plusMonths(1);
@@ -869,5 +1022,16 @@ public class AgendamentoServiceImpl implements AgendamentoService {
 
         // Valor total de TODAS as ocorrências (base + futuras).
         return 1 + contador;
+    }
+
+    /**
+     * Calcula o horário de fim com base no horário de início e na duração.
+     * @param horarioInicio O horário de início.
+     * @param duracao A enumeração DuracaoReserva que contém o número de minutos.
+     * @return LocalTime representando o horário de fim.
+     */
+    private LocalTime calcularHorarioFim(LocalTime horarioInicio, DuracaoReserva duracao) {
+        int minutos = slotHorarioService.getDuracaoEmMinutos(duracao);
+        return horarioInicio.plusMinutes(minutos);
     }
 }

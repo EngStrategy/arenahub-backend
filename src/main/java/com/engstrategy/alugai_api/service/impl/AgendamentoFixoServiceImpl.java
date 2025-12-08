@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
 import java.util.*;
 
 @Service
@@ -201,6 +202,8 @@ public class AgendamentoFixoServiceImpl implements AgendamentoFixoService {
                 .agendamentoFixo(agendamentoFixo)
                 .asaasPaymentId(agendamentoBase.getAsaasPaymentId())
                 .slotsHorario(slotsCorrespondentes)
+                .horarioInicioSnapshot(agendamentoBase.getHorarioInicioSnapshot())
+                .horarioFimSnapshot(agendamentoBase.getHorarioFimSnapshot())
                 .build();
 
         novoAgendamento.criarSnapshot();
@@ -344,5 +347,59 @@ public class AgendamentoFixoServiceImpl implements AgendamentoFixoService {
         log.info("PRE-VALIDATION FINALIZADA: Encontrados {} conflitos.", datasConflito.size());
 
         return datasConflito;
+    }
+
+    @Override
+    public LocalDate buscarProximaDataRecorrente(LocalDate dataReferencia, DiaDaSemana diaDaSemana) {
+        java.time.DayOfWeek javaDayOfWeek = diaDaSemana.toJavaDayOfWeek();
+
+        // TemporalAdjusters p encontrar o próx dia da semana
+        // nextOrSame - se hoje já for o dia, ele usa hoje
+        // next - começa a partir da próx semana
+        return dataReferencia.with(TemporalAdjusters.next(javaDayOfWeek));
+    }
+
+    @Override
+    @Transactional
+    public AgendamentoFixo criarInstanciasDeAula(AgendamentoFixo aulaFixo, Agendamento agendamentoBase) {
+        log.info("Iniciando criação de instâncias de aula para o Agendamento Fixo ID: {}", aulaFixo.getId());
+
+        List<Agendamento> agendamentos = new ArrayList<>();
+
+        LocalDate dataInicio = agendamentoBase.getDataAgendamento();
+
+        LocalDate dataLimite = calcularDataFim(dataInicio, aulaFixo.getPeriodo());
+
+        LocalDate dataAtual = dataInicio;
+
+        // Itera enquanto a data atual não passar o limite
+        while (!dataAtual.isAfter(dataLimite)) {
+
+            // Verificar Disponibilidade
+            if (verificarDisponibilidadeParaData(agendamentoBase, dataAtual)) {
+
+                Agendamento novoAgendamento = criarAgendamentoFuturo(agendamentoBase, dataAtual, aulaFixo);
+
+                novoAgendamento.setStatus(StatusAgendamento.PAGO); // Aulas são vendidas, então são pagas
+                novoAgendamento.setAgendamentoFixo(aulaFixo);
+                novoAgendamento.setHorarioInicioSnapshot(agendamentoBase.getHorarioInicioSnapshot());
+                novoAgendamento.setHorarioFimSnapshot(agendamentoBase.getHorarioFimSnapshot());
+
+
+                agendamentos.add(novoAgendamento);
+            } else {
+                log.warn("Aula ID {} - Conflito encontrado na data: {}. Instância ignorada.", aulaFixo.getId(), dataAtual);
+            }
+
+            // Próxima semana
+            dataAtual = dataAtual.plusWeeks(1);
+        }
+
+        agendamentoRepository.saveAll(agendamentos);
+
+        LocalDate dataFimReal = agendamentos.isEmpty() ? dataInicio : agendamentos.get(agendamentos.size() - 1).getDataAgendamento();
+        aulaFixo.setDataFim(dataFimReal);
+
+        return agendamentoFixoRepository.save(aulaFixo);
     }
 }

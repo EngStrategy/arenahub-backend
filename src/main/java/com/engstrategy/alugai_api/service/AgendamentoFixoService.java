@@ -2,6 +2,7 @@ package com.engstrategy.alugai_api.service;
 
 import com.engstrategy.alugai_api.model.Agendamento;
 import com.engstrategy.alugai_api.model.AgendamentoFixo;
+import com.engstrategy.alugai_api.model.enums.DiaDaSemana;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -18,4 +19,8 @@ public interface AgendamentoFixoService {
     List<LocalDate> preValidarAgendamentoFixo(Agendamento agendamentoBase);
 
     void cancelarAgendamentoFixoPorArena(Long agendamentoFixoId, UUID arenaId);
+
+    LocalDate buscarProximaDataRecorrente(LocalDate dataReferencia, DiaDaSemana diaDaSemana);
+
+    AgendamentoFixo criarInstanciasDeAula(AgendamentoFixo aulaFixo, Agendamento agendamentoBase);
 }

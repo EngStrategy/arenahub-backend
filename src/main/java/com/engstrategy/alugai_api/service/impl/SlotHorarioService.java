@@ -8,15 +8,16 @@ import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
 import com.engstrategy.alugai_api.model.enums.StatusDisponibilidade;
 import com.engstrategy.alugai_api.model.enums.StatusIntervalo;
 import com.engstrategy.alugai_api.repository.SlotHorarioRepository;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -114,8 +115,7 @@ public class SlotHorarioService {
                                         !agendamento.getStatus().equals(StatusAgendamento.CANCELADO)));
     }
 
-    // Métodos auxiliares privados
-    private int getDuracaoEmMinutos(DuracaoReserva duracao) {
+    int getDuracaoEmMinutos(DuracaoReserva duracao) {
         switch (duracao) {
             case TRINTA_MINUTOS:
                 return 30;
@@ -139,5 +139,62 @@ public class SlotHorarioService {
             default:
                 return StatusDisponibilidade.INDISPONIVEL;
         }
+    }
+
+    /**
+     * Busca a sequência de slots correspondente a um horário de início e duração para uma dada quadra.
+     * @param quadraId ID da quadra.
+     * @param horarioInicio Hora de início da aula.
+     * @param duracao Duração total da aula.
+     * @return Set de SlotHorario que compõem a aula.
+     */
+    @Transactional(readOnly = true)
+    public Set<SlotHorario> buscarSlotsPorHorarioDuracao(
+            Long quadraId,
+            LocalTime horarioInicio,
+            DuracaoReserva duracao) {
+
+        // Determina o horário de fim da reserva (que é o fim do último slot)
+        int minutosDuracao = getDuracaoEmMinutos(duracao);
+        LocalTime horarioFimReserva = horarioInicio.plusMinutes(minutosDuracao);
+
+        List<SlotHorario> slotsDaQuadra = slotHorarioRepository
+                .findByIntervaloHorario_HorarioFuncionamento_Quadra_Id(quadraId);
+
+        // Filtra os slots que estão dentro do período [horarioInicio, horarioFimReserva)
+        Set<SlotHorario> slotsSelecionados = slotsDaQuadra.stream()
+                .filter(slot ->
+                        !slot.getHorarioInicio().isBefore(horarioInicio) &&
+                                !slot.getHorarioFim().isAfter(horarioFimReserva)
+                )
+                .collect(Collectors.toSet());
+
+
+        // Verifica se os slots estão vazios
+        if (slotsSelecionados.isEmpty()) {
+            throw new EntityNotFoundException(
+                    String.format("Nenhum slot encontrado para a Quadra %d, iniciando às %s com duração de %s.",
+                            quadraId, horarioInicio, duracao.name())
+            );
+        }
+
+        // Converte para List e Ordena por horário de início
+        List<SlotHorario> slotsOrdenados = slotsSelecionados.stream()
+                .sorted(Comparator.comparing(SlotHorario::getHorarioInicio))
+                .collect(Collectors.toList());
+
+        // Verifica se a sequência de slots cobre a duração exata
+        LocalTime primeiroSlotInicio = slotsOrdenados.get(0).getHorarioInicio();
+        LocalTime ultimoSlotFim = slotsOrdenados.get(slotsOrdenados.size() - 1).getHorarioFim();
+
+        if (!primeiroSlotInicio.equals(horarioInicio) || !ultimoSlotFim.equals(horarioFimReserva)) {
+            throw new IllegalArgumentException(
+                    String.format("Os slots encontrados não cobrem exatamente o intervalo de %s a %s.",
+                            horarioInicio.format(DateTimeFormatter.ofPattern("HH:mm")),
+                            horarioFimReserva.format(DateTimeFormatter.ofPattern("HH:mm")))
+            );
+        }
+
+        return slotsSelecionados;
     }
 }

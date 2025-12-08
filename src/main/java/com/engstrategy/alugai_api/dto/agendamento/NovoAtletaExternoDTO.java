@@ -4,9 +4,15 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Getter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class NovoAtletaExternoDTO {
 
     @Schema(description = "Nome do atleta", example = "João Silva", required = true)

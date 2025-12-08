@@ -2,21 +2,25 @@ package com.engstrategy.alugai_api.mapper;
 
 import com.engstrategy.alugai_api.dto.agendamento.AgendamentoCreateDTO;
 import com.engstrategy.alugai_api.dto.agendamento.AgendamentoExternoCreateDTO;
-import com.engstrategy.alugai_api.dto.agendamento.AgendamentoFixoResponseDTO;
 import com.engstrategy.alugai_api.dto.agendamento.AgendamentoResponseDTO;
 import com.engstrategy.alugai_api.dto.agendamento.arena.AgendamentoArenaResponseDTO;
 import com.engstrategy.alugai_api.dto.agendamento.arena.ParticipanteDTO;
+import com.engstrategy.alugai_api.dto.aula.AulaCreateDTO;
 import com.engstrategy.alugai_api.dto.avaliacao.AvaliacaoDetalhesDTO;
 import com.engstrategy.alugai_api.dto.quadra.SlotHorarioResponseDTO;
 import com.engstrategy.alugai_api.exceptions.UserNotFoundException;
 import com.engstrategy.alugai_api.model.*;
+import com.engstrategy.alugai_api.model.enums.DiaDaSemana;
+import com.engstrategy.alugai_api.model.enums.DuracaoReserva;
 import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
 import com.engstrategy.alugai_api.repository.QuadraRepository;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAdjusters;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -191,5 +195,45 @@ public class AgendamentoMapper {
         createDTO.setPeriodoFixo(null);
 
         return createDTO;
+    }
+
+    /**
+     * Mapeia AulaCreateDTO para uma Entidade Agendamento BASE.
+     * Esta entidade é usada apenas para pré-validação de conflitos futuros.
+     */
+    public Agendamento fromAulaDtoToAgendamentoBase(
+            AulaCreateDTO dto,
+            Quadra quadra,
+            Atleta instrutor,
+            Set<SlotHorario> slotsAula,
+            DiaDaSemana diaSemanaAtual,
+            LocalTime horarioInicioAtual,
+            DuracaoReserva duracaoReservaAtual
+    ) {
+
+        java.time.DayOfWeek javaDayOfWeek = diaSemanaAtual.toJavaDayOfWeek();
+
+        LocalDate dataBase = LocalDate.now().with(TemporalAdjusters.nextOrSame(javaDayOfWeek));
+
+        LocalTime horarioFimCalculado = horarioInicioAtual.plusMinutes(duracaoReservaAtual.getMinutos());
+
+        Agendamento agendamentoBase = Agendamento.builder()
+                .dataAgendamento(dataBase)
+                .esporte(dto.esporte())
+                .isFixo(true)
+                .isPublico(false)
+                .periodoAgendamentoFixo(null)
+                .vagasDisponiveis(dto.limiteAtletas())
+                .status(StatusAgendamento.PENDENTE)
+                .atleta(instrutor)
+                .quadra(quadra)
+                .slotsHorario(slotsAula)
+                .horarioInicioSnapshot(horarioInicioAtual)
+                .horarioFimSnapshot(horarioFimCalculado)
+                .build();
+
+        agendamentoBase.criarSnapshot();
+
+        return agendamentoBase;
     }
 }

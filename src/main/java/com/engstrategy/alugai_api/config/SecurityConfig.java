@@ -65,6 +65,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/jogos-abertos/**").hasRole("ATLETA")
                         .requestMatchers("/api/v1/agendamentos/**").hasRole("ATLETA")
                         .requestMatchers("/api/v1/atletas/buscar-atleta").hasRole("ARENA")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/arenas/aulas").hasRole("ARENA")
                         .requestMatchers("/api/v1/atletas/**").hasRole("ATLETA")
                         .requestMatchers("/api/v1/arenas/**").hasRole("ARENA")
                         .requestMatchers("/api/v1/quadras/**").hasRole("ARENA")

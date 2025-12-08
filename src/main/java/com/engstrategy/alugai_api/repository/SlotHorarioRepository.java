@@ -11,4 +11,6 @@ public interface SlotHorarioRepository extends JpaRepository<SlotHorario, Long> 
     List<SlotHorario> findByIntervaloHorario_HorarioFuncionamento_DiaDaSemanaAndHorarioInicioAndHorarioFim(
             DiaDaSemana diaSemana, LocalTime inicio, LocalTime fim
     );
+
+    List<SlotHorario> findByIntervaloHorario_HorarioFuncionamento_Quadra_Id(Long quadraId);
 }

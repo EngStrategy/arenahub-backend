@@ -3,6 +3,7 @@ package com.engstrategy.alugai_api.dto.agendamento.arena;
 import com.engstrategy.alugai_api.dto.quadra.SlotHorarioResponseDTO;
 import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
 import com.engstrategy.alugai_api.model.enums.TipoEsporte;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,8 +22,11 @@ import java.util.UUID;
 @AllArgsConstructor
 public class AgendamentoArenaResponseDTO {
     private Long id;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     private LocalDate dataAgendamento;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "HH:mm")
     private LocalTime horarioInicio;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "HH:mm")
     private LocalTime horarioFim;
     private BigDecimal valorTotal;
     private StatusAgendamento status;

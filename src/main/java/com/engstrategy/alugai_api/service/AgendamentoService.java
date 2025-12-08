@@ -3,7 +3,9 @@ package com.engstrategy.alugai_api.service;
 import com.engstrategy.alugai_api.dto.agendamento.AgendamentoCreateDTO;
 import com.engstrategy.alugai_api.dto.agendamento.AgendamentoExternoCreateDTO;
 import com.engstrategy.alugai_api.dto.agendamento.PixPagamentoResponseDTO;
+import com.engstrategy.alugai_api.dto.aula.AulaCreateDTO;
 import com.engstrategy.alugai_api.model.Agendamento;
+import com.engstrategy.alugai_api.model.AgendamentoFixo;
 import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
 import com.engstrategy.alugai_api.model.enums.TipoAgendamento;
 import org.springframework.data.domain.Page;
@@ -66,4 +68,6 @@ public interface AgendamentoService {
                                                    Pageable pageable);
 
     List<Agendamento> buscarAgendamentosFixosFilhosAtleta(Long agendamentoFixoId, UUID atletaId);
+
+    AgendamentoFixo cadastrarAula(AulaCreateDTO dto, UUID proprietarioArenaId);
 }
