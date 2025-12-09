@@ -22,5 +22,5 @@ public interface ArenaService {
     void redefinirSenha(Usuario usuario, String novaSenha);
     void alterarSenha(UUID arenaId, String senhaAtual, String novaSenha);
     List<CidadeDTO> getCidades();
-    ArenaDashboardDTO getDashboardData(UUID arenaId);
+    ArenaDashboardDTO getDashboardData(UUID arenaId, Integer dias);
 }

@@ -1,5 +1,6 @@
 package com.engstrategy.alugai_api.repository;
 
+import com.engstrategy.alugai_api.dto.arena.QuadraEstatisticaDTO;
 import com.engstrategy.alugai_api.model.Agendamento;
 import com.engstrategy.alugai_api.model.Quadra;
 import com.engstrategy.alugai_api.model.SlotHorario;
@@ -314,4 +315,14 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Long>,
             @Param("statuses") List<String> statuses,
             Pageable pageable
     );
+
+    @Query("SELECT new com.engstrategy.alugai_api.dto.arena.QuadraEstatisticaDTO(q.nomeQuadra, COUNT(a)) " +
+            "FROM Agendamento a " +
+            "JOIN a.quadra q " +
+            "WHERE q.arena.id = :arenaId " +
+            "AND a.dataSnapshot BETWEEN :dataInicio AND :dataFim " +
+            "GROUP BY q.nomeQuadra")
+    List<QuadraEstatisticaDTO> countAgendamentosPorQuadra(@Param("arenaId") UUID arenaId,
+                                                          @Param("dataInicio") LocalDateTime dataInicio,
+                                                          @Param("dataFim") LocalDateTime dataFim);
 }

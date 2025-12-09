@@ -165,10 +165,11 @@ public class ArenaController {
     @GetMapping("/dashboard")
     @Operation(summary = "Resumo do Dashboard da Arena", description = "Retorna os dados do dashboard para a arena logada", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<ArenaDashboardDTO> getDashboardData(
-            @AuthenticationPrincipal CustomUserDetails userDetails
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false, defaultValue = "30") Integer dias
     ) {
         try {
-            ArenaDashboardDTO dashboardData = arenaService.getDashboardData(userDetails.getUserId());
+            ArenaDashboardDTO dashboardData = arenaService.getDashboardData(userDetails.getUserId(), dias);
             return ResponseEntity.ok(dashboardData);
         } catch (UserNotFoundException e) {
             return ResponseEntity.status(403).build();
