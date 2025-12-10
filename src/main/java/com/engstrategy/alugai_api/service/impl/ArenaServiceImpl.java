@@ -258,95 +258,73 @@ public class ArenaServiceImpl implements ArenaService {
 
     @Override
     @Transactional(readOnly = true)
-    public ArenaDashboardDTO getDashboardData(UUID arenaId) {
+    public ArenaDashboardDTO getDashboardData(UUID arenaId, Integer dias) {
         verificarAssinaturaAtiva(arenaId);
 
         Arena arena = arenaRepository.findByIdFetchingQuadrasAndHorarios(arenaId)
                 .orElseThrow(() -> new UserNotFoundException("Arena não encontrada com o ID: " + arenaId));
 
-        LocalDate hoje = LocalDate.now(ZoneId.of("America/Sao_Paulo"));
-        LocalTime agora = LocalTime.now(ZoneId.of("America/Sao_Paulo"));
-        DiaDaSemana diaDaSemanaHoje = DiaDaSemana.fromLocalDate(hoje);
+        // Definição de Fuso e Data Atual
+        ZoneId zoneId = ZoneId.of("America/Sao_Paulo");
+        LocalDateTime agora = LocalDateTime.now(zoneId);
+        LocalDate hoje = agora.toLocalDate();
+        LocalTime horaAtual = agora.toLocalTime();
 
+        // 1. Definição do Período Atual e Anterior (Dinâmico)
+        LocalDateTime fimPeriodoAtual = agora;
+        LocalDateTime inicioPeriodoAtual;
+        LocalDateTime inicioPeriodoAnterior;
+        LocalDateTime fimPeriodoAnterior;
 
-        // CÁLCULO DE RECEITA MENSAL E VARIAÇÃO
-        LocalDateTime inicioMesAtual = hoje.withDayOfMonth(1).atStartOfDay();
-        LocalDateTime fimDoDiaDeHoje = hoje.atTime(LocalTime.MAX);
-        BigDecimal receitaDoMes = agendamentoRepository.calcularReceitaPorPeriodo(arenaId, inicioMesAtual, fimDoDiaDeHoje);
-        receitaDoMes = (receitaDoMes == null) ? BigDecimal.ZERO : receitaDoMes;
+        if (dias == null || dias == 0) {
+            // Lógica "Este Mês" (Padrão)
+            inicioPeriodoAtual = hoje.withDayOfMonth(1).atStartOfDay();
 
-        // Calcula a receita do mês anterior completo
-        LocalDate mesAnterior = hoje.minusMonths(1);
-        LocalDateTime inicioMesAnterior = mesAnterior.withDayOfMonth(1).atStartOfDay();
-        LocalDateTime fimMesAnterior = mesAnterior.with(TemporalAdjusters.lastDayOfMonth()).atTime(LocalTime.MAX);
-        BigDecimal receitaMesAnterior = agendamentoRepository.calcularReceitaPorPeriodo(arenaId, inicioMesAnterior, fimMesAnterior);
-        receitaMesAnterior = (receitaMesAnterior == null) ? BigDecimal.ZERO : receitaMesAnterior;
-
-        Double percentualReceita;
-        if (receitaMesAnterior.compareTo(BigDecimal.ZERO) > 0) {
-            BigDecimal variacao = receitaDoMes.subtract(receitaMesAnterior);
-            BigDecimal percentual = variacao.divide(receitaMesAnterior, 4, RoundingMode.HALF_UP)
-                    .multiply(new BigDecimal("100"));
-            percentualReceita = percentual.doubleValue();
-        } else if (receitaMesAnterior.compareTo(BigDecimal.ZERO) == 0 && receitaDoMes.compareTo(BigDecimal.ZERO) > 0) {
-            percentualReceita = 100.0;
+            // Comparação: Mês anterior completo
+            LocalDate mesAnterior = hoje.minusMonths(1);
+            inicioPeriodoAnterior = mesAnterior.withDayOfMonth(1).atStartOfDay();
+            fimPeriodoAnterior = mesAnterior.with(TemporalAdjusters.lastDayOfMonth()).atTime(LocalTime.MAX);
         } else {
-            percentualReceita = 0.0;
+            // Lógica "Últimos X Dias"
+            inicioPeriodoAtual = fimPeriodoAtual.minusDays(dias);
+
+            // Comparação: O mesmo intervalo de X dias antes do atual
+            fimPeriodoAnterior = inicioPeriodoAtual;
+            inicioPeriodoAnterior = fimPeriodoAnterior.minusDays(dias);
         }
 
-        int totalSlotsOperacionaisHoje = 0;
-        for (Quadra quadra : arena.getQuadras()) {
+        // 2. Cálculo de Receita (Faturamento)
+        BigDecimal receitaAtual = agendamentoRepository.calcularReceitaPorPeriodo(arenaId, inicioPeriodoAtual, fimPeriodoAtual);
+        receitaAtual = (receitaAtual == null) ? BigDecimal.ZERO : receitaAtual;
 
-            if (quadra.getDuracaoReserva() == null) {
-                continue;
-            }
+        BigDecimal receitaAnterior = agendamentoRepository.calcularReceitaPorPeriodo(arenaId, inicioPeriodoAnterior, fimPeriodoAnterior);
+        receitaAnterior = (receitaAnterior == null) ? BigDecimal.ZERO : receitaAnterior;
 
-            int duracaoReservaMinutos = quadra.getDuracaoReserva().getMinutos();
-
-            if (duracaoReservaMinutos <= 0) {
-                continue;
-            }
-
-            for (HorarioFuncionamento hf : quadra.getHorariosFuncionamento()) {
-                if (hf.getDiaDaSemana() == diaDaSemanaHoje) {
-                    for (IntervaloHorario intervalo : hf.getIntervalosDeHorario()) {
-                        long duracaoIntervaloMinutos = Duration.between(intervalo.getInicio(), intervalo.getFim()).toMinutes();
-
-                        if (intervalo.getFim().equals(LocalTime.of(23, 59))) {
-                            duracaoIntervaloMinutos++;
-                        }
-
-                        int slotsNesteIntervalo = (int) (duracaoIntervaloMinutos / duracaoReservaMinutos);
-                        totalSlotsOperacionaisHoje += slotsNesteIntervalo;
-                    }
-                    break;
-                }
-            }
+        Double percentualReceita = 0.0;
+        if (receitaAnterior.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal variacao = receitaAtual.subtract(receitaAnterior);
+            percentualReceita = variacao.divide(receitaAnterior, 4, RoundingMode.HALF_UP)
+                    .multiply(new BigDecimal("100")).doubleValue();
+        } else if (receitaAtual.compareTo(BigDecimal.ZERO) > 0) {
+            percentualReceita = 100.0;
         }
 
-        // Busca o número de agendamentos já confirmados para hoje
+        // 3. Novos Clientes (Dinâmico)
+        int novosClientesAtual = agendamentoRepository.countNovosClientesDaArenaPorPeriodo(arenaId, inicioPeriodoAtual, fimPeriodoAtual);
+        int novosClientesAnterior = agendamentoRepository.countNovosClientesDaArenaPorPeriodo(arenaId, inicioPeriodoAnterior, fimPeriodoAnterior);
+        int diferencaNovosClientes = novosClientesAtual - novosClientesAnterior;
+
+        // 4. Gráfico de Reservas por Quadra (Dinâmico - Usa o período selecionado)
+        List<QuadraEstatisticaDTO> statsQuadras = agendamentoRepository.countAgendamentosPorQuadra(arenaId, inicioPeriodoAtual, fimPeriodoAtual);
+
+        // 5. Agendamentos de Hoje (Mantém fixo no dia de hoje para o card "Hoje")
         int agendamentosConfirmadosHoje = agendamentoRepository.countByArenaIdAndDataAgendamento(arenaId, hoje);
 
-        // Lógica da Taxa de Ocupação
-        Double taxaOcupacaoHoje = 0.0;
-        if (totalSlotsOperacionaisHoje > 0) { // Proteção contra divisão por zero se a arena estiver
-            taxaOcupacaoHoje = ((double) agendamentosConfirmadosHoje / totalSlotsOperacionaisHoje) * 100;
-        }
+        // Lógica da Taxa de Ocupação (Focada em HOJE)
+        Double taxaOcupacaoHoje = calcularTaxaOcupacaoHoje(arena, hoje, agendamentosConfirmadosHoje);
 
-        // CÁLCULO DE NOVOS CLIENTES NA SEMANA E VARIAÇÃO
-        LocalDateTime inicioSemanaAtual = hoje.with(DayOfWeek.MONDAY).atStartOfDay();
-        int novosClientesSemana = agendamentoRepository.countNovosClientesDaArenaPorPeriodo(arenaId, inicioSemanaAtual, fimDoDiaDeHoje);
-
-        // Calcula novos clientes da semana anterior completa
-        LocalDateTime inicioSemanaAnterior = inicioSemanaAtual.minusWeeks(1);
-        LocalDateTime fimSemanaAnterior = inicioSemanaAnterior.plusDays(6).with(LocalTime.MAX);
-        int novosClientesSemanaAnterior = agendamentoRepository.countNovosClientesDaArenaPorPeriodo(arenaId, inicioSemanaAnterior, fimSemanaAnterior);
-
-        int diferencaNovosClientes = novosClientesSemana - novosClientesSemanaAnterior;
-
-
-        // BUSCA DOS PRÓXIMOS AGENDAMENTOS DO DIA
-        List<Agendamento> proximosAgendamentos = agendamentoRepository.findProximosAgendamentosDoDia(arenaId, hoje, agora);
+        // 6. Próximos Agendamentos (Focado em HOJE/FUTURO)
+        List<Agendamento> proximosAgendamentos = agendamentoRepository.findProximosAgendamentosDoDia(arenaId, hoje, horaAtual);
         List<AgendamentoDashboardDTO> proximosAgendamentosDTO = proximosAgendamentos.stream()
                 .map(agendamento -> AgendamentoDashboardDTO.builder()
                         .agendamentoId(agendamento.getId())
@@ -359,16 +337,42 @@ public class ArenaServiceImpl implements ArenaService {
                         .build())
                 .toList();
 
-
         return ArenaDashboardDTO.builder()
                 .nomeArena(arena.getNome())
-                .receitaDoMes(receitaDoMes)
+                .receitaDoMes(receitaAtual)
                 .percentualReceitaVsMesAnterior(percentualReceita)
                 .agendamentosHoje(agendamentosConfirmadosHoje)
                 .taxaOcupacaoHoje(taxaOcupacaoHoje)
-                .novosClientes(novosClientesSemana)
+                .novosClientes(novosClientesAtual)
                 .diferencaNovosClientesVsSemanaAnterior(diferencaNovosClientes)
                 .proximosAgendamentos(proximosAgendamentosDTO)
+                .reservasPorQuadra(statsQuadras)
                 .build();
+    }
+
+    private Double calcularTaxaOcupacaoHoje(Arena arena, LocalDate hoje, int agendamentosConfirmadosHoje) {
+        int totalSlotsOperacionaisHoje = 0;
+        DiaDaSemana diaDaSemanaHoje = DiaDaSemana.fromLocalDate(hoje);
+
+        for (Quadra quadra : arena.getQuadras()) {
+            if (quadra.getDuracaoReserva() == null || quadra.getDuracaoReserva().getMinutos() <= 0) continue;
+
+            for (HorarioFuncionamento hf : quadra.getHorariosFuncionamento()) {
+                if (hf.getDiaDaSemana() == diaDaSemanaHoje) {
+                    for (IntervaloHorario intervalo : hf.getIntervalosDeHorario()) {
+                        long duracaoIntervaloMinutos = Duration.between(intervalo.getInicio(), intervalo.getFim()).toMinutes();
+                        if (intervalo.getFim().equals(LocalTime.of(23, 59))) duracaoIntervaloMinutos++;
+
+                        totalSlotsOperacionaisHoje += (int) (duracaoIntervaloMinutos / quadra.getDuracaoReserva().getMinutos());
+                    }
+                    break;
+                }
+            }
+        }
+
+        if (totalSlotsOperacionaisHoje > 0) {
+            return ((double) agendamentosConfirmadosHoje / totalSlotsOperacionaisHoje) * 100;
+        }
+        return 0.0;
     }
 }

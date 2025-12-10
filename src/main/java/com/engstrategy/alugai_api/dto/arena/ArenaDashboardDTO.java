@@ -20,4 +20,5 @@ public class ArenaDashboardDTO {
     private Integer diferencaNovosClientesVsSemanaAnterior;
     private List<AgendamentoDashboardDTO> proximosAgendamentos;
     private Double taxaOcupacaoHoje;
+    private List<QuadraEstatisticaDTO> reservasPorQuadra;
 }
