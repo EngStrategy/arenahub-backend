@@ -3,6 +3,8 @@ package com.engstrategy.alugai_api.dto.agendamento.arena;
 import com.engstrategy.alugai_api.dto.quadra.SlotHorarioResponseDTO;
 import com.engstrategy.alugai_api.model.enums.StatusAgendamento;
 import com.engstrategy.alugai_api.model.enums.TipoEsporte;
+import com.engstrategy.alugai_api.util.LocalTimeSerializer;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -22,7 +24,9 @@ import java.util.UUID;
 public class AgendamentoArenaResponseDTO {
     private Long id;
     private LocalDate dataAgendamento;
+    @JsonSerialize(using = LocalTimeSerializer.class)
     private LocalTime horarioInicio;
+    @JsonSerialize(using = LocalTimeSerializer.class)
     private LocalTime horarioFim;
     private BigDecimal valorTotal;
     private StatusAgendamento status;
