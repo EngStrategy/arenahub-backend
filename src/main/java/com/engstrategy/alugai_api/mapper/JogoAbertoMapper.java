@@ -4,6 +4,7 @@ import com.engstrategy.alugai_api.dto.jogosabertos.JogoAbertoResponseDTO;
 import com.engstrategy.alugai_api.dto.jogosabertos.MinhaParticipacaoResponseDTO;
 import com.engstrategy.alugai_api.dto.jogosabertos.SolicitacaoEntradaDTO;
 import com.engstrategy.alugai_api.model.Agendamento;
+import com.engstrategy.alugai_api.model.Atleta;
 import com.engstrategy.alugai_api.model.SolicitacaoEntrada;
 import org.springframework.stereotype.Component;
 
@@ -29,6 +30,9 @@ public class JogoAbertoMapper {
                 .nomeQuadra(agendamento.getQuadra().getNomeQuadra())
                 .cidade(agendamento.getQuadra().getArena().getEndereco().getCidade())
                 .urlFotoArena(agendamento.getQuadra().getArena().getUrlFoto())
+                .urlFotoAtleta(agendamento.getAtleta().getUrlFoto())
+                .nomeAtleta(agendamento.getAtleta().getNome())
+                .telefoneAtleta(agendamento.getAtleta().getTelefone())
                 .build();
     }
 
@@ -54,6 +58,7 @@ public class JogoAbertoMapper {
         }
 
         Agendamento agendamento = solicitacao.getAgendamento();
+        Atleta dono = agendamento.getAtleta();
 
         return MinhaParticipacaoResponseDTO.builder()
                 .solicitacaoId(solicitacao.getId())
@@ -66,6 +71,9 @@ public class JogoAbertoMapper {
                 .horarioFim(agendamento.getHorarioFim())
                 .esporte(agendamento.getEsporte())
                 .status(solicitacao.getStatus())
+                .nomeDono(dono.getNome())
+                .telefoneDono(dono.getTelefone())
+                .urlFotoDono(dono.getUrlFoto())
                 .build();
     }
 }

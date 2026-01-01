@@ -42,7 +42,7 @@ public class JogoAbertoServiceImpl implements JogoAbertoService {
     private final EmailService emailService;
 
     @Override
-    public Page<JogoAbertoResponseDTO> listarJogosAbertos(Pageable pageable, String cidade, String esporte, Double latitude, Double longitude, Double raioKm) {
+    public Page<JogoAbertoResponseDTO> listarJogosAbertos(Pageable pageable, String cidade, String esporte, Double latitude, Double longitude, Double raioKm, UUID atletaLogadoId) {
         Page<Agendamento> jogosAbertosPage;
 
         if (latitude != null && longitude != null && raioKm != null && raioKm > 0) {
@@ -65,7 +65,15 @@ public class JogoAbertoServiceImpl implements JogoAbertoService {
             jogosAbertosPage = agendamentoRepository.findAll(spec, pageable);
         }
 
-        return jogosAbertosPage.map(jogoAbertoMapper::toJogoAbertoResponseDTO);
+        return jogosAbertosPage.map(agendamento -> {
+            boolean jaSolicitado = solicitacaoRepository
+                .findByAgendamentoIdAndSolicitanteId(agendamento.getId(), atletaLogadoId)
+                .isPresent();
+
+            JogoAbertoResponseDTO dto = jogoAbertoMapper.toJogoAbertoResponseDTO(agendamento);
+            dto.setJaSolicitado(jaSolicitado);
+            return dto;
+        });
     }
 
     @Override

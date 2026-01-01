@@ -50,10 +50,13 @@ public class JogoAbertoController {
             @Parameter(description = "Longitude do usuário para busca por proximidade")
             @RequestParam(required = false) Double longitude,
             @Parameter(description = "Raio da busca em quilômetros (km)")
-            @RequestParam(required = false) Double raioKm
+            @RequestParam(required = false) Double raioKm,
+            @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(direction), sort));
-        Page<JogoAbertoResponseDTO> jogosAbertos = jogoAbertoService.listarJogosAbertos(pageable, cidade, esporte, latitude, longitude, raioKm);
+        Page<JogoAbertoResponseDTO> jogosAbertos = jogoAbertoService.listarJogosAbertos(
+            pageable, cidade, esporte, latitude, longitude, raioKm, userDetails.getUserId()
+        );
         return ResponseEntity.ok(jogosAbertos);
     }
 

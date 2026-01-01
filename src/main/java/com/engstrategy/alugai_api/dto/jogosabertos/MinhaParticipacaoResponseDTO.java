@@ -13,8 +13,8 @@ import java.time.LocalTime;
 @Data
 @Builder
 public class MinhaParticipacaoResponseDTO {
-    private Long solicitacaoId; // ID da solicitação, para poder cancelar a participação
-    private Long agendamentoId; // ID do agendamento original
+    private Long solicitacaoId;
+    private Long agendamentoId;
     private String nomeArena;
     private String nomeQuadra;
     private String urlFotoArena;
@@ -23,7 +23,9 @@ public class MinhaParticipacaoResponseDTO {
     private LocalTime horarioInicio;
     @JsonSerialize(using = LocalTimeSerializer.class)
     private LocalTime horarioFim;
-
     private TipoEsporte esporte;
     private StatusSolicitacao status;
+    private String nomeDono;
+    private String telefoneDono;
+    private String urlFotoDono;
 }

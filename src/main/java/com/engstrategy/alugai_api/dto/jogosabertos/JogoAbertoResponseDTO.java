@@ -13,17 +13,19 @@ import java.time.LocalTime;
 @Builder
 public class JogoAbertoResponseDTO {
     private Long agendamentoId;
-
     private LocalDate data;
     @JsonSerialize(using = LocalTimeSerializer.class)
     private LocalTime horarioInicio;
     @JsonSerialize(using = LocalTimeSerializer.class)
     private LocalTime horarioFim;
-
     private Integer vagasDisponiveis;
     private TipoEsporte esporte;
     private String nomeArena;
     private String nomeQuadra;
     private String cidade;
     private String urlFotoArena;
+    private String urlFotoAtleta;
+    private String nomeAtleta;
+    private String telefoneAtleta;
+    private boolean jaSolicitado;
 }
