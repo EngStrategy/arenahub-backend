@@ -194,15 +194,15 @@ public class AgendamentoController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/criar-pagamento-pix")
-    @Operation(summary = "Cria um agendamento provisório e gera os dados para pagamento com Pix", security = @SecurityRequirement(name = "bearerAuth"))
-    public ResponseEntity<PixPagamentoResponseDTO> criarPagamentoPix(
-            @RequestBody @Valid AgendamentoCreateDTO dto,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-
-        PixPagamentoResponseDTO response = agendamentoService.criarPagamentoPix(dto, userDetails.getUserId());
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
-    }
+//    @PostMapping("/criar-pagamento-pix")
+//    @Operation(summary = "Cria um agendamento provisório e gera os dados para pagamento com Pix", security = @SecurityRequirement(name = "bearerAuth"))
+//    public ResponseEntity<PixPagamentoResponseDTO> criarPagamentoPix(
+//            @RequestBody @Valid AgendamentoCreateDTO dto,
+//            @AuthenticationPrincipal CustomUserDetails userDetails) {
+//
+//        PixPagamentoResponseDTO response = agendamentoService.criarPagamentoPix(dto, userDetails.getUserId());
+//        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+//    }
 
     @GetMapping("/{agendamentoId}/status")
     @Operation(summary = "Verifica o status de um agendamento (para polling do frontend)", security = @SecurityRequirement(name = "bearerAuth"))

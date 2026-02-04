@@ -42,7 +42,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
     private final EmailService emailService;
     private final QuadraRepository quadraRepository;
     private final ArenaRepository arenaRepository;
-    private final AsaasService asaasService;
+//    private final AsaasService asaasService;
     private final ZoneId fusoHorarioPadrao = ZoneId.of("America/Sao_Paulo");
 
     private void validarStatusAssinaturaDaArena(Quadra quadra) {
@@ -700,150 +700,150 @@ public class AgendamentoServiceImpl implements AgendamentoService {
         );
     }
 
-    @Override
-    @Transactional
-    public PixPagamentoResponseDTO criarPagamentoPix(AgendamentoCreateDTO dto, UUID atletaId) {
-        // CRIAR O AGENDAMENTO PROVISÓRIO COM STATUS 'AGUARDANDO_PAGAMENTO'
-        log.info("Iniciando criação de pagamento PIX para atleta ID: {} na data: {}", atletaId, dto.getDataAgendamento());
-
-        validarDataAgendamento(dto.getDataAgendamento());
-
-        Set<SlotHorario> slots = buscarEValidarSlots(dto.getSlotHorarioIds());
-
-        Atleta atleta = atletaRepository.findById(atletaId)
-                .orElseThrow(() -> new EntityNotFoundException("Atleta não encontrado"));
-
-        String cpfParaAsaas = atleta.getCpfCnpj();
-
-        if (cpfParaAsaas == null || cpfParaAsaas.isBlank()) {
-            cpfParaAsaas = dto.getCpfCnpjPagamento();
-
-            if (cpfParaAsaas == null || cpfParaAsaas.isBlank()) {
-                throw new IllegalArgumentException("CPF/CNPJ é obrigatório para gerar pagamento PIX.");
-
-            }
-
-            String cpfLimpo = cpfParaAsaas.replaceAll("[^0-9]", ""); // Garante que apenas números serão salvos
-
-            // Atualiza a entidade Atleta com o CPF limpo
-            atleta.setCpfCnpj(cpfLimpo);
-
-            atletaRepository.save(atleta);
-
-            cpfParaAsaas = cpfLimpo;
-        } else {
-            // Se o CPF já existe no cadastro, apenas limpamos para a API do Asaas.
-            cpfParaAsaas = cpfParaAsaas.replaceAll("[^0-9]", "");
-        }
-
-        Quadra quadra = quadraRepository.findById(dto.getQuadraId())
-                .orElseThrow(() -> new EntityNotFoundException("Quadra não encontrada"));
-
-        validarStatusAssinaturaDaArena(quadra);
-
-        Agendamento agendamento = agendamentoMapper.fromCreateToAgendamento(dto, slots, atleta);
-        agendamento.setStatus(StatusAgendamento.AGUARDANDO_PAGAMENTO);
-        agendamento.criarSnapshot();
-
-        Agendamento agendamentoProvisorio = agendamento;
-
-        if (agendamentoProvisorio.isFixo()) {
-
-            List<LocalDate> conflitos = agendamentoFixoService.preValidarAgendamentoFixo(agendamentoProvisorio);
-
-            if (!conflitos.isEmpty()) {
-                String datasStr = conflitos.stream()
-                        .map(data -> data.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")))
-                        .collect(Collectors.joining(", "));
-
-                String msg = "O agendamento fixo não pode ser criado devido a conflitos nas seguintes datas: " + datasStr;
-                log.error("Agendamento fixo falhou na pré-validação: {}", msg);
-                throw new IntervaloComAgendamentosException(msg);
-            }
-        }
-
-        agendamentoProvisorio = agendamentoRepository.save(agendamento);
-        log.info("Agendamento provisório criado com ID: {}", agendamentoProvisorio.getId());
-
-        log.info("PIX INFO: Agendamento ID {} criado. Status: {}. É Fixo: {}.",
-                agendamentoProvisorio.getId(),
-                agendamentoProvisorio.getStatus(),
-                agendamentoProvisorio.isFixo());
-        try {
-            String cpfLimpo = cpfParaAsaas.replaceAll("[^0-9]", "");
-
-            String telefoneOriginal = atleta.getTelefone();
-            String telefoneLimpo = (telefoneOriginal != null && !telefoneOriginal.isBlank())
-                    ? telefoneOriginal.replaceAll("[^0-9]", "")
-                    : null;
-
-            String nomeLimpo = atleta.getNome().replaceAll("[^a-zA-ZáàâãéèêíìîóòôõúùûüçÇ\\s]", "");
-
-            AsaasCreateCustomerRequest customerRequest = AsaasCreateCustomerRequest.builder()
-                    .name(nomeLimpo)
-                    .email(atleta.getEmail())
-                    .phone(telefoneLimpo)
-                    .cpfCnpj(cpfLimpo)
-                    .build();
-            AsaasCustomerResponse customer = asaasService.createCustomer(customerRequest);
-
-            // CRIAR A COBRANÇA PIX
-            BigDecimal valorBase = agendamentoProvisorio.getValorTotalSnapshot();
-            BigDecimal valorTotal;
-
-            if (agendamentoProvisorio.isFixo()) {
-                int multiplier = getMultiplier(
-                        agendamentoProvisorio.getDataAgendamento(),
-                        agendamentoProvisorio.getPeriodoAgendamentoFixo()
-                );
-                valorTotal = valorBase.multiply(new BigDecimal(multiplier));
-            } else {
-                valorTotal = valorBase;
-            }
-
-            String dataVencimento = LocalDate.now().toString();
-
-            AsaasCreatePaymentRequest paymentRequest = AsaasCreatePaymentRequest.builder()
-                    .customer(customer.getId())
-                    .value(valorTotal)
-                    .dueDate(dataVencimento)
-                    .description("Agendamento de quadra #" + agendamentoProvisorio.getId())
-                    .build();
-
-            AsaasPaymentResponse paymentResponse = asaasService.createPixPayment(paymentRequest);
-
-            agendamentoProvisorio.setAsaasPaymentId(paymentResponse.getId()); // Define o ID retornado
-            agendamentoRepository.save(agendamentoProvisorio); // Salva o agendamento com o ID do Asaas
-
-            AsaasPixQrCodeResponse pixDataResponse = asaasService.getPixQrCode(paymentResponse.getId());
-
-            String dataExpiracaoStr = pixDataResponse.getExpirationDate(); // Agora pega a String
-            String qrCodeDataString = pixDataResponse.getPayload(); // Copia e Cola
-            String qrCodeBase64 = pixDataResponse.getQrCodeBase64(); // Nome do campo ajustado no DTO
-
-            if (qrCodeDataString == null || qrCodeBase64 == null || dataExpiracaoStr == null) {
-                log.error("Dados de PIX retornados do Asaas estão incompletos para o pagamento {}", paymentResponse.getId());
-                throw new RuntimeException("Falha ao gerar QR Code PIX. Dados incompletos. (Data de expiração ausente)");
-            }
-
-            LocalDateTime expiraEmForcada = LocalDateTime.now(fusoHorarioPadrao).plusMinutes(10);
-            String expiraEmFormatada = expiraEmForcada.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"));
-
-            return PixPagamentoResponseDTO.builder()
-                    .agendamentoId(agendamentoProvisorio.getId())
-                    .statusAgendamento(agendamentoProvisorio.getStatus().name())
-                    .qrCodeData(qrCodeBase64) // Imagem Base64 do QR Code
-                    .copiaECola(qrCodeDataString) // Código Copia e Cola
-                    .expiraEm(expiraEmFormatada)
-                    .build();
-
-        } catch (HttpClientErrorException.BadRequest e) {
-            log.error("Erro 400 do Asaas: {}", e.getResponseBodyAsString());
-            throw new AccessDeniedException("Erro 400 do Asaas: " + e.getResponseBodyAsString());
-        } catch (Exception e) {
-            throw new AgendamentoCreationException("Erro ao gerar pagamento Pix junto ao nosso provedor. " + e.getMessage());
-        }
-    }
+//    @Override
+//    @Transactional
+//    public PixPagamentoResponseDTO criarPagamentoPix(AgendamentoCreateDTO dto, UUID atletaId) {
+//        // CRIAR O AGENDAMENTO PROVISÓRIO COM STATUS 'AGUARDANDO_PAGAMENTO'
+//        log.info("Iniciando criação de pagamento PIX para atleta ID: {} na data: {}", atletaId, dto.getDataAgendamento());
+//
+//        validarDataAgendamento(dto.getDataAgendamento());
+//
+//        Set<SlotHorario> slots = buscarEValidarSlots(dto.getSlotHorarioIds());
+//
+//        Atleta atleta = atletaRepository.findById(atletaId)
+//                .orElseThrow(() -> new EntityNotFoundException("Atleta não encontrado"));
+//
+//        String cpfParaAsaas = atleta.getCpfCnpj();
+//
+//        if (cpfParaAsaas == null || cpfParaAsaas.isBlank()) {
+//            cpfParaAsaas = dto.getCpfCnpjPagamento();
+//
+//            if (cpfParaAsaas == null || cpfParaAsaas.isBlank()) {
+//                throw new IllegalArgumentException("CPF/CNPJ é obrigatório para gerar pagamento PIX.");
+//
+//            }
+//
+//            String cpfLimpo = cpfParaAsaas.replaceAll("[^0-9]", ""); // Garante que apenas números serão salvos
+//
+//            // Atualiza a entidade Atleta com o CPF limpo
+//            atleta.setCpfCnpj(cpfLimpo);
+//
+//            atletaRepository.save(atleta);
+//
+//            cpfParaAsaas = cpfLimpo;
+//        } else {
+//            // Se o CPF já existe no cadastro, apenas limpamos para a API do Asaas.
+//            cpfParaAsaas = cpfParaAsaas.replaceAll("[^0-9]", "");
+//        }
+//
+//        Quadra quadra = quadraRepository.findById(dto.getQuadraId())
+//                .orElseThrow(() -> new EntityNotFoundException("Quadra não encontrada"));
+//
+//        validarStatusAssinaturaDaArena(quadra);
+//
+//        Agendamento agendamento = agendamentoMapper.fromCreateToAgendamento(dto, slots, atleta);
+//        agendamento.setStatus(StatusAgendamento.AGUARDANDO_PAGAMENTO);
+//        agendamento.criarSnapshot();
+//
+//        Agendamento agendamentoProvisorio = agendamento;
+//
+//        if (agendamentoProvisorio.isFixo()) {
+//
+//            List<LocalDate> conflitos = agendamentoFixoService.preValidarAgendamentoFixo(agendamentoProvisorio);
+//
+//            if (!conflitos.isEmpty()) {
+//                String datasStr = conflitos.stream()
+//                        .map(data -> data.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")))
+//                        .collect(Collectors.joining(", "));
+//
+//                String msg = "O agendamento fixo não pode ser criado devido a conflitos nas seguintes datas: " + datasStr;
+//                log.error("Agendamento fixo falhou na pré-validação: {}", msg);
+//                throw new IntervaloComAgendamentosException(msg);
+//            }
+//        }
+//
+//        agendamentoProvisorio = agendamentoRepository.save(agendamento);
+//        log.info("Agendamento provisório criado com ID: {}", agendamentoProvisorio.getId());
+//
+//        log.info("PIX INFO: Agendamento ID {} criado. Status: {}. É Fixo: {}.",
+//                agendamentoProvisorio.getId(),
+//                agendamentoProvisorio.getStatus(),
+//                agendamentoProvisorio.isFixo());
+//        try {
+//            String cpfLimpo = cpfParaAsaas.replaceAll("[^0-9]", "");
+//
+//            String telefoneOriginal = atleta.getTelefone();
+//            String telefoneLimpo = (telefoneOriginal != null && !telefoneOriginal.isBlank())
+//                    ? telefoneOriginal.replaceAll("[^0-9]", "")
+//                    : null;
+//
+//            String nomeLimpo = atleta.getNome().replaceAll("[^a-zA-ZáàâãéèêíìîóòôõúùûüçÇ\\s]", "");
+//
+//            AsaasCreateCustomerRequest customerRequest = AsaasCreateCustomerRequest.builder()
+//                    .name(nomeLimpo)
+//                    .email(atleta.getEmail())
+//                    .phone(telefoneLimpo)
+//                    .cpfCnpj(cpfLimpo)
+//                    .build();
+//            AsaasCustomerResponse customer = asaasService.createCustomer(customerRequest);
+//
+//            // CRIAR A COBRANÇA PIX
+//            BigDecimal valorBase = agendamentoProvisorio.getValorTotalSnapshot();
+//            BigDecimal valorTotal;
+//
+//            if (agendamentoProvisorio.isFixo()) {
+//                int multiplier = getMultiplier(
+//                        agendamentoProvisorio.getDataAgendamento(),
+//                        agendamentoProvisorio.getPeriodoAgendamentoFixo()
+//                );
+//                valorTotal = valorBase.multiply(new BigDecimal(multiplier));
+//            } else {
+//                valorTotal = valorBase;
+//            }
+//
+//            String dataVencimento = LocalDate.now().toString();
+//
+//            AsaasCreatePaymentRequest paymentRequest = AsaasCreatePaymentRequest.builder()
+//                    .customer(customer.getId())
+//                    .value(valorTotal)
+//                    .dueDate(dataVencimento)
+//                    .description("Agendamento de quadra #" + agendamentoProvisorio.getId())
+//                    .build();
+//
+//            AsaasPaymentResponse paymentResponse = asaasService.createPixPayment(paymentRequest);
+//
+//            agendamentoProvisorio.setAsaasPaymentId(paymentResponse.getId()); // Define o ID retornado
+//            agendamentoRepository.save(agendamentoProvisorio); // Salva o agendamento com o ID do Asaas
+//
+//            AsaasPixQrCodeResponse pixDataResponse = asaasService.getPixQrCode(paymentResponse.getId());
+//
+//            String dataExpiracaoStr = pixDataResponse.getExpirationDate(); // Agora pega a String
+//            String qrCodeDataString = pixDataResponse.getPayload(); // Copia e Cola
+//            String qrCodeBase64 = pixDataResponse.getQrCodeBase64(); // Nome do campo ajustado no DTO
+//
+//            if (qrCodeDataString == null || qrCodeBase64 == null || dataExpiracaoStr == null) {
+//                log.error("Dados de PIX retornados do Asaas estão incompletos para o pagamento {}", paymentResponse.getId());
+//                throw new RuntimeException("Falha ao gerar QR Code PIX. Dados incompletos. (Data de expiração ausente)");
+//            }
+//
+//            LocalDateTime expiraEmForcada = LocalDateTime.now(fusoHorarioPadrao).plusMinutes(10);
+//            String expiraEmFormatada = expiraEmForcada.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"));
+//
+//            return PixPagamentoResponseDTO.builder()
+//                    .agendamentoId(agendamentoProvisorio.getId())
+//                    .statusAgendamento(agendamentoProvisorio.getStatus().name())
+//                    .qrCodeData(qrCodeBase64) // Imagem Base64 do QR Code
+//                    .copiaECola(qrCodeDataString) // Código Copia e Cola
+//                    .expiraEm(expiraEmFormatada)
+//                    .build();
+//
+//        } catch (HttpClientErrorException.BadRequest e) {
+//            log.error("Erro 400 do Asaas: {}", e.getResponseBodyAsString());
+//            throw new AccessDeniedException("Erro 400 do Asaas: " + e.getResponseBodyAsString());
+//        } catch (Exception e) {
+//            throw new AgendamentoCreationException("Erro ao gerar pagamento Pix junto ao nosso provedor. " + e.getMessage());
+//        }
+//    }
 
     private LocalDate calcularDataFim(LocalDate dataInicio, PeriodoAgendamento periodo) {
         return switch (periodo) {

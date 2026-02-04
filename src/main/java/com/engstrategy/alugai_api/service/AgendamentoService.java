@@ -43,7 +43,7 @@ public interface AgendamentoService {
 
     Agendamento criarAgendamentoExterno(AgendamentoExternoCreateDTO dto, UUID arenaId);
 
-    PixPagamentoResponseDTO criarPagamentoPix(AgendamentoCreateDTO dto, UUID atletaId);
+//    PixPagamentoResponseDTO criarPagamentoPix(AgendamentoCreateDTO dto, UUID atletaId);
 
     StatusAgendamento verificarStatus(Long agendamentoId);
 
