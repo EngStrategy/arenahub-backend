@@ -22,7 +22,7 @@ public class JwtService {
     @Value("${jwt.secret-key}")
     private String secretKey;
 
-    private final long expirationTime = 86400000;
+    private final long expirationTime = 1209600000; // 2 semanas
 
     public String getUserIdAsStringFromToken(String token) {
         return extractClaim(token, Claims::getSubject);

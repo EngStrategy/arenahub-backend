@@ -33,30 +33,20 @@ public class JogoAbertoController {
     @GetMapping
     @Operation(summary = "Listar todos os jogos abertos com vagas", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<Page<JogoAbertoResponseDTO>> listarJogosAbertos(
-            @Parameter(description = "Número da página (iniciando em 0)")
-            @RequestParam(defaultValue = "0") int page,
-            @Parameter(description = "Tamanho da página")
-            @RequestParam(defaultValue = "10") int size,
-            @Parameter(description = "Campo para ordenação (ex: dataAgendamento)")
-            @RequestParam(defaultValue = "dataAgendamento") String sort,
-            @Parameter(description = "Direção da ordenação (asc/desc)")
-            @RequestParam(defaultValue = "asc") String direction,
-            @Parameter(description = "Filtrar por cidade")
-            @RequestParam(required = false) String cidade,
-            @Parameter(description = "Filtrar por esporte (valores possíveis: FUTEBOL_SOCIETY, FUTSAL, BEACHTENNIS, etc.)")
-            @RequestParam(required = false) String esporte,
-            @Parameter(description = "Latitude do usuário para busca por proximidade")
-            @RequestParam(required = false) Double latitude,
-            @Parameter(description = "Longitude do usuário para busca por proximidade")
-            @RequestParam(required = false) Double longitude,
-            @Parameter(description = "Raio da busca em quilômetros (km)")
-            @RequestParam(required = false) Double raioKm,
-            @AuthenticationPrincipal CustomUserDetails userDetails
-    ) {
+            @Parameter(description = "Número da página (iniciando em 0)") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Tamanho da página") @RequestParam(defaultValue = "10") int size,
+            @Parameter(description = "Campo para ordenação (ex: dataAgendamento)") @RequestParam(defaultValue = "dataAgendamento") String sort,
+            @Parameter(description = "Direção da ordenação (asc/desc)") @RequestParam(defaultValue = "asc") String direction,
+            @Parameter(description = "Filtrar por cidade") @RequestParam(required = false) String cidade,
+            @Parameter(description = "Filtrar por esporte (valores possíveis: FUTEBOL_SOCIETY, FUTSAL, BEACHTENNIS, etc.)") @RequestParam(required = false) String esporte,
+            @Parameter(description = "Latitude do usuário para busca por proximidade") @RequestParam(required = false) Double latitude,
+            @Parameter(description = "Longitude do usuário para busca por proximidade") @RequestParam(required = false) Double longitude,
+            @Parameter(description = "Raio da busca em quilômetros (km)") @RequestParam(required = false) Double raioKm,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(direction), sort));
+        java.util.UUID usuarioId = (userDetails != null) ? userDetails.getUserId() : null;
         Page<JogoAbertoResponseDTO> jogosAbertos = jogoAbertoService.listarJogosAbertos(
-            pageable, cidade, esporte, latitude, longitude, raioKm, userDetails.getUserId()
-        );
+                pageable, cidade, esporte, latitude, longitude, raioKm, usuarioId);
         return ResponseEntity.ok(jogosAbertos);
     }
 
@@ -65,7 +55,8 @@ public class JogoAbertoController {
     public ResponseEntity<SolicitacaoEntradaDTO> solicitarEntrada(
             @PathVariable Long agendamentoId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        SolicitacaoEntradaDTO solicitacao = jogoAbertoService.solicitarEntrada(agendamentoId, userDetails.getUserId());
+        java.util.UUID usuarioId = (userDetails != null) ? userDetails.getUserId() : null;
+        SolicitacaoEntradaDTO solicitacao = jogoAbertoService.solicitarEntrada(agendamentoId, usuarioId);
         return ResponseEntity.ok(solicitacao);
     }
 
@@ -74,7 +65,8 @@ public class JogoAbertoController {
     public ResponseEntity<List<SolicitacaoEntradaDTO>> listarSolicitacoes(
             @PathVariable Long agendamentoId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        List<SolicitacaoEntradaDTO> solicitacoes = jogoAbertoService.listarSolicitacoes(agendamentoId, userDetails.getUserId());
+        java.util.UUID usuarioId = (userDetails != null) ? userDetails.getUserId() : null;
+        List<SolicitacaoEntradaDTO> solicitacoes = jogoAbertoService.listarSolicitacoes(agendamentoId,usuarioId);
         return ResponseEntity.ok(solicitacoes);
     }
 
@@ -84,7 +76,8 @@ public class JogoAbertoController {
             @PathVariable Long solicitacaoId,
             @Valid @RequestBody GerenciarSolicitacaoDTO dto,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        SolicitacaoEntradaDTO solicitacao = jogoAbertoService.gerenciarSolicitacao(solicitacaoId, userDetails.getUserId(), dto.isAceitar());
+        java.util.UUID usuarioId = (userDetails != null) ? userDetails.getUserId() : null;
+        SolicitacaoEntradaDTO solicitacao = jogoAbertoService.gerenciarSolicitacao(solicitacaoId, usuarioId, dto.isAceitar());
         return ResponseEntity.ok(solicitacao);
     }
 
@@ -93,17 +86,18 @@ public class JogoAbertoController {
     public ResponseEntity<Void> sairDeJogo(
             @PathVariable Long solicitacaoId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        jogoAbertoService.sairDeJogoAberto(solicitacaoId, userDetails.getUserId());
+        java.util.UUID usuarioId = (userDetails != null) ? userDetails.getUserId() : null;
+        jogoAbertoService.sairDeJogoAberto(solicitacaoId, usuarioId);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/minhas-participacoes")
-    @Operation(summary = "Lista todos os jogos abertos que o atleta logado solicitou para participar",
-            security = @SecurityRequirement(name = "bearerAuth"))
+    @Operation(summary = "Lista todos os jogos abertos que o atleta logado solicitou para participar", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<List<MinhaParticipacaoResponseDTO>> listarMinhasParticipacoes(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        List<MinhaParticipacaoResponseDTO> participacoes = jogoAbertoService.
-                listarMinhasParticipacoes(userDetails.getUserId());
+        java.util.UUID usuarioId = (userDetails != null) ? userDetails.getUserId() : null;
+        List<MinhaParticipacaoResponseDTO> participacoes = jogoAbertoService
+                .listarMinhasParticipacoes(usuarioId);
         return ResponseEntity.ok(participacoes);
     }
 }
