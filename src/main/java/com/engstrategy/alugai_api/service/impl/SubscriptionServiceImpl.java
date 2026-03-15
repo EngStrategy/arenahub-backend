@@ -239,33 +239,46 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         try {
             event = Webhook.constructEvent(payload, sigHeader, webhookSecret);
         } catch (SignatureVerificationException e) {
-            log.warn("Falha na verificação da assinatura do webhook do Stripe.", e);
-            throw new RuntimeException("Assinatura do webhook inválida", e);
+            log.warn("Falha na verificação da assinatura do webhook.");
+            throw new RuntimeException("Assinatura inválida", e);
         }
 
-        EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
-        StripeObject stripeObject = dataObjectDeserializer.getObject().orElse(null);
+        StripeObject stripeObject = event.getDataObjectDeserializer().getObject().orElse(null);
+        if (stripeObject == null) return;
 
-        if (stripeObject == null) {
-            log.error("Falha ao deserializar o objeto do evento do Stripe: {}", event.getId());
-            return;
-        }
+        log.info("Processando evento Stripe: {}", event.getType());
 
         switch (event.getType()) {
             case "checkout.session.completed":
-                log.info("Recebido evento checkout.session.completed!");
-                com.stripe.model.checkout.Session session = (com.stripe.model.checkout.Session) stripeObject;
-                handleCheckoutSessionCompleted(session);
+                handleCheckoutSessionCompleted((com.stripe.model.checkout.Session) stripeObject);
+                break;
+
+            case "customer.subscription.deleted":
+                // Ocorreu quando a assinatura é cancelada (por falta de pagamento ou pelo portal)
+                handleSubscriptionDeleted((Subscription) stripeObject);
+                break;
+
+            case "customer.subscription.updated":
+                // Ocorreu quando o plano muda ou quando entra em "past_due" (atrasada)
+                handleSubscriptionUpdated((Subscription) stripeObject);
+                break;
+
+            case "invoice.payment_succeeded":
+                // Confirmação de que o dinheiro caiu (na primeira vez e nas renovações)
+                handleInvoicePaymentSucceeded((Invoice) stripeObject);
+                break;
+
+            case "invoice.payment_failed":
+                // O pagamento falhou (cartão expirado, sem saldo)
+                handleInvoicePaymentFailed((Invoice) stripeObject);
                 break;
 
             case "payment_intent.succeeded":
-                log.info("Recebido evento payment_intent.succeeded!");
-                PaymentIntent paymentIntent = (PaymentIntent) stripeObject;
-                handlePaymentIntentSucceeded(paymentIntent);
+                handlePaymentIntentSucceeded((PaymentIntent) stripeObject);
                 break;
 
             default:
-                log.warn("Evento não tratado do Stripe recebido: {}", event.getType());
+                log.info("Evento ignorado (não necessário para o fluxo de negócio): {}", event.getType());
         }
     }
 
@@ -311,5 +324,51 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
             log.info("Agendamento ID {} atualizado para PAGO via webhook do PaymentIntent.", agendamento.getId());
         }
+    }
+
+    private void handleSubscriptionUpdated(Subscription subscription) {
+        String customerId = subscription.getCustomer();
+        Arena arena = arenaRepository.findByStripeCustomerId(customerId)
+                .orElseThrow(() -> new EntityNotFoundException("Arena não encontrada: " + customerId));
+
+        StatusAssinatura novoStatus = fromStripeStatus(subscription.getStatus());
+
+        // Se o usuário cancelou via portal, o Stripe marca como 'active' mas com cancelAtPeriodEnd = true
+        if (Boolean.TRUE.equals(subscription.getCancelAtPeriodEnd())) {
+            log.info("Arena {} cancelou a renovação. Ficará ativa até o fim do período.", arena.getId());
+            // Depois vou decidir se opto por manter ATIVA ou criar um status AGUARDANDO_CANCELAMENTO
+        }
+
+        arena.setStatusAssinatura(novoStatus);
+        arenaRepository.save(arena);
+    }
+
+    private void handleSubscriptionDeleted(Subscription subscription) {
+        String customerId = subscription.getCustomer();
+        arenaRepository.findByStripeCustomerId(customerId).ifPresent(arena -> {
+            arena.setStatusAssinatura(StatusAssinatura.CANCELADA);
+            arenaRepository.save(arena);
+            log.info("Assinatura da Arena {} foi encerrada e status definido como CANCELADA.", arena.getId());
+        });
+    }
+
+    private void handleInvoicePaymentSucceeded(Invoice invoice) {
+        // Este evento é disparado tanto no checkout qnt na renovação mensal
+        if (invoice.getCustomer() != null) {
+            arenaRepository.findByStripeCustomerId(invoice.getCustomer()).ifPresent(arena -> {
+                arena.setStatusAssinatura(StatusAssinatura.ATIVA);
+                arenaRepository.save(arena);
+                log.info("Pagamento da fatura recebido com sucesso para Arena: {}", arena.getEmail());
+            });
+        }
+    }
+
+    private void handleInvoicePaymentFailed(Invoice invoice) {
+        arenaRepository.findByStripeCustomerId(invoice.getCustomer()).ifPresent(arena -> {
+            arena.setStatusAssinatura(StatusAssinatura.ATRASADA);
+            arenaRepository.save(arena);
+            log.warn("Falha no pagamento da fatura para Arena: {}. Status definido como ATRASADA.", arena.getEmail());
+            // emailService.enviarAlertaPagamento(arena.getEmail());
+        });
     }
 }
