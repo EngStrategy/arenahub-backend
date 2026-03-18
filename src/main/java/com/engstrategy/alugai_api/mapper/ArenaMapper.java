@@ -73,6 +73,8 @@ public class ArenaMapper {
                 .role(arena.getRole())
                 .esportes(esportes)
                 .horasCancelarAgendamento(arena.getHorasCancelarAgendamento())
+                .formaPagamento(arena.getFormaPagamento())
+                .chavePix(arena.getChavePix())
                 .statusAssinatura(arena.getStatusAssinatura())
                 .build();
     }

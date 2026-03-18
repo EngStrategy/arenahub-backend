@@ -1,6 +1,7 @@
 package com.engstrategy.alugai_api.dto.arena;
 
 import com.engstrategy.alugai_api.dto.quadra.QuadraResponseDTO;
+import com.engstrategy.alugai_api.model.enums.FormaPagamento;
 import com.engstrategy.alugai_api.model.enums.Role;
 import com.engstrategy.alugai_api.model.enums.StatusAssinatura;
 import com.engstrategy.alugai_api.model.enums.TipoEsporte;
@@ -65,4 +66,10 @@ public class ArenaResponseDTO {
 
     @Schema(description = "Status da assinatura", example = "ATIVO")
     private StatusAssinatura statusAssinatura;
+
+    @Schema(description = "Forma de pagamento aceita pela arena", example = "AMBOS")
+    private FormaPagamento formaPagamento;
+
+    @Schema(description = "Chave PIX da arena", example = "123.456.789-00")
+    private String chavePix;
 }

@@ -1,5 +1,6 @@
 package com.engstrategy.alugai_api.dto.arena;
 
+import com.engstrategy.alugai_api.model.enums.FormaPagamento;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
@@ -42,4 +43,10 @@ public class ArenaUpdateDTO {
     @Schema(description = "URL da foto da arena", example = "https://exemplo.com/foto.jpg")
     @URL(message = "URL da foto deve ser válida")
     private String urlFoto;
+
+    @Schema(description = "Forma de pagamento aceita pela arena (PIX, LOCAL, AMBOS)", example = "AMBOS")
+    private FormaPagamento formaPagamento;
+
+    @Schema(description = "Chave PIX da arena (obrigatório se forma de pagamento for PIX ou AMBOS)", example = "123.456.789-00")
+    private String chavePix;
 }

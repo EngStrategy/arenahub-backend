@@ -1,5 +1,6 @@
 package com.engstrategy.alugai_api.model;
 
+import com.engstrategy.alugai_api.model.enums.FormaPagamento;
 import com.engstrategy.alugai_api.model.enums.StatusAssinatura;
 import jakarta.persistence.*;
 import lombok.*;
@@ -39,4 +40,12 @@ public class Arena extends Usuario {
     @Enumerated(EnumType.STRING)
     @Column(name = "status_assinatura")
     private StatusAssinatura statusAssinatura;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "forma_pagamento")
+    @Builder.Default
+    private FormaPagamento formaPagamento = FormaPagamento.LOCAL;
+
+    @Column(name = "chave_pix")
+    private String chavePix;
 }

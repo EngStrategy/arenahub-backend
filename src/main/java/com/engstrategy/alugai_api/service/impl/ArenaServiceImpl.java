@@ -10,6 +10,7 @@ import com.engstrategy.alugai_api.mapper.ArenaMapper;
 import com.engstrategy.alugai_api.mapper.EnderecoMapper;
 import com.engstrategy.alugai_api.model.*;
 import com.engstrategy.alugai_api.model.enums.DiaDaSemana;
+import com.engstrategy.alugai_api.model.enums.FormaPagamento;
 import com.engstrategy.alugai_api.model.enums.StatusAssinatura;
 import com.engstrategy.alugai_api.repository.*;
 import com.engstrategy.alugai_api.repository.specs.ArenaSpecs;
@@ -180,11 +181,31 @@ public class ArenaServiceImpl implements ArenaService {
         if (arenaUpdateDTO.getUrlFoto() != null) {
             savedArena.setUrlFoto(arenaUpdateDTO.getUrlFoto());
         }
+        if (arenaUpdateDTO.getFormaPagamento() != null) {
+            savedArena.setFormaPagamento(arenaUpdateDTO.getFormaPagamento());
+        }
+
+        if (arenaUpdateDTO.getChavePix() != null) {
+            savedArena.setChavePix(arenaUpdateDTO.getChavePix());
+        }
+
+        boolean isPixRequired = (savedArena.getFormaPagamento() == FormaPagamento.PIX ||
+                savedArena.getFormaPagamento() == FormaPagamento.AMBOS);
+        boolean isChavePixEmpty = (savedArena.getChavePix() == null || savedArena.getChavePix().trim().isEmpty());
+
+        if (isPixRequired && isChavePixEmpty) {
+            throw new IllegalArgumentException("A chave PIX é obrigatória quando a forma de pagamento selecionada é PIX ou AMBOS.");
+        }
+
         if (arenaUpdateDTO.getEndereco() != null) {
             savedArena.setEndereco(enderecoMapper.mapEnderecoDtoToEndereco(arenaUpdateDTO.getEndereco()));
         }
         if (arenaUpdateDTO.getUrlFoto() == null) {
             savedArena.setUrlFoto(null);
+        }
+
+        if (savedArena.getFormaPagamento() == FormaPagamento.LOCAL) {
+            savedArena.setChavePix(null);
         }
 
         if (savedArena.getQuadras() != null) {
