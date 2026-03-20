@@ -1,6 +1,7 @@
 package com.engstrategy.arenahub_api.model;
 
 import com.engstrategy.arenahub_api.model.enums.PeriodoAgendamento;
+import com.engstrategy.arenahub_api.model.enums.FormaPagamento;
 import com.engstrategy.arenahub_api.model.enums.StatusAgendamento;
 import com.engstrategy.arenahub_api.model.enums.StatusSolicitacao;
 import com.engstrategy.arenahub_api.model.enums.TipoEsporte;
@@ -104,6 +105,32 @@ public class Agendamento {
 
     @Column(name = "asaas_payment_id")
     private String asaasPaymentId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "forma_pagamento_escolhida")
+    private FormaPagamento formaPagamentoEscolhida;
+
+    @Column(name = "stripe_payment_intent_id")
+    private String stripePaymentIntentId;
+
+    @Column(name = "stripe_payment_status")
+    private String stripePaymentStatus;
+
+    @Builder.Default
+    @Column(name = "pagamento_confirmado_gateway")
+    private Boolean pagamentoConfirmadoGateway = false;
+
+    @Column(name = "pagamento_expira_em")
+    private LocalDateTime pagamentoExpiraEm;
+
+    @Column(name = "pagamento_confirmado_em")
+    private LocalDateTime pagamentoConfirmadoEm;
+
+    @Column(name = "nome_pagador_pix")
+    private String nomePagadorPix;
+
+    @Column(name = "nome_pagador_pix_informado_em")
+    private LocalDateTime nomePagadorPixInformadoEm;
 
     // Métodos utilitários
     public LocalTime getHorarioInicio() {

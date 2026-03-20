@@ -1,3 +1,22 @@
+# ==================================================================================
+# CONFIGURAÇÃO DE PERFIS SPRING (application.yml)
+# ==================================================================================
+# Este arquivo define as configurações da aplicação para diferentes ambientes.
+#
+# PERFIS DISPONÍVEIS:
+# 1. 'dev': Para desenvolvimento local direto na IDE (Sem Docker).
+#    - Conecta em 'localhost:5432'.
+# 2. 'docker': Para rodar via 'docker compose up'.
+#    - Conecta no serviço 'db:5432' definido no docker-compose.yml.
+# 3. 'prod': Para ambiente de produção (Cloud Run).
+#    - Utiliza URLs e credenciais de produção.
+#
+# COMO ALTERAR O PERFIL ATIVO:
+# - No Docker Compose: Alterar a variável SPRING_PROFILES_ACTIVE no arquivo ou no dev.env.
+# - Na IDE: Adicionar '-Dspring.profiles.active=dev' aos argumentos da JVM.
+# ==================================================================================
+
+
 # =================================================
 # SEÇÃO BASE - Carregada em TODOS os ambientes
 # =================================================

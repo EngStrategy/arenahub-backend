@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -175,8 +176,28 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Long>,
             @Param("dataAtual") LocalDate dataAtual
     );
 
-    @Query("SELECT a FROM Agendamento a WHERE a.status = :status AND a.dataSnapshot < :limite")
+    @Query("SELECT a FROM Agendamento a WHERE a.status = :status AND a.pagamentoExpiraEm < :limite")
     List<Agendamento> findExpirados(@Param("status") StatusAgendamento status, @Param("limite") LocalDateTime limite);
+
+    @Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT a FROM Agendamento a WHERE a.id = :id")
+    Optional<Agendamento> findByIdWithLock(@Param("id") Long id);
+
+    @Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT DISTINCT a FROM Agendamento a
+            LEFT JOIN FETCH a.slotsHorario sh
+            WHERE a.atleta.id = :atletaId
+            AND a.quadra.id = :quadraId
+            AND a.dataAgendamento = :dataAgendamento
+            AND a.formaPagamentoEscolhida = com.engstrategy.arenahub_api.model.enums.FormaPagamento.PIX
+            AND a.status = com.engstrategy.arenahub_api.model.enums.StatusAgendamento.AGUARDANDO_PAGAMENTO
+            """)
+    List<Agendamento> findBloqueiosPixPendentesDoAtleta(
+            @Param("atletaId") UUID atletaId,
+            @Param("quadraId") Long quadraId,
+            @Param("dataAgendamento") LocalDate dataAgendamento
+    );
 
     @Query("SELECT a FROM Agendamento a " +
             "JOIN FETCH a.atleta atleta " +

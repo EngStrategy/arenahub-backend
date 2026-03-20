@@ -1,5 +1,6 @@
 package com.engstrategy.arenahub_api.dto.agendamento;
 
+import com.engstrategy.arenahub_api.model.enums.TipoChavePix;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -11,5 +12,6 @@ public class PixPagamentoResponseDTO {
     private String qrCodeData;
     private String copiaECola;
     private String expiraEm;
-
+    private TipoChavePix tipoChavePix;
+    private Boolean pagamentoConfirmadoGateway;
 }

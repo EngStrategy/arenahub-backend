@@ -1,7 +1,10 @@
 package com.engstrategy.arenahub_api.service;
 
 import com.engstrategy.arenahub_api.dto.agendamento.AgendamentoCreateDTO;
+import com.engstrategy.arenahub_api.dto.agendamento.AgendamentoPagamentoStatusDTO;
 import com.engstrategy.arenahub_api.dto.agendamento.AgendamentoExternoCreateDTO;
+import com.engstrategy.arenahub_api.dto.agendamento.InformarPagadorPixDTO;
+import com.engstrategy.arenahub_api.dto.agendamento.PixPagamentoResponseDTO;
 import com.engstrategy.arenahub_api.model.Agendamento;
 import com.engstrategy.arenahub_api.model.enums.StatusAgendamento;
 import com.engstrategy.arenahub_api.model.enums.TipoAgendamento;
@@ -42,9 +45,11 @@ public interface AgendamentoService {
 
     Agendamento criarAgendamentoExterno(AgendamentoExternoCreateDTO dto, UUID arenaId);
 
-//    PixPagamentoResponseDTO criarPagamentoPix(AgendamentoCreateDTO dto, UUID atletaId);
+    PixPagamentoResponseDTO criarPagamentoPix(AgendamentoCreateDTO dto, UUID atletaId);
 
-    StatusAgendamento verificarStatus(Long agendamentoId);
+    AgendamentoPagamentoStatusDTO verificarStatus(Long agendamentoId, UUID atletaId);
+
+    Agendamento informarPagadorPix(Long agendamentoId, InformarPagadorPixDTO dto, UUID atletaId);
 
     Page<Agendamento> buscarCardsMestrePorArenaId(
             UUID arenaId,

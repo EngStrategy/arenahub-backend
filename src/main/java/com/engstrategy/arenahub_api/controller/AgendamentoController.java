@@ -1,7 +1,10 @@
 package com.engstrategy.arenahub_api.controller;
 
 import com.engstrategy.arenahub_api.dto.agendamento.AgendamentoCreateDTO;
+import com.engstrategy.arenahub_api.dto.agendamento.AgendamentoPagamentoStatusDTO;
 import com.engstrategy.arenahub_api.dto.agendamento.AgendamentoResponseDTO;
+import com.engstrategy.arenahub_api.dto.agendamento.InformarPagadorPixDTO;
+import com.engstrategy.arenahub_api.dto.agendamento.PixPagamentoResponseDTO;
 import com.engstrategy.arenahub_api.dto.avaliacao.AvaliacaoDTO;
 import com.engstrategy.arenahub_api.dto.avaliacao.AvaliacaoResponseDTO;
 import com.engstrategy.arenahub_api.jwt.CustomUserDetails;
@@ -190,20 +193,32 @@ public class AgendamentoController {
         return ResponseEntity.ok(response);
     }
 
-//    @PostMapping("/criar-pagamento-pix")
-//    @Operation(summary = "Cria um agendamento provisório e gera os dados para pagamento com Pix", security = @SecurityRequirement(name = "bearerAuth"))
-//    public ResponseEntity<PixPagamentoResponseDTO> criarPagamentoPix(
-//            @RequestBody @Valid AgendamentoCreateDTO dto,
-//            @AuthenticationPrincipal CustomUserDetails userDetails) {
-//
-//        PixPagamentoResponseDTO response = agendamentoService.criarPagamentoPix(dto, userDetails.getUserId());
-//        return ResponseEntity.status(HttpStatus.CREATED).body(response);
-//    }
+    @PostMapping("/criar-pagamento-pix")
+    @Operation(summary = "Cria um agendamento provisório e gera os dados para pagamento com Pix", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<PixPagamentoResponseDTO> criarPagamentoPix(
+            @RequestBody @Valid AgendamentoCreateDTO dto,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        PixPagamentoResponseDTO response = agendamentoService.criarPagamentoPix(dto, userDetails.getUserId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
 
     @GetMapping("/{agendamentoId}/status")
     @Operation(summary = "Verifica o status de um agendamento (para polling do frontend)", security = @SecurityRequirement(name = "bearerAuth"))
-    public ResponseEntity<Map<String, String>> getAgendamentoStatus(@PathVariable Long agendamentoId) {
-        StatusAgendamento status = agendamentoService.verificarStatus(agendamentoId);
-        return ResponseEntity.ok(Map.of("status", status.name()));
+    public ResponseEntity<AgendamentoPagamentoStatusDTO> getAgendamentoStatus(
+            @PathVariable Long agendamentoId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(agendamentoService.verificarStatus(agendamentoId, userDetails.getUserId()));
+    }
+
+    @PostMapping("/{agendamentoId}/pagador-pix")
+    @Operation(summary = "Informa o nome completo de quem realizou o pagamento via Pix", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<AgendamentoResponseDTO> informarPagadorPix(
+            @PathVariable Long agendamentoId,
+            @Valid @RequestBody InformarPagadorPixDTO dto,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        Agendamento agendamento = agendamentoService.informarPagadorPix(agendamentoId, dto, userDetails.getUserId());
+        return ResponseEntity.ok(agendamentoMapper.fromAgendamentoToResponseDTO(agendamento));
     }
 }

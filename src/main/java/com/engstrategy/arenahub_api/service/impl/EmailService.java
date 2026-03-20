@@ -143,6 +143,37 @@ public class EmailService {
         enviarEmailGenerico(emailParticipante, titulo, corpo, nomeParticipante);
     }
 
+    @Async
+    public void enviarEmailPagamentoPixConfirmadoParaArena(String emailArena, String nomeArena, Agendamento agendamento) {
+        String dataFormatada = agendamento.getDataAgendamento().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        String titulo = "Pagamento PIX confirmado";
+        String corpo = String.format("""
+                <p>Olá, %s.</p>
+                <p>O pagamento via PIX do agendamento <strong>#%d</strong> foi confirmado pelo provedor.</p>
+                <p>Quadra: <strong>%s</strong><br/>Data: <strong>%s</strong><br/>Horário: <strong>%s às %s</strong></p>
+                <p>O agendamento segue aguardando sua revisão manual para ser marcado como pago no sistema.</p>
+                """, nomeArena, agendamento.getId(), agendamento.getQuadra().getNomeQuadra(), dataFormatada,
+                agendamento.getHorarioInicio(), agendamento.getHorarioFim());
+
+        enviarEmailGenerico(emailArena, titulo, corpo, nomeArena);
+    }
+
+    @Async
+    public void enviarEmailPagadorPixInformado(String emailArena, String nomeArena, Agendamento agendamento) {
+        String dataFormatada = agendamento.getDataAgendamento().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        String titulo = "Nome do pagador PIX informado";
+        String corpo = String.format("""
+                <p>Olá, %s.</p>
+                <p>O atleta informou o nome completo de quem realizou o pagamento do agendamento <strong>#%d</strong>.</p>
+                <p>Pagador: <strong>%s</strong></p>
+                <p>Quadra: <strong>%s</strong><br/>Data: <strong>%s</strong><br/>Horário: <strong>%s às %s</strong></p>
+                <p>Agora você já pode revisar o pagamento e, se estiver tudo correto, marcar o agendamento como <strong>PAGO</strong>.</p>
+                """, nomeArena, agendamento.getId(), agendamento.getNomePagadorPix(), agendamento.getQuadra().getNomeQuadra(),
+                dataFormatada, agendamento.getHorarioInicio(), agendamento.getHorarioFim());
+
+        enviarEmailGenerico(emailArena, titulo, corpo, nomeArena);
+    }
+
     private void enviarEmailGenerico(String destinatario, String titulo, String corpo, String nomeDestinatario) {
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, "utf-8");

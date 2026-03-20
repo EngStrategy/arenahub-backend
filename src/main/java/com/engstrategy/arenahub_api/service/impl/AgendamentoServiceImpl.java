@@ -1,8 +1,11 @@
 package com.engstrategy.arenahub_api.service.impl;
 
 import com.engstrategy.arenahub_api.dto.agendamento.AgendamentoCreateDTO;
+import com.engstrategy.arenahub_api.dto.agendamento.AgendamentoPagamentoStatusDTO;
 import com.engstrategy.arenahub_api.dto.agendamento.AgendamentoExternoCreateDTO;
+import com.engstrategy.arenahub_api.dto.agendamento.InformarPagadorPixDTO;
 import com.engstrategy.arenahub_api.dto.agendamento.NovoAtletaExternoDTO;
+import com.engstrategy.arenahub_api.dto.agendamento.PixPagamentoResponseDTO;
 import com.engstrategy.arenahub_api.exceptions.*;
 import com.engstrategy.arenahub_api.mapper.AgendamentoMapper;
 import com.engstrategy.arenahub_api.model.*;
@@ -10,6 +13,7 @@ import com.engstrategy.arenahub_api.model.enums.*;
 import com.engstrategy.arenahub_api.repository.*;
 import com.engstrategy.arenahub_api.service.AgendamentoFixoService;
 import com.engstrategy.arenahub_api.service.AgendamentoService;
+import com.engstrategy.arenahub_api.service.SubscriptionService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,8 +41,9 @@ public class AgendamentoServiceImpl implements AgendamentoService {
     private final EmailService emailService;
     private final QuadraRepository quadraRepository;
     private final ArenaRepository arenaRepository;
-//    private final AsaasService asaasService;
+    private final SubscriptionService subscriptionService;
     private final ZoneId fusoHorarioPadrao = ZoneId.of("America/Sao_Paulo");
+    private static final int BLOQUEIO_PAGAMENTO_MINUTOS = 30;
 
     private void validarStatusAssinaturaDaArena(Quadra quadra) {
         // Buscamos a Arena pelo ID para garantir que temos o objeto completo e atualizado
@@ -76,33 +81,21 @@ public class AgendamentoServiceImpl implements AgendamentoService {
         verificarDisponibilidadeSlotsParaData(slots, dto.getDataAgendamento(), dto.getQuadraId());
 
         // Recuperar atleta que deseja realizar o agendamento
-        Atleta atleta = atletaRepository.findById(atletaId)
-                .orElseThrow(() -> new EntityNotFoundException("Atleta não encontrado com ID: " + atletaId));
+        Atleta atleta = buscarAtleta(atletaId);
 
         // Recuperar quadra
-        Quadra quadra = quadraRepository.findById(dto.getQuadraId())
-                .orElseThrow(() -> new EntityNotFoundException("Quadra não encontrada com ID: " + dto.getQuadraId()));
+        Quadra quadra = buscarQuadra(dto.getQuadraId());
 
         // Valida o status da assinatura da arena
         validarStatusAssinaturaDaArena(quadra);
+        validarFormaPagamentoEscolhida(quadra.getArena(), dto.getFormaPagamento(), FormaPagamento.LOCAL);
 
         // Converter DTO para entidade
         Agendamento agendamento = agendamentoMapper.fromCreateToAgendamento(dto, slots, atleta);
+        agendamento.setFormaPagamentoEscolhida(FormaPagamento.LOCAL);
+        agendamento.setPagamentoConfirmadoGateway(false);
 
-        if (agendamento.isFixo()) {
-            List<LocalDate> conflitos = agendamentoFixoService.preValidarAgendamentoFixo(agendamento);
-
-            if (!conflitos.isEmpty()) {
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-                String datasStr = conflitos.stream()
-                        .map(data -> data.format(formatter))
-                        .collect(Collectors.joining(", "));
-
-                String msg = "O agendamento fixo não pode ser criado devido a conflitos nas seguintes datas: " + datasStr;
-                log.error("Agendamento fixo falhou na pré-validação (Pagar na Arena): {}", msg);
-                throw new IntervaloComAgendamentosException(msg);
-            }
-        }
+        validarConflitosAgendamentoFixo(agendamento, "Pagar na Arena");
 
         agendamento.setStatus(StatusAgendamento.PENDENTE);
         // Salvar o agendamento
@@ -121,6 +114,130 @@ public class AgendamentoServiceImpl implements AgendamentoService {
         emailService.enviarEmailAgendamento(quadra.getArena().getEmail(), quadra.getArena().getNome(), agendamento, Role.ARENA);
 
         return agendamento;
+    }
+
+    @Override
+    @Transactional
+    public PixPagamentoResponseDTO criarPagamentoPix(AgendamentoCreateDTO dto, UUID atletaId) {
+        log.info("Iniciando criação de agendamento PIX para atleta ID: {} na data: {}", atletaId, dto.getDataAgendamento());
+
+        validarRegrasNegocio(dto);
+        validarDataAgendamento(dto.getDataAgendamento());
+
+        Set<SlotHorario> slots = buscarEValidarSlots(dto.getSlotHorarioIds());
+
+        if (!slotHorarioService.saoSlotsSubsequentes(dto.getSlotHorarioIds())) {
+            throw new IllegalArgumentException("Os horários selecionados devem ser subsequentes");
+        }
+
+        verificarDisponibilidadeSlotsParaData(slots, dto.getDataAgendamento(), dto.getQuadraId());
+
+        Atleta atleta = buscarAtleta(atletaId);
+        Quadra quadra = buscarQuadra(dto.getQuadraId());
+        LocalDateTime agora = LocalDateTime.now(fusoHorarioPadrao);
+
+        validarStatusAssinaturaDaArena(quadra);
+        validarFormaPagamentoEscolhida(quadra.getArena(), dto.getFormaPagamento(), FormaPagamento.PIX);
+
+        if (quadra.getArena().getChavePix() == null || quadra.getArena().getChavePix().isBlank()) {
+            throw new IllegalStateException("A arena não possui chave PIX configurada para este tipo de pagamento.");
+        }
+
+        PixPagamentoResponseDTO bloqueioExistente = reaproveitarBloqueioPixAtivoSeExistir(dto, atleta, quadra, slots, agora);
+        if (bloqueioExistente != null) {
+            return bloqueioExistente;
+        }
+
+        Agendamento agendamento = agendamentoMapper.fromCreateToAgendamento(dto, slots, atleta);
+        agendamento.setFormaPagamentoEscolhida(FormaPagamento.PIX);
+        agendamento.setStatus(StatusAgendamento.AGUARDANDO_PAGAMENTO);
+        agendamento.setPagamentoConfirmadoGateway(false);
+        agendamento.setStripePaymentStatus("requires_payment_method");
+        agendamento.setPagamentoExpiraEm(agora.plusMinutes(BLOQUEIO_PAGAMENTO_MINUTOS));
+        agendamento.criarSnapshot();
+
+        validarConflitosAgendamentoFixo(agendamento, "PIX");
+
+        agendamento = agendamentoRepository.save(agendamento);
+
+        String paymentIntentId = subscriptionService.createAgendamentoPaymentIntent(agendamento);
+        agendamento.setStripePaymentIntentId(paymentIntentId);
+        agendamentoRepository.save(agendamento);
+
+        return PixPagamentoResponseDTO.builder()
+                .agendamentoId(agendamento.getId())
+                .statusAgendamento(agendamento.getStatus().name())
+                .qrCodeData(quadra.getArena().getChavePix())
+                .copiaECola(quadra.getArena().getChavePix())
+                .expiraEm(agendamento.getPagamentoExpiraEm().toString())
+                .tipoChavePix(quadra.getArena().getTipoChavePix())
+                .pagamentoConfirmadoGateway(false)
+                .build();
+    }
+
+    private PixPagamentoResponseDTO reaproveitarBloqueioPixAtivoSeExistir(
+            AgendamentoCreateDTO dto,
+            Atleta atleta,
+            Quadra quadra,
+            Set<SlotHorario> slots,
+            LocalDateTime agora
+    ) {
+        List<Agendamento> bloqueiosExistentes = agendamentoRepository.findBloqueiosPixPendentesDoAtleta(
+                atleta.getId(),
+                quadra.getId(),
+                dto.getDataAgendamento()
+        );
+
+        for (Agendamento bloqueio : bloqueiosExistentes) {
+            if (!mesmaReservaPix(bloqueio, dto, slots)) {
+                continue;
+            }
+
+            if (bloqueio.getPagamentoExpiraEm() != null && !bloqueio.getPagamentoExpiraEm().isAfter(agora)) {
+                bloqueio.setStatus(StatusAgendamento.CANCELADO);
+                agendamentoRepository.save(bloqueio);
+                continue;
+            }
+
+            if (Boolean.TRUE.equals(bloqueio.getPagamentoConfirmadoGateway())) {
+                continue;
+            }
+
+            log.info("Reaproveitando bloqueio PIX ativo do agendamento {} para o atleta {}.", bloqueio.getId(), atleta.getId());
+            return montarPixPagamentoResponse(bloqueio, quadra.getArena());
+        }
+
+        return null;
+    }
+
+    private boolean mesmaReservaPix(Agendamento agendamento, AgendamentoCreateDTO dto, Set<SlotHorario> slots) {
+        Set<Long> slotIdsExistentes = agendamento.getSlotsHorario().stream()
+                .map(SlotHorario::getId)
+                .collect(Collectors.toSet());
+        Set<Long> slotIdsSolicitados = slots.stream()
+                .map(SlotHorario::getId)
+                .collect(Collectors.toSet());
+
+        return Objects.equals(agendamento.getQuadra().getId(), dto.getQuadraId())
+                && Objects.equals(agendamento.getDataAgendamento(), dto.getDataAgendamento())
+                && Objects.equals(agendamento.getEsporte(), dto.getEsporte())
+                && agendamento.isFixo() == dto.isFixo()
+                && agendamento.isPublico() == dto.isPublico()
+                && Objects.equals(agendamento.getPeriodoAgendamentoFixo(), dto.getPeriodoFixo())
+                && Objects.equals(agendamento.getVagasDisponiveis(), dto.getNumeroJogadoresNecessarios())
+                && slotIdsExistentes.equals(slotIdsSolicitados);
+    }
+
+    private PixPagamentoResponseDTO montarPixPagamentoResponse(Agendamento agendamento, Arena arena) {
+        return PixPagamentoResponseDTO.builder()
+                .agendamentoId(agendamento.getId())
+                .statusAgendamento(agendamento.getStatus().name())
+                .qrCodeData(arena.getChavePix())
+                .copiaECola(arena.getChavePix())
+                .expiraEm(agendamento.getPagamentoExpiraEm() != null ? agendamento.getPagamentoExpiraEm().toString() : null)
+                .tipoChavePix(arena.getTipoChavePix())
+                .pagamentoConfirmadoGateway(Boolean.TRUE.equals(agendamento.getPagamentoConfirmadoGateway()))
+                .build();
     }
 
     private void validarRegrasNegocio(AgendamentoCreateDTO dto) {
@@ -160,7 +277,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
             throw new IllegalArgumentException("Deve ser informado pelo menos um slot de horário");
         }
 
-        List<SlotHorario> slotsList = slotHorarioRepository.findAllById(slotIds);
+        List<SlotHorario> slotsList = slotHorarioRepository.findAllByIdWithLock(slotIds);
         Set<SlotHorario> slots = new HashSet<>(slotsList);
 
         if (slots.size() != slotIds.size()) {
@@ -168,6 +285,58 @@ public class AgendamentoServiceImpl implements AgendamentoService {
         }
 
         return slots;
+    }
+
+    private Atleta buscarAtleta(UUID atletaId) {
+        return atletaRepository.findById(atletaId)
+                .orElseThrow(() -> new EntityNotFoundException("Atleta não encontrado com ID: " + atletaId));
+    }
+
+    private Quadra buscarQuadra(Long quadraId) {
+        return quadraRepository.findById(quadraId)
+                .orElseThrow(() -> new EntityNotFoundException("Quadra não encontrada com ID: " + quadraId));
+    }
+
+    private void validarConflitosAgendamentoFixo(Agendamento agendamento, String contextoPagamento) {
+        if (!agendamento.isFixo()) {
+            return;
+        }
+
+        List<LocalDate> conflitos = agendamentoFixoService.preValidarAgendamentoFixo(agendamento);
+        if (conflitos.isEmpty()) {
+            return;
+        }
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        String datasStr = conflitos.stream()
+                .map(data -> data.format(formatter))
+                .collect(Collectors.joining(", "));
+
+        String msg = "O agendamento fixo não pode ser criado devido a conflitos nas seguintes datas: " + datasStr;
+        log.error("Agendamento fixo falhou na pré-validação ({}): {}", contextoPagamento, msg);
+        throw new IntervaloComAgendamentosException(msg);
+    }
+
+    private void validarFormaPagamentoEscolhida(Arena arena, FormaPagamento formaPagamentoRecebida, FormaPagamento formaPagamentoEsperada) {
+        FormaPagamento formaPagamentoEscolhida = formaPagamentoRecebida == null ? formaPagamentoEsperada : formaPagamentoRecebida;
+
+        if (formaPagamentoEscolhida != formaPagamentoEsperada) {
+            throw new IllegalArgumentException("Forma de pagamento incompatível com a operação solicitada.");
+        }
+
+        FormaPagamento formaPagamentoArena = arena.getFormaPagamento();
+        if (formaPagamentoArena == null) {
+            throw new IllegalStateException("A arena não possui forma de pagamento configurada.");
+        }
+
+        boolean aceita = switch (formaPagamentoArena) {
+            case AMBOS -> true;
+            default -> formaPagamentoArena == formaPagamentoEscolhida;
+        };
+
+        if (!aceita) {
+            throw new IllegalArgumentException("A arena não aceita a forma de pagamento selecionada.");
+        }
     }
 
 
@@ -533,6 +702,16 @@ public class AgendamentoServiceImpl implements AgendamentoService {
             throw new IllegalArgumentException("A arena só pode alterar o status para PAGO, AUSENTE ou CANCELADO.");
         }
 
+        if (novoStatus == StatusAgendamento.PAGO && agendamento.getFormaPagamentoEscolhida() == FormaPagamento.PIX) {
+            if (!Boolean.TRUE.equals(agendamento.getPagamentoConfirmadoGateway())) {
+                throw new IllegalStateException("O pagamento PIX ainda não foi confirmado pelo provedor.");
+            }
+
+            if (agendamento.getNomePagadorPix() == null || agendamento.getNomePagadorPix().isBlank()) {
+                throw new IllegalStateException("O nome completo de quem realizou o pagamento PIX ainda não foi informado.");
+            }
+        }
+
         // Envio de email para os participantes
         if (agendamento.isPublico() && agendamento.getParticipantes() != null) {
             for (Atleta participante : agendamento.getParticipantes()) {
@@ -647,10 +826,51 @@ public class AgendamentoServiceImpl implements AgendamentoService {
 
     @Override
     @Transactional(readOnly = true)
-    public StatusAgendamento verificarStatus(Long agendamentoId) {
-        return agendamentoRepository.findById(agendamentoId)
-                .map(Agendamento::getStatus)
+    public AgendamentoPagamentoStatusDTO verificarStatus(Long agendamentoId, UUID atletaId) {
+        Agendamento agendamento = agendamentoRepository.findById(agendamentoId)
                 .orElseThrow(() -> new EntityNotFoundException("Agendamento não encontrado."));
+
+        if (!agendamento.getAtleta().getId().equals(atletaId)) {
+            throw new AccessDeniedException("Você não tem permissão para consultar este agendamento.");
+        }
+
+        return AgendamentoPagamentoStatusDTO.builder()
+                .status(agendamento.getStatus())
+                .pagamentoConfirmadoGateway(agendamento.getPagamentoConfirmadoGateway())
+                .nomePagadorInformado(agendamento.getNomePagadorPix() != null && !agendamento.getNomePagadorPix().isBlank())
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public Agendamento informarPagadorPix(Long agendamentoId, InformarPagadorPixDTO dto, UUID atletaId) {
+        Agendamento agendamento = agendamentoRepository.findByIdWithLock(agendamentoId)
+                .orElseThrow(() -> new EntityNotFoundException("Agendamento não encontrado."));
+
+        if (!agendamento.getAtleta().getId().equals(atletaId)) {
+            throw new AccessDeniedException("Você não tem permissão para atualizar este agendamento.");
+        }
+
+        if (agendamento.getFormaPagamentoEscolhida() != FormaPagamento.PIX) {
+            throw new IllegalArgumentException("Este agendamento não foi criado com pagamento PIX.");
+        }
+
+        if (!Boolean.TRUE.equals(agendamento.getPagamentoConfirmadoGateway())) {
+            throw new IllegalStateException("O pagamento ainda não foi confirmado pelo provedor.");
+        }
+
+        agendamento.setNomePagadorPix(dto.getNomeCompletoPagador().trim());
+        agendamento.setNomePagadorPixInformadoEm(LocalDateTime.now(fusoHorarioPadrao));
+
+        Agendamento agendamentoSalvo = agendamentoRepository.save(agendamento);
+
+        emailService.enviarEmailPagadorPixInformado(
+                agendamentoSalvo.getQuadra().getArena().getEmail(),
+                agendamentoSalvo.getQuadra().getArena().getNome(),
+                agendamentoSalvo
+        );
+
+        return agendamentoSalvo;
     }
 
     @Override

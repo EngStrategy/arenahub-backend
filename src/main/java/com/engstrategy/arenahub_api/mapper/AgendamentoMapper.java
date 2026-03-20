@@ -83,6 +83,9 @@ public class AgendamentoMapper {
                 .possuiSolicitacoes(agendamento.possuiSolicitacoes())
                 .avaliacao(avaliacaoDTO)
                 .avaliacaoDispensada(agendamento.getAvaliacaoDispensada())
+                .formaPagamentoEscolhida(agendamento.getFormaPagamentoEscolhida())
+                .pagamentoConfirmadoGateway(agendamento.getPagamentoConfirmadoGateway())
+                .nomePagadorPix(agendamento.getNomePagadorPix())
                 .build();
     }
 

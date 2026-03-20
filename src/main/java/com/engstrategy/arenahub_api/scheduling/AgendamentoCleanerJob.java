@@ -23,15 +23,19 @@ public class AgendamentoCleanerJob {
     @Scheduled(fixedRate = 300000)
     @Transactional
     public void liberarHorariosExpirados() {
-        LocalDateTime limite = LocalDateTime.now().minusMinutes(10);
+        LocalDateTime agora = LocalDateTime.now();
 
-        // Encontra agendamentos que estão AGUARDANDO_PAGAMENTO E criados antes do limite
+        // Encontra agendamentos que estão AGUARDANDO_PAGAMENTO e cujo bloqueio expirou.
         List<Agendamento> agendamentosExpirados = agendamentoRepository.findExpirados(
                 StatusAgendamento.AGUARDANDO_PAGAMENTO,
-                limite
+                agora
         );
 
         for (Agendamento agendamento : agendamentosExpirados) {
+            if (Boolean.TRUE.equals(agendamento.getPagamentoConfirmadoGateway())) {
+                continue;
+            }
+
             agendamento.setStatus(StatusAgendamento.CANCELADO);
             log.info("Agendamento {} expirado e cancelado.", agendamento.getId());
         }

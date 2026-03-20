@@ -2,6 +2,7 @@ package com.engstrategy.arenahub_api.dto.agendamento;
 
 import com.engstrategy.arenahub_api.dto.avaliacao.AvaliacaoDetalhesDTO;
 import com.engstrategy.arenahub_api.dto.quadra.SlotHorarioResponseDTO;
+import com.engstrategy.arenahub_api.model.enums.FormaPagamento;
 import com.engstrategy.arenahub_api.model.enums.StatusAgendamento;
 import com.engstrategy.arenahub_api.model.enums.TipoEsporte;
 import com.engstrategy.arenahub_api.util.LocalTimeSerializer;
@@ -41,4 +42,7 @@ public class AgendamentoResponseDTO {
     private boolean possuiSolicitacoes;
     private AvaliacaoDetalhesDTO avaliacao;
     private Boolean avaliacaoDispensada;
+    private FormaPagamento formaPagamentoEscolhida;
+    private Boolean pagamentoConfirmadoGateway;
+    private String nomePagadorPix;
 }

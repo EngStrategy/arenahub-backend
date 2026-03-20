@@ -1,5 +1,6 @@
 package com.engstrategy.arenahub_api.dto.agendamento;
 
+import com.engstrategy.arenahub_api.model.enums.FormaPagamento;
 import com.engstrategy.arenahub_api.model.enums.PeriodoAgendamento;
 import com.engstrategy.arenahub_api.model.enums.TipoEsporte;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -29,4 +30,5 @@ public class AgendamentoCreateDTO {
     private PeriodoAgendamento periodoFixo;
     private Integer numeroJogadoresNecessarios;
     private String cpfCnpjPagamento;
+    private FormaPagamento formaPagamento;
 }

@@ -16,6 +16,7 @@ import com.stripe.model.*;
 import com.stripe.net.RequestOptions;
 import com.stripe.net.Webhook;
 import com.stripe.param.CustomerCreateParams;
+import com.stripe.param.PaymentIntentCreateParams;
 import com.stripe.param.PriceRetrieveParams;
 import com.stripe.param.SubscriptionListParams;
 import jakarta.annotation.PostConstruct;
@@ -30,6 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
@@ -233,6 +235,27 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     }
 
     @Override
+    public String createAgendamentoPaymentIntent(Agendamento agendamento) {
+        try {
+            long valorCentavos = agendamento.getValorTotal().multiply(new BigDecimal("100")).longValueExact();
+
+            PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
+                    .setAmount(valorCentavos)
+                    .setCurrency("brl")
+                    .setDescription("Reserva ArenaHub #" + agendamento.getId())
+                    .putMetadata("agendamento_id", agendamento.getId().toString())
+                    .build();
+
+            PaymentIntent paymentIntent = PaymentIntent.create(params);
+            log.info("PaymentIntent {} criado para o agendamento {}.", paymentIntent.getId(), agendamento.getId());
+            return paymentIntent.getId();
+        } catch (StripeException e) {
+            log.error("Erro ao criar PaymentIntent do agendamento {}: {}", agendamento.getId(), e.getMessage());
+            throw new RuntimeException("Erro ao criar cobrança no Stripe para o agendamento.", e);
+        }
+    }
+
+    @Override
     @Transactional
     public void handleStripeWebhook(String payload, String sigHeader) {
         Event event;
@@ -306,6 +329,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         String agendamentoIdStr = paymentIntent.getMetadata().get("agendamento_id");
         if (agendamentoIdStr == null) {
             log.warn("Recebido payment_intent.succeeded sem agendamento_id nos metadatas. ID: {}", paymentIntent.getId());
+            return;
         }
 
         Long agendamentoId = Long.parseLong(agendamentoIdStr);
@@ -313,17 +337,19 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         Agendamento agendamento = agendamentoRepository.findById(agendamentoId)
                 .orElseThrow(() -> new EntityNotFoundException("Agendamento não encontrado para o PaymentIntent: " + paymentIntent.getId()));
 
-        // Altera o status do agendamento para PAGO se estiver AGUARDANDO_PAGAMENTO, para evitar reprocessamento
-        if (agendamento.getStatus() == StatusAgendamento.AGUARDANDO_PAGAMENTO) {
-            agendamento.setStatus(StatusAgendamento.PAGO);
-            agendamentoRepository.save(agendamento);
+        agendamento.setStripePaymentIntentId(paymentIntent.getId());
+        agendamento.setStripePaymentStatus(paymentIntent.getStatus());
+        agendamento.setPagamentoConfirmadoGateway(true);
+        agendamento.setPagamentoConfirmadoEm(LocalDateTime.now());
+        agendamentoRepository.save(agendamento);
 
-            // Envia os e-mails de confirmação
-            emailService.enviarEmailAgendamento(agendamento.getAtleta().getEmail(), agendamento.getAtleta().getNome(), agendamento, Role.ATLETA);
-            emailService.enviarEmailAgendamento(agendamento.getQuadra().getArena().getEmail(), agendamento.getQuadra().getArena().getNome(), agendamento, Role.ARENA);
+        emailService.enviarEmailPagamentoPixConfirmadoParaArena(
+                agendamento.getQuadra().getArena().getEmail(),
+                agendamento.getQuadra().getArena().getNome(),
+                agendamento
+        );
 
-            log.info("Agendamento ID {} atualizado para PAGO via webhook do PaymentIntent.", agendamento.getId());
-        }
+        log.info("Agendamento ID {} teve pagamento confirmado via webhook do PaymentIntent.", agendamento.getId());
     }
 
     private void handleSubscriptionUpdated(Subscription subscription) {
