@@ -1,0 +1,10 @@
+package com.engstrategy.arenahub_api.model.enums;
+
+public enum StatusAgendamento {
+    PENDENTE,
+    AUSENTE,
+    CANCELADO,
+    PAGO,
+    FINALIZADO, // status virtual para representar os status: AUSENTE, CANCELADO e PAGO
+    AGUARDANDO_PAGAMENTO;
+}

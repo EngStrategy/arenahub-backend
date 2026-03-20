@@ -2,13 +2,13 @@
 # SEÇÃO BASE - Carregada em TODOS os ambientes
 # =================================================
 app:
-  frontend-url: ${ARENAHUB_FRONTEND_URL_LOCAL}
+  frontend-url: ${ARENAHUB_FRONTEND_URL_PROD}
 server:
   port: ${PORT:8080}
 springdoc:
-  server-url: ${ARENAHUB_BACKEND_URL_LOCAL}
+  server-url: ${ARENAHUB_BACKEND_URL_PROD}
 arenahub:
-  admin-email: ${ADMIN_EMAIL}
+  admin-email: ${ARENAHUB_ADMIN_EMAIL}
 spring:
   profiles:
     active: dev
@@ -19,7 +19,7 @@ spring:
     host: smtp.gmail.com
     port: 587
     username: arenahub.2025@gmail.com
-    password: ${GMAIL_APP_PASSWORD}
+    password: ${ARENAHUB_GMAIL_APP_PASSWORD}
     properties:
       mail:
         smtp:
@@ -30,19 +30,19 @@ spring:
             trust: "smtp.gmail.com"
 
 zenvia:
-  api-token: ${ZENVIA_API_TOKEN}
-  sender-id: ${ZENVIA_SENDER_ID}
+  api-token: ${ARENAHUB_ZENVIA_API_TOKEN}
+  sender-id: ${ARENAHUB_ZENVIA_SENDER_ID}
 
 jwt:
-  secret-key: ${JWT_SECRET_KEY_ARENAHUB}
+  secret-key: ${ARENAHUB_JWT_SECRET_KEY}
 
 logging:
   level:
     org.springframework.security.config.annotation.authentication.configuration: ERROR
-asaas:
-  api:
-    url: ${ASAAS_URL_SANDBOX}
-    token: ${ASAAS_TOKEN_SANDBOX}
+#asaas:
+#  api:
+#    url: ${ARENAHUB_ASAAS_URL_SANDBOX}
+#    token: ${ARENAHUB_ASAAS_TOKEN_SANDBOX}
 
 ---
 # =================================================
@@ -54,15 +54,15 @@ spring:
       on-profile: dev
   datasource:
     url: jdbc:postgresql://localhost:5432/arenahub
-    username: ${DB_USER}
-    password: ${DB_PASSWORD}
+    username: ${ARENAHUB_DB_USER}
+    password: ${ARENAHUB_DB_PASSWORD_LOCAL}
   jpa:
     hibernate:
       ddl-auto: update
 stripe:
-  public-key: ${STRIPE_PUBLIC_KEY_TEST}
-  secret-key: ${STRIPE_SECRET_KEY_TEST}
-  webhook-secret: ${STRIPE_WEBHOOK_SECRET_TEST}
+  public-key: ${ARENAHUB_STRIPE_PUBLIC_KEY_TEST}
+  secret-key: ${ARENAHUB_STRIPE_SECRET_KEY_TEST}
+  webhook-secret: ${ARENAHUB_STRIPE_WEBHOOK_SECRET_TEST}
 
 ---
 # =================================================
@@ -74,12 +74,32 @@ spring:
       on-profile: docker
   datasource:
     url: jdbc:postgresql://db:5432/arenahub
-    username: ${DB_USER}
-    password: ${DB_PASSWORD}
+    username: ${ARENAHUB_DB_USER}
+    password: ${ARENAHUB_DB_PASSWORD_LOCAL}
   jpa:
     hibernate:
       ddl-auto: update
 stripe:
-  public-key: ${STRIPE_PUBLIC_KEY_PROD}
-  secret-key: ${STRIPE_SECRET_KEY_PROD}
-  webhook-secret: ${STRIPE_WEBHOOK_SECRET_PROD}
+  public-key: ${ARENAHUB_STRIPE_PUBLIC_KEY_TEST}
+  secret-key: ${ARENAHUB_STRIPE_SECRET_KEY_TEST}
+  webhook-secret: ${ARENAHUB_STRIPE_WEBHOOK_SECRET_TEST}
+
+---
+# =================================================
+# PERFIL 'prod' - Para rodar no Cloud Run
+# =================================================
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: ${ARENAHUB_DB_URL}
+    username: ${ARENAHUB_DB_USER}
+    password: ${ARENAHUB_DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+stripe:
+  public-key: ${ARENAHUB_STRIPE_PUBLIC_KEY_PROD}
+  secret-key: ${ARENAHUB_STRIPE_SECRET_KEY_PROD}
+  webhook-secret: ${ARENAHUB_STRIPE_WEBHOOK_SECRET_PROD}
