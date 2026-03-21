@@ -361,7 +361,8 @@ public class AgendamentoServiceImpl implements AgendamentoService {
             statusesParaFiltrar = Arrays.asList(
                     StatusAgendamento.PENDENTE,
                     StatusAgendamento.AGUARDANDO_PAGAMENTO,
-                    StatusAgendamento.PAGO
+                    StatusAgendamento.PAGO,
+                    StatusAgendamento.AGUARDANDO_CONFIRMACAO
             );
         }
 
@@ -752,7 +753,8 @@ public class AgendamentoServiceImpl implements AgendamentoService {
             statusesParaFiltrar = Arrays.asList(
                     StatusAgendamento.PENDENTE,
                     StatusAgendamento.AGUARDANDO_PAGAMENTO,
-                    StatusAgendamento.PAGO
+                    StatusAgendamento.PAGO,
+                    StatusAgendamento.AGUARDANDO_CONFIRMACAO
             );
         }
 
