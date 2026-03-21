@@ -8,12 +8,17 @@ import com.google.zxing.qrcode.QRCodeWriter;
 import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.text.Normalizer;
 import java.util.Base64;
+import java.util.regex.Pattern;
 
 public class PixUtil {
 
     public static String generatePayload(String chave, String nomeRecebedor, String cidadeRecebedor, String txid, BigDecimal valor) {
         StringBuilder payload = new StringBuilder();
+
+        nomeRecebedor = removeAccents(nomeRecebedor);
+        cidadeRecebedor = removeAccents(cidadeRecebedor);
 
         // 00 - Payload Format Indicator
         payload.append(formatField("00", "01"));
@@ -60,6 +65,13 @@ public class PixUtil {
 
     private static String formatField(String id, String value) {
         return id + String.format("%02d", value.length()) + value;
+    }
+
+    private static String removeAccents(String text) {
+        if (text == null) return "";
+        String normalized = Normalizer.normalize(text, Normalizer.Form.NFD);
+        Pattern pattern = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
+        return pattern.matcher(normalized).replaceAll("");
     }
 
     private static String truncate(String text, int maxLength) {
