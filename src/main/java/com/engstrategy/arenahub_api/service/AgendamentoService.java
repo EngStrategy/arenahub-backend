@@ -2,6 +2,7 @@ package com.engstrategy.arenahub_api.service;
 
 import com.engstrategy.arenahub_api.dto.agendamento.AgendamentoCreateDTO;
 import com.engstrategy.arenahub_api.dto.agendamento.AgendamentoExternoCreateDTO;
+import com.engstrategy.arenahub_api.dto.agendamento.ConfirmacaoPagamentoPixDTO;
 import com.engstrategy.arenahub_api.model.Agendamento;
 import com.engstrategy.arenahub_api.model.enums.StatusAgendamento;
 import com.engstrategy.arenahub_api.model.enums.TipoAgendamento;
@@ -45,6 +46,10 @@ public interface AgendamentoService {
 //    PixPagamentoResponseDTO criarPagamentoPix(AgendamentoCreateDTO dto, UUID atletaId);
 
     StatusAgendamento verificarStatus(Long agendamentoId);
+
+    Agendamento bloquearAgendamento(AgendamentoCreateDTO dto, UUID atletaId);
+
+    void confirmarPagamentoPix(Long agendamentoId, ConfirmacaoPagamentoPixDTO dto, UUID atletaId);
 
     Page<Agendamento> buscarCardsMestrePorArenaId(
             UUID arenaId,

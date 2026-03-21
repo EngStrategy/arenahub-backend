@@ -464,6 +464,72 @@ public class EmailService {
         enviarEmailGenerico(adminEmail, titulo, corpo, "Equipe ArenaHub");
     }
 
+    @Async
+    public void enviarEmailConfirmacaoPagamentoPix(String destino, String nomeArena, Agendamento agendamento) {
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, "utf-8");
+        try {
+            helper.setFrom(senderEmail);
+            helper.setTo(destino);
+            helper.setSubject("Confirmação de Pagamento PIX - ArenaHub");
+
+            String content = htmlContentConfirmacaoPagamentoPix(nomeArena, agendamento);
+            helper.setText(content, true);
+
+            mailSender.send(message);
+            log.info("Email de confirmação de pagamento PIX enviado para {}", destino);
+        } catch (MessagingException e) {
+            log.error("Erro ao enviar email de confirmação de pagamento PIX: {}", e.getMessage());
+            throw new RuntimeException("Erro ao enviar email", e);
+        }
+    }
+
+    private String htmlContentConfirmacaoPagamentoPix(String nomeArena, Agendamento agendamento) {
+        String dataFormatada = agendamento.getDataAgendamento().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        return """
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <style>
+                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                        .header { background-color: #15A01A; color: white; padding: 20px; text-align: center; }
+                        .content { padding: 30px 20px; background-color: #f9f9f9; }
+                        .info-box { background-color: #e8f5e8; padding: 20px; border-radius: 8px; margin: 20px 0; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header"><h1>ArenaHub.</h1></div>
+                        <div class="content">
+                            <h2>Olá, %s!</h2>
+                            <p>Um atleta informou que realizou o pagamento via PIX para o seguinte agendamento:</p>
+                            <div class="info-box">
+                                <p><strong>Atleta:</strong> %s</p>
+                                <p><strong>Pagador (Nome no PIX):</strong> %s</p>
+                                <p><strong>Telefone de Contato:</strong> %s</p>
+                                <p><strong>Quadra:</strong> %s</p>
+                                <p><strong>Data:</strong> %s</p>
+                                <p><strong>Horário:</strong> %s às %s</p>
+                                <p><strong>Valor:</strong> R$ %s</p>
+                            </div>
+                            <p>Por favor, verifique seu extrato bancário e, assim que confirmado, altere o status do agendamento para <strong>PAGO</strong> no sistema.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+                """.formatted(nomeArena,
+                agendamento.getAtleta().getNome(),
+                agendamento.getNomePagadorPix(),
+                agendamento.getTelefonePagadorPix(),
+                agendamento.getQuadra().getNomeQuadra(),
+                dataFormatada,
+                agendamento.getHorarioInicio().toString(),
+                agendamento.getHorarioFim().toString(),
+                agendamento.getValorTotal().toString());
+    }
+
     private String htmlContent(String nome, String codigo) {
         return """
                 <!DOCTYPE html>

@@ -11,5 +11,4 @@ public class PixPagamentoResponseDTO {
     private String qrCodeData;
     private String copiaECola;
     private String expiraEm;
-
 }
