@@ -2,6 +2,7 @@ package com.engstrategy.arenahub_api.service.impl;
 
 import com.engstrategy.arenahub_api.dto.agendamento.AgendamentoCreateDTO;
 import com.engstrategy.arenahub_api.dto.agendamento.AgendamentoExternoCreateDTO;
+import com.engstrategy.arenahub_api.dto.agendamento.ConfirmacaoPagamentoPixDTO;
 import com.engstrategy.arenahub_api.dto.agendamento.NovoAtletaExternoDTO;
 import com.engstrategy.arenahub_api.exceptions.*;
 import com.engstrategy.arenahub_api.mapper.AgendamentoMapper;
@@ -214,7 +215,8 @@ public class AgendamentoServiceImpl implements AgendamentoService {
                     dataAgendamento,
                     quadraId,
                     slot.getHorarioInicio(),
-                    slot.getHorarioFim()
+                    slot.getHorarioFim(),
+                    LocalDateTime.now(fusoHorarioPadrao)
             );
 
             if (jaAgendado) {
@@ -228,6 +230,77 @@ public class AgendamentoServiceImpl implements AgendamentoService {
             }
         }
     }
+
+    @Override
+    @Transactional
+    public Agendamento bloquearAgendamento(AgendamentoCreateDTO dto, UUID atletaId) {
+        log.info("Bloqueando slots para atleta ID: {} na data: {} por 15 minutos",
+                atletaId, dto.getDataAgendamento());
+
+        validarRegrasNegocio(dto);
+        validarDataAgendamento(dto.getDataAgendamento());
+        Set<SlotHorario> slots = buscarEValidarSlots(dto.getSlotHorarioIds());
+
+        if (!slotHorarioService.saoSlotsSubsequentes(dto.getSlotHorarioIds())) {
+            throw new IllegalArgumentException("Os horários selecionados devem ser subsequentes");
+        }
+
+        verificarDisponibilidadeSlotsParaData(slots, dto.getDataAgendamento(), dto.getQuadraId());
+
+        Atleta atleta = atletaRepository.findById(atletaId)
+                .orElseThrow(() -> new EntityNotFoundException("Atleta não encontrado"));
+
+        Quadra quadra = quadraRepository.findById(dto.getQuadraId())
+                .orElseThrow(() -> new EntityNotFoundException("Quadra não encontrada"));
+
+        validarStatusAssinaturaDaArena(quadra);
+
+        Agendamento agendamento = agendamentoMapper.fromCreateToAgendamento(dto, slots, atleta);
+        agendamento.setStatus(StatusAgendamento.BLOQUEADO);
+        agendamento.setDataExpiracaoBloqueio(LocalDateTime.now(fusoHorarioPadrao).plusMinutes(15));
+        agendamento.criarSnapshot();
+
+        Agendamento salvo = agendamentoRepository.save(agendamento);
+        
+        // Força o carregamento da Arena e dos Slots dentro da transação
+        if (salvo.getQuadra() != null && salvo.getQuadra().getArena() != null) {
+            salvo.getQuadra().getArena().getId();
+        }
+        if (salvo.getSlotsHorario() != null) {
+            salvo.getSlotsHorario().size(); // Inicializa a coleção
+        }
+        
+        return salvo;
+    }
+
+    @Override
+    @Transactional
+    public void confirmarPagamentoPix(Long agendamentoId, ConfirmacaoPagamentoPixDTO dto, UUID atletaId) {
+        log.info("Confirmando realização de pagamento PIX para agendamento ID: {}", agendamentoId);
+
+        Agendamento agendamento = agendamentoRepository.findByIdWithArena(agendamentoId)
+                .orElseThrow(() -> new EntityNotFoundException("Agendamento não encontrado"));
+
+        if (!agendamento.getAtleta().getId().equals(atletaId)) {
+            throw new AccessDeniedException("Você não tem permissão para confirmar este pagamento.");
+        }
+
+        if (agendamento.getStatus() != StatusAgendamento.BLOQUEADO && agendamento.getStatus() != StatusAgendamento.PENDENTE) {
+            throw new IllegalStateException("O agendamento não está em um status que permite confirmação de pagamento.");
+        }
+
+        agendamento.setNomePagadorPix(dto.getNomeCompleto());
+        agendamento.setTelefonePagadorPix(dto.getTelefone());
+        agendamento.setStatus(StatusAgendamento.AGUARDANDO_CONFIRMACAO);
+        agendamento.setDataExpiracaoBloqueio(null);
+
+        Agendamento salvo = agendamentoRepository.save(agendamento);
+
+        // Notificar arena por email
+        Arena arena = salvo.getQuadra().getArena();
+        emailService.enviarEmailConfirmacaoPagamentoPix(arena.getEmail(), arena.getNome(), salvo);
+    }
+
 
     @Override
     @Transactional(readOnly = true)
@@ -288,7 +361,8 @@ public class AgendamentoServiceImpl implements AgendamentoService {
             statusesParaFiltrar = Arrays.asList(
                     StatusAgendamento.PENDENTE,
                     StatusAgendamento.AGUARDANDO_PAGAMENTO,
-                    StatusAgendamento.PAGO
+                    StatusAgendamento.PAGO,
+                    StatusAgendamento.AGUARDANDO_CONFIRMACAO
             );
         }
 
@@ -533,15 +607,21 @@ public class AgendamentoServiceImpl implements AgendamentoService {
             throw new IllegalArgumentException("A arena só pode alterar o status para PAGO, AUSENTE ou CANCELADO.");
         }
 
-        // Envio de email para os participantes
-        if (agendamento.isPublico() && agendamento.getParticipantes() != null) {
-            for (Atleta participante : agendamento.getParticipantes()) {
-                emailService.enviarEmailJogoCancelado(participante.getEmail(), participante.getNome(), agendamento);
-            }
+        // Se estiver confirmando o pagamento, remove o bloqueio se existir
+        if (novoStatus == StatusAgendamento.PAGO) {
+            agendamento.setDataExpiracaoBloqueio(null);
         }
 
-        emailService.enviarEmailJogoCancelado(agendamento.getAtleta().getEmail(), agendamento.getAtleta().getNome(),
-                agendamento);
+        // Envio de email para os participantes
+        if (novoStatus == StatusAgendamento.CANCELADO) {
+            if (agendamento.isPublico() && agendamento.getParticipantes() != null) {
+                for (Atleta participante : agendamento.getParticipantes()) {
+                    emailService.enviarEmailJogoCancelado(participante.getEmail(), participante.getNome(), agendamento);
+                }
+            }
+            emailService.enviarEmailJogoCancelado(agendamento.getAtleta().getEmail(), agendamento.getAtleta().getNome(),
+                    agendamento);
+        }
 
         agendamento.setStatus(novoStatus);
 
@@ -673,7 +753,8 @@ public class AgendamentoServiceImpl implements AgendamentoService {
             statusesParaFiltrar = Arrays.asList(
                     StatusAgendamento.PENDENTE,
                     StatusAgendamento.AGUARDANDO_PAGAMENTO,
-                    StatusAgendamento.PAGO
+                    StatusAgendamento.PAGO,
+                    StatusAgendamento.AGUARDANDO_CONFIRMACAO
             );
         }
 

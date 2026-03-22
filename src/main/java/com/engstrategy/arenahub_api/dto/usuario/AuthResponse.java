@@ -47,4 +47,7 @@ public class AuthResponse {
     @Schema(description = "CPF ou CNPJ do usuário", example = "123.456.789-00 ou 12.345.678/0001-00")
     private String cpfCnpj;
 
+    @Schema(description = "Telefone do usuário", example = "(11) 98765-4321")
+    private String telefone;
+
 }

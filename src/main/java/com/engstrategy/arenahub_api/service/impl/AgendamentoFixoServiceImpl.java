@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
@@ -135,13 +136,16 @@ public class AgendamentoFixoServiceImpl implements AgendamentoFixoService {
             }
         }
 
+        LocalDateTime agora = LocalDateTime.now();
+
         // Verificar se há conflitos de agendamento
         for (SlotHorario slot : slotsNecessarios) {
             boolean temConflito = agendamentoRepository.existeConflito(
                     data,
                     agendamentoBase.getQuadra().getId(),
                     slot.getHorarioInicio(),
-                    slot.getHorarioFim()
+                    slot.getHorarioFim(),
+                    agora
             );
 
             if (temConflito) {

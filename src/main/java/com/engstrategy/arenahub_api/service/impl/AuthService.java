@@ -65,6 +65,7 @@ public class AuthService {
                 .imageUrl(usuario.getUrlFoto())
                 .statusAssinatura(statusAssinatura)
                 .cpfCnpj(usuario.getCpfCnpj())
+                .telefone(usuario.getTelefone())
                 .build();
     }
 

@@ -35,11 +35,13 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Long>,
     @Query("SELECT COUNT(a) > 0 FROM Agendamento a JOIN a.slotsHorario s " +
             "WHERE a.dataAgendamento = :data AND a.quadra.id = :quadraId " +
             "AND s.horarioInicio = :inicio AND s.horarioFim = :fim " +
-            "AND a.status != 'CANCELADO'")
+            "AND a.status NOT IN ('CANCELADO', 'AUSENTE') " +
+            "AND (a.status != 'BLOQUEADO' OR a.dataExpiracaoBloqueio > :agora)")
     boolean existeConflito(@Param("data") LocalDate data,
                            @Param("quadraId") Long quadraId,
                            @Param("inicio") LocalTime inicio,
-                           @Param("fim") LocalTime fim);
+                           @Param("fim") LocalTime fim,
+                           @Param("agora") LocalDateTime agora);
 
 
     // Para a Receita do Mês
@@ -177,6 +179,17 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Long>,
 
     @Query("SELECT a FROM Agendamento a WHERE a.status = :status AND a.dataSnapshot < :limite")
     List<Agendamento> findExpirados(@Param("status") StatusAgendamento status, @Param("limite") LocalDateTime limite);
+
+    @Query("SELECT a FROM Agendamento a WHERE a.status = 'BLOQUEADO' AND a.dataExpiracaoBloqueio < :agora")
+    List<Agendamento> findAgendamentosBloqueadosExpirados(@Param("agora") LocalDateTime agora);
+
+    @Query("SELECT DISTINCT a FROM Agendamento a " +
+            "JOIN FETCH a.quadra q " +
+            "JOIN FETCH q.arena " +
+            "JOIN FETCH a.slotsHorario " +
+            "JOIN FETCH a.atleta " +
+            "WHERE a.id = :id")
+    Optional<Agendamento> findByIdWithArena(@Param("id") Long id);
 
     @Query("SELECT a FROM Agendamento a " +
             "JOIN FETCH a.atleta atleta " +
