@@ -73,7 +73,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
             throw new IllegalArgumentException("Os horários selecionados devem ser subsequentes");
         }
 
-        // Verificar disponibilidade dos slots na data específica
+        // Verificar disponibilidade slots na data específica
         verificarDisponibilidadeSlotsParaData(slots, dto.getDataAgendamento(), dto.getQuadraId());
 
         // Recuperar atleta que deseja realizar o agendamento
@@ -221,11 +221,11 @@ public class AgendamentoServiceImpl implements AgendamentoService {
 
             if (jaAgendado) {
                 throw new IllegalArgumentException(
-                        String.format("Slot %d (%s às %s) já está ocupado na data %s",
-                                slot.getId(),
+                        String.format("%s às %s já está ocupado na data %s",
                                 slot.getHorarioInicio(),
                                 slot.getHorarioFim(),
-                                dataAgendamento)
+                                dataAgendamento.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                        )
                 );
             }
         }
@@ -345,31 +345,32 @@ public class AgendamentoServiceImpl implements AgendamentoService {
             isFixoFiltro = Boolean.FALSE;
         }
 
-        // 2. Determina a lista de Status Ativos/Histórico
-        List<StatusAgendamento> statusesParaFiltrar;
+        List<StatusAgendamento> statusesParaFiltrar = new ArrayList<>();
 
         if (status == StatusAgendamento.FINALIZADO) {
             // Histórico
-            statusesParaFiltrar = Arrays.asList(StatusAgendamento.CANCELADO, StatusAgendamento.PAGO, StatusAgendamento.AUSENTE);
+            statusesParaFiltrar.addAll(Arrays.asList(StatusAgendamento.CANCELADO, StatusAgendamento.PAGO, StatusAgendamento.AUSENTE));
 
         } else if (status != null) {
             // Status específico
-            statusesParaFiltrar = List.of(status);
+            statusesParaFiltrar.add(status);
 
         } else {
-            // Padrão: Ativos (PENDENTE, PAGO, AGUARDANDO_PAGAMENTO, etc.)
-            statusesParaFiltrar = Arrays.asList(
-                    StatusAgendamento.PENDENTE,
-                    StatusAgendamento.AGUARDANDO_PAGAMENTO,
-                    StatusAgendamento.PAGO,
-                    StatusAgendamento.AGUARDANDO_CONFIRMACAO
-            );
+            // Padrão: Ativos
+            statusesParaFiltrar.add(StatusAgendamento.PENDENTE);
+            statusesParaFiltrar.add(StatusAgendamento.AGUARDANDO_PAGAMENTO);
+            statusesParaFiltrar.add(StatusAgendamento.AGUARDANDO_CONFIRMACAO);
+
+            if (dataInicio != null && dataInicio.isAfter(LocalDate.now(fusoHorarioPadrao))) {
+                statusesParaFiltrar.add(StatusAgendamento.PAGO);
+            }
         }
 
         // 3. Ajuste de data para Ativos (mostrar do futuro em diante)
-        if (status == null) {
-            dataInicio = dataInicio == null ? LocalDate.now() : dataInicio;
-        }
+//        if (status == null) {
+//            dataInicio = dataInicio == null ? LocalDate.now() : dataInicio;
+//        }
+
 
         // 4. Converte para List<String> para o Repositório (se usarmos Native Query)
         List<String> statusesComoString = statusesParaFiltrar.stream()
@@ -922,6 +923,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
 //    }
 
     private LocalDate calcularDataFim(LocalDate dataInicio, PeriodoAgendamento periodo) {
+        if (dataInicio == null) return null;
         return switch (periodo) {
             case UM_MES -> dataInicio.plusMonths(1);
             case TRES_MESES -> dataInicio.plusMonths(3);
@@ -931,7 +933,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
     }
 
     private int getMultiplier(LocalDate dataInicio, PeriodoAgendamento periodo) {
-        if (periodo == null) return 1;
+        if (periodo == null || dataInicio == null) return 1;
 
         LocalDate dataLimite = calcularDataFim(dataInicio, periodo);
 
