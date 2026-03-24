@@ -58,6 +58,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/reset-password").permitAll()
                         .requestMatchers("/api/v1/feedback").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/stripe/webhook").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/sorteador-times").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/asaas/webhook/**").permitAll()
 
                         // endpoints com autorização
