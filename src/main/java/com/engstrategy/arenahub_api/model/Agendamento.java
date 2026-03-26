@@ -4,6 +4,7 @@ import com.engstrategy.arenahub_api.model.enums.PeriodoAgendamento;
 import com.engstrategy.arenahub_api.model.enums.StatusAgendamento;
 import com.engstrategy.arenahub_api.model.enums.StatusSolicitacao;
 import com.engstrategy.arenahub_api.model.enums.TipoEsporte;
+import com.engstrategy.arenahub_api.model.enums.FormaPagamentoAgendamento;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -55,6 +56,10 @@ public class Agendamento {
 
     @Enumerated(EnumType.STRING)
     private StatusAgendamento status;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "forma_pagamento")
+    private FormaPagamentoAgendamento formaPagamento;
 
     @Column(name = "vagas_disponiveis")
     private Integer vagasDisponiveis;

@@ -512,7 +512,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
 
     @Override
     @Transactional
-    public Agendamento atualizarStatus(Long agendamentoId, UUID arenaId, StatusAgendamento novoStatus) {
+    public Agendamento atualizarStatus(Long agendamentoId, UUID arenaId, StatusAgendamento novoStatus, FormaPagamentoAgendamento formaPagamento) {
         log.info("Atualizando status do agendamento ID: {} para {}", agendamentoId, novoStatus);
 
         Agendamento agendamento = agendamentoRepository.findById(agendamentoId)
@@ -531,6 +531,13 @@ public class AgendamentoServiceImpl implements AgendamentoService {
 
         if (novoStatus != StatusAgendamento.PAGO && novoStatus != StatusAgendamento.AUSENTE && novoStatus != StatusAgendamento.CANCELADO) {
             throw new IllegalArgumentException("A arena só pode alterar o status para PAGO, AUSENTE ou CANCELADO.");
+        }
+
+        if (novoStatus == StatusAgendamento.PAGO) {
+            if (formaPagamento == null) {
+                throw new IllegalArgumentException("A forma de pagamento é obrigatória quando o status é PAGO.");
+            }
+            agendamento.setFormaPagamento(formaPagamento);
         }
 
         // Envio de email para os participantes

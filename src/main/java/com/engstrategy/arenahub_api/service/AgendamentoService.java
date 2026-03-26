@@ -4,6 +4,7 @@ import com.engstrategy.arenahub_api.dto.agendamento.AgendamentoCreateDTO;
 import com.engstrategy.arenahub_api.dto.agendamento.AgendamentoExternoCreateDTO;
 import com.engstrategy.arenahub_api.model.Agendamento;
 import com.engstrategy.arenahub_api.model.enums.StatusAgendamento;
+import com.engstrategy.arenahub_api.model.enums.FormaPagamentoAgendamento;
 import com.engstrategy.arenahub_api.model.enums.TipoAgendamento;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -34,7 +35,7 @@ public interface AgendamentoService {
                                        Long quadraId,
                                        Pageable pageable);
 
-    Agendamento atualizarStatus(Long agendamentoId, UUID arenaId, StatusAgendamento novoStatus);
+    Agendamento atualizarStatus(Long agendamentoId, UUID arenaId, StatusAgendamento novoStatus, FormaPagamentoAgendamento formaPagamento);
 
     List<Agendamento> buscarAgendamentosParaAvaliacao(UUID atletaId);
 

@@ -4,6 +4,7 @@ import com.engstrategy.arenahub_api.dto.avaliacao.AvaliacaoDetalhesDTO;
 import com.engstrategy.arenahub_api.dto.quadra.SlotHorarioResponseDTO;
 import com.engstrategy.arenahub_api.model.enums.StatusAgendamento;
 import com.engstrategy.arenahub_api.model.enums.TipoEsporte;
+import com.engstrategy.arenahub_api.model.enums.FormaPagamentoAgendamento;
 import com.engstrategy.arenahub_api.util.LocalTimeSerializer;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
@@ -28,6 +29,7 @@ public class AgendamentoResponseDTO {
     private BigDecimal valorTotal;
     private TipoEsporte esporte;
     private StatusAgendamento status;
+    private FormaPagamentoAgendamento formaPagamento;
     private Integer numeroJogadoresNecessarios;
     private Set<SlotHorarioResponseDTO> slotsHorario;
     private Long quadraId;

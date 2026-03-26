@@ -120,7 +120,7 @@ public class ArenaAgendamentoController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         UUID arenaId = userDetails.getUserId();
-        Agendamento agendamentoAtualizado = agendamentoService.atualizarStatus(agendamentoId, arenaId, request.getStatus());
+        Agendamento agendamentoAtualizado = agendamentoService.atualizarStatus(agendamentoId, arenaId, request.getStatus(), request.getFormaPagamento());
         AgendamentoArenaResponseDTO response = agendamentoMapper.fromAgendamentoToArenaResponseDTO(agendamentoAtualizado);
         return ResponseEntity.ok(response);
     }

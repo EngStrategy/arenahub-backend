@@ -3,6 +3,7 @@ package com.engstrategy.arenahub_api.dto.agendamento.arena;
 import com.engstrategy.arenahub_api.dto.quadra.SlotHorarioResponseDTO;
 import com.engstrategy.arenahub_api.model.enums.StatusAgendamento;
 import com.engstrategy.arenahub_api.model.enums.TipoEsporte;
+import com.engstrategy.arenahub_api.model.enums.FormaPagamentoAgendamento;
 import com.engstrategy.arenahub_api.util.LocalTimeSerializer;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.AllArgsConstructor;
@@ -30,6 +31,7 @@ public class AgendamentoArenaResponseDTO {
     private LocalTime horarioFim;
     private BigDecimal valorTotal;
     private StatusAgendamento status;
+    private FormaPagamentoAgendamento formaPagamento;
     private boolean isFixo;
     private boolean isPublico;
     private Integer vagasDisponiveis;
