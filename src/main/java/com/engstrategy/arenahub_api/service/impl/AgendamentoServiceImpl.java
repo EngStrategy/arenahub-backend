@@ -214,7 +214,8 @@ public class AgendamentoServiceImpl implements AgendamentoService {
                     dataAgendamento,
                     quadraId,
                     slot.getHorarioInicio(),
-                    slot.getHorarioFim()
+                    slot.getHorarioFim(),
+                    LocalDateTime.now(fusoHorarioPadrao)
             );
 
             if (jaAgendado) {
@@ -873,5 +874,19 @@ public class AgendamentoServiceImpl implements AgendamentoService {
 
         // Valor total de TODAS as ocorrências (base + futuras).
         return 1 + contador;
+    }
+
+    @Override
+    @Transactional
+    public Agendamento bloquearAgendamento(AgendamentoCreateDTO dto, UUID atletaId) {
+        // TODO: Implementar lógica de bloqueio de agendamento 
+        throw new UnsupportedOperationException("Método bloquearAgendamento ainda não implementado.");
+    }
+
+    @Override
+    @Transactional
+    public void confirmarPagamentoPix(Long agendamentoId, com.engstrategy.arenahub_api.dto.agendamento.ConfirmacaoPagamentoPixDTO dto, UUID atletaId) {
+        // TODO: Implementar lógica de confirmação de pagamento PIX
+        throw new UnsupportedOperationException("Método confirmarPagamentoPix ainda não implementado.");
     }
 }
