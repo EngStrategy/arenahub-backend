@@ -2,6 +2,8 @@ package com.engstrategy.arenahub_api.controller;
 
 import com.engstrategy.arenahub_api.dto.agendamento.AgendamentoCreateDTO;
 import com.engstrategy.arenahub_api.dto.agendamento.AgendamentoResponseDTO;
+import com.engstrategy.arenahub_api.dto.agendamento.ConfirmacaoPagamentoPixDTO;
+import com.engstrategy.arenahub_api.dto.agendamento.PixPagamentoResponseDTO;
 import com.engstrategy.arenahub_api.dto.avaliacao.AvaliacaoDTO;
 import com.engstrategy.arenahub_api.dto.avaliacao.AvaliacaoResponseDTO;
 import com.engstrategy.arenahub_api.jwt.CustomUserDetails;
@@ -12,6 +14,7 @@ import com.engstrategy.arenahub_api.model.enums.TipoAgendamento;
 import com.engstrategy.arenahub_api.service.AgendamentoFixoService;
 import com.engstrategy.arenahub_api.service.AgendamentoService;
 import com.engstrategy.arenahub_api.service.AvaliacaoService;
+import com.engstrategy.arenahub_api.util.PixUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -190,15 +193,55 @@ public class AgendamentoController {
         return ResponseEntity.ok(response);
     }
 
-//    @PostMapping("/criar-pagamento-pix")
-//    @Operation(summary = "Cria um agendamento provisório e gera os dados para pagamento com Pix", security = @SecurityRequirement(name = "bearerAuth"))
-//    public ResponseEntity<PixPagamentoResponseDTO> criarPagamentoPix(
-//            @RequestBody @Valid AgendamentoCreateDTO dto,
-//            @AuthenticationPrincipal CustomUserDetails userDetails) {
-//
-//        PixPagamentoResponseDTO response = agendamentoService.criarPagamentoPix(dto, userDetails.getUserId());
-//        return ResponseEntity.status(HttpStatus.CREATED).body(response);
-//    }
+    @PostMapping("/bloquear")
+    @Operation(summary = "Bloqueia slots por 15 minutos e gera dados PIX", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<PixPagamentoResponseDTO> bloquearAgendamento(
+            @RequestBody @Valid AgendamentoCreateDTO dto,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        Agendamento agendamento = agendamentoService.bloquearAgendamento(dto, userDetails.getUserId());
+        
+        try {
+            String chavePix = agendamento.getQuadra().getArena().getChavePix();
+            if (chavePix == null || chavePix.isBlank()) {
+                throw new IllegalArgumentException("Esta arena não possui chave PIX cadastrada.");
+            }
+
+            String payload = PixUtil.generatePayload(
+                    chavePix,
+                    agendamento.getQuadra().getArena().getNome(),
+                    agendamento.getQuadra().getArena().getEndereco().getCidade(),
+                    agendamento.getId().toString(),
+                    agendamento.getValorTotal()
+            );
+
+            String qrCodeBase64 = PixUtil.generateQrCodeBase64(payload);
+
+            PixPagamentoResponseDTO response = PixPagamentoResponseDTO.builder()
+                    .agendamentoId(agendamento.getId())
+                    .statusAgendamento(agendamento.getStatus().name())
+                    .qrCodeData(qrCodeBase64)
+                    .copiaECola(payload)
+                    .expiraEm(agendamento.getDataExpiracaoBloqueio().toString())
+                    .build();
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (Exception e) {
+            log.error("Erro ao gerar QR Code PIX: {}", e.getMessage());
+            throw new RuntimeException("Erro ao gerar QR Code PIX", e);
+        }
+    }
+
+    @PostMapping("/{id}/confirmar-pix")
+    @Operation(summary = "Informa que o pagamento PIX foi realizado", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<Map<String, String>> confirmarPagamentoPix(
+            @PathVariable Long id,
+            @RequestBody @Valid ConfirmacaoPagamentoPixDTO dto,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        agendamentoService.confirmarPagamentoPix(id, dto, userDetails.getUserId());
+        return ResponseEntity.ok(Map.of("message", "Informações de pagamento enviadas com sucesso!"));
+    }
 
     @GetMapping("/{agendamentoId}/status")
     @Operation(summary = "Verifica o status de um agendamento (para polling do frontend)", security = @SecurityRequirement(name = "bearerAuth"))

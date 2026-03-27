@@ -22,6 +22,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.*;
@@ -489,12 +490,15 @@ public class QuadraServiceImpl implements QuadraService {
                 continue;
             }
 
+            LocalDateTime agora = LocalDateTime.now();
+
             // 2. Verificar se já existe agendamento para este slot na data específica
             boolean jaAgendado = agendamentoRepository.existeConflito(
                     dataAgendamento,
                     quadraId,
                     slot.getHorarioInicio(),
-                    slot.getHorarioFim()
+                    slot.getHorarioFim(),
+                    agora
             );
 
             if (!jaAgendado) {

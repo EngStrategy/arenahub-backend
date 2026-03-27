@@ -43,4 +43,7 @@ public class AgendamentoResponseDTO {
     private boolean possuiSolicitacoes;
     private AvaliacaoDetalhesDTO avaliacao;
     private Boolean avaliacaoDispensada;
+    private String nomePagadorPix;
+    private String telefonePagadorPix;
+    private String dataExpiracaoBloqueio;
 }

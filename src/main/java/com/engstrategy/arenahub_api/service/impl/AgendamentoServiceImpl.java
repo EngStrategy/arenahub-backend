@@ -538,9 +538,9 @@ public class AgendamentoServiceImpl implements AgendamentoService {
                 throw new IllegalArgumentException("A forma de pagamento é obrigatória quando o status é PAGO.");
             }
             agendamento.setFormaPagamento(formaPagamento);
+            agendamento.setDataExpiracaoBloqueio(null);
         }
 
-        // Envio de email de cancelamento
         if (novoStatus == StatusAgendamento.CANCELADO) {
             if (agendamento.isPublico() && agendamento.getParticipantes() != null) {
                 for (Atleta participante : agendamento.getParticipantes()) {

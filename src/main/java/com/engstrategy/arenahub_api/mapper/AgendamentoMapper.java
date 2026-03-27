@@ -84,6 +84,9 @@ public class AgendamentoMapper {
                 .possuiSolicitacoes(agendamento.possuiSolicitacoes())
                 .avaliacao(avaliacaoDTO)
                 .avaliacaoDispensada(agendamento.getAvaliacaoDispensada())
+                .nomePagadorPix(agendamento.getNomePagadorPix())
+                .telefonePagadorPix(agendamento.getTelefonePagadorPix())
+                .dataExpiracaoBloqueio(agendamento.getDataExpiracaoBloqueio() != null ? agendamento.getDataExpiracaoBloqueio().toString() : null)
                 .build();
     }
 

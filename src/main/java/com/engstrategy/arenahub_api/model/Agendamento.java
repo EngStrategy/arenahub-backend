@@ -110,6 +110,15 @@ public class Agendamento {
     @Column(name = "asaas_payment_id")
     private String asaasPaymentId;
 
+    @Column(name = "nome_pagador_pix")
+    private String nomePagadorPix;
+
+    @Column(name = "telefone_pagador_pix")
+    private String telefonePagadorPix;
+
+    @Column(name = "data_expiracao_bloqueio")
+    private LocalDateTime dataExpiracaoBloqueio;
+
     // Métodos utilitários
     public LocalTime getHorarioInicio() {
         // Prioriza snapshot se disponível, senão calcula dos slots
