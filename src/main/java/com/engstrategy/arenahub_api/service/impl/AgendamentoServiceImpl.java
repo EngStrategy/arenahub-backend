@@ -540,15 +540,17 @@ public class AgendamentoServiceImpl implements AgendamentoService {
             agendamento.setFormaPagamento(formaPagamento);
         }
 
-        // Envio de email para os participantes
-        if (agendamento.isPublico() && agendamento.getParticipantes() != null) {
-            for (Atleta participante : agendamento.getParticipantes()) {
-                emailService.enviarEmailJogoCancelado(participante.getEmail(), participante.getNome(), agendamento);
+        // Envio de email de cancelamento
+        if (novoStatus == StatusAgendamento.CANCELADO) {
+            if (agendamento.isPublico() && agendamento.getParticipantes() != null) {
+                for (Atleta participante : agendamento.getParticipantes()) {
+                    emailService.enviarEmailJogoCancelado(participante.getEmail(), participante.getNome(), agendamento);
+                }
             }
-        }
 
-        emailService.enviarEmailJogoCancelado(agendamento.getAtleta().getEmail(), agendamento.getAtleta().getNome(),
-                agendamento);
+            emailService.enviarEmailJogoCancelado(agendamento.getAtleta().getEmail(), agendamento.getAtleta().getNome(),
+                    agendamento);
+        }
 
         agendamento.setStatus(novoStatus);
 
