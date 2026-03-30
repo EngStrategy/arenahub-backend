@@ -73,7 +73,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
             throw new IllegalArgumentException("Os horários selecionados devem ser subsequentes");
         }
 
-        // Verificar disponibilidade slots na data específica
+        // Verificar disponibilidade dos slots na data específica
         verificarDisponibilidadeSlotsParaData(slots, dto.getDataAgendamento(), dto.getQuadraId());
 
         // Recuperar atleta que deseja realizar o agendamento
@@ -221,86 +221,15 @@ public class AgendamentoServiceImpl implements AgendamentoService {
 
             if (jaAgendado) {
                 throw new IllegalArgumentException(
-                        String.format("%s às %s já está ocupado na data %s",
+                        String.format("Slot %d (%s às %s) já está ocupado na data %s",
+                                slot.getId(),
                                 slot.getHorarioInicio(),
                                 slot.getHorarioFim(),
-                                dataAgendamento.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
-                        )
+                                dataAgendamento)
                 );
             }
         }
     }
-
-    @Override
-    @Transactional
-    public Agendamento bloquearAgendamento(AgendamentoCreateDTO dto, UUID atletaId) {
-        log.info("Bloqueando slots para atleta ID: {} na data: {} por 15 minutos",
-                atletaId, dto.getDataAgendamento());
-
-        validarRegrasNegocio(dto);
-        validarDataAgendamento(dto.getDataAgendamento());
-        Set<SlotHorario> slots = buscarEValidarSlots(dto.getSlotHorarioIds());
-
-        if (!slotHorarioService.saoSlotsSubsequentes(dto.getSlotHorarioIds())) {
-            throw new IllegalArgumentException("Os horários selecionados devem ser subsequentes");
-        }
-
-        verificarDisponibilidadeSlotsParaData(slots, dto.getDataAgendamento(), dto.getQuadraId());
-
-        Atleta atleta = atletaRepository.findById(atletaId)
-                .orElseThrow(() -> new EntityNotFoundException("Atleta não encontrado"));
-
-        Quadra quadra = quadraRepository.findById(dto.getQuadraId())
-                .orElseThrow(() -> new EntityNotFoundException("Quadra não encontrada"));
-
-        validarStatusAssinaturaDaArena(quadra);
-
-        Agendamento agendamento = agendamentoMapper.fromCreateToAgendamento(dto, slots, atleta);
-        agendamento.setStatus(StatusAgendamento.BLOQUEADO);
-        agendamento.setDataExpiracaoBloqueio(LocalDateTime.now(fusoHorarioPadrao).plusMinutes(15));
-        agendamento.criarSnapshot();
-
-        Agendamento salvo = agendamentoRepository.save(agendamento);
-        
-        // Força o carregamento da Arena e dos Slots dentro da transação
-        if (salvo.getQuadra() != null && salvo.getQuadra().getArena() != null) {
-            salvo.getQuadra().getArena().getId();
-        }
-        if (salvo.getSlotsHorario() != null) {
-            salvo.getSlotsHorario().size(); // Inicializa a coleção
-        }
-        
-        return salvo;
-    }
-
-    @Override
-    @Transactional
-    public void confirmarPagamentoPix(Long agendamentoId, ConfirmacaoPagamentoPixDTO dto, UUID atletaId) {
-        log.info("Confirmando realização de pagamento PIX para agendamento ID: {}", agendamentoId);
-
-        Agendamento agendamento = agendamentoRepository.findByIdWithArena(agendamentoId)
-                .orElseThrow(() -> new EntityNotFoundException("Agendamento não encontrado"));
-
-        if (!agendamento.getAtleta().getId().equals(atletaId)) {
-            throw new AccessDeniedException("Você não tem permissão para confirmar este pagamento.");
-        }
-
-        if (agendamento.getStatus() != StatusAgendamento.BLOQUEADO && agendamento.getStatus() != StatusAgendamento.PENDENTE) {
-            throw new IllegalStateException("O agendamento não está em um status que permite confirmação de pagamento.");
-        }
-
-        agendamento.setNomePagadorPix(dto.getNomeCompleto());
-        agendamento.setTelefonePagadorPix(dto.getTelefone());
-        agendamento.setStatus(StatusAgendamento.AGUARDANDO_CONFIRMACAO);
-        agendamento.setDataExpiracaoBloqueio(null);
-
-        Agendamento salvo = agendamentoRepository.save(agendamento);
-
-        // Notificar arena por email
-        Arena arena = salvo.getQuadra().getArena();
-        emailService.enviarEmailConfirmacaoPagamentoPix(arena.getEmail(), arena.getNome(), salvo);
-    }
-
 
     @Override
     @Transactional(readOnly = true)
@@ -345,32 +274,30 @@ public class AgendamentoServiceImpl implements AgendamentoService {
             isFixoFiltro = Boolean.FALSE;
         }
 
-        List<StatusAgendamento> statusesParaFiltrar = new ArrayList<>();
+        // 2. Determina a lista de Status Ativos/Histórico
+        List<StatusAgendamento> statusesParaFiltrar;
 
         if (status == StatusAgendamento.FINALIZADO) {
             // Histórico
-            statusesParaFiltrar.addAll(Arrays.asList(StatusAgendamento.CANCELADO, StatusAgendamento.PAGO, StatusAgendamento.AUSENTE));
+            statusesParaFiltrar = Arrays.asList(StatusAgendamento.CANCELADO, StatusAgendamento.PAGO, StatusAgendamento.AUSENTE);
 
         } else if (status != null) {
             // Status específico
-            statusesParaFiltrar.add(status);
+            statusesParaFiltrar = List.of(status);
 
         } else {
-            // Padrão: Ativos
-            statusesParaFiltrar.add(StatusAgendamento.PENDENTE);
-            statusesParaFiltrar.add(StatusAgendamento.AGUARDANDO_PAGAMENTO);
-            statusesParaFiltrar.add(StatusAgendamento.AGUARDANDO_CONFIRMACAO);
-
-            if (dataInicio != null && dataInicio.isAfter(LocalDate.now(fusoHorarioPadrao))) {
-                statusesParaFiltrar.add(StatusAgendamento.PAGO);
-            }
+            // Padrão: Ativos (PENDENTE, PAGO, AGUARDANDO_PAGAMENTO, etc.)
+            statusesParaFiltrar = Arrays.asList(
+                    StatusAgendamento.PENDENTE,
+                    StatusAgendamento.AGUARDANDO_PAGAMENTO,
+                    StatusAgendamento.PAGO
+            );
         }
 
         // 3. Ajuste de data para Ativos (mostrar do futuro em diante)
-//        if (status == null) {
-//            dataInicio = dataInicio == null ? LocalDate.now() : dataInicio;
-//        }
-
+        if (status == null) {
+            dataInicio = dataInicio == null ? LocalDate.now() : dataInicio;
+        }
 
         // 4. Converte para List<String> para o Repositório (se usarmos Native Query)
         List<String> statusesComoString = statusesParaFiltrar.stream()
@@ -587,7 +514,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
 
     @Override
     @Transactional
-    public Agendamento atualizarStatus(Long agendamentoId, UUID arenaId, StatusAgendamento novoStatus) {
+    public Agendamento atualizarStatus(Long agendamentoId, UUID arenaId, StatusAgendamento novoStatus, FormaPagamentoAgendamento formaPagamento) {
         log.info("Atualizando status do agendamento ID: {} para {}", agendamentoId, novoStatus);
 
         Agendamento agendamento = agendamentoRepository.findById(agendamentoId)
@@ -608,18 +535,21 @@ public class AgendamentoServiceImpl implements AgendamentoService {
             throw new IllegalArgumentException("A arena só pode alterar o status para PAGO, AUSENTE ou CANCELADO.");
         }
 
-        // Se estiver confirmando o pagamento, remove o bloqueio se existir
         if (novoStatus == StatusAgendamento.PAGO) {
+            if (formaPagamento == null) {
+                throw new IllegalArgumentException("A forma de pagamento é obrigatória quando o status é PAGO.");
+            }
+            agendamento.setFormaPagamento(formaPagamento);
             agendamento.setDataExpiracaoBloqueio(null);
         }
 
-        // Envio de email para os participantes
         if (novoStatus == StatusAgendamento.CANCELADO) {
             if (agendamento.isPublico() && agendamento.getParticipantes() != null) {
                 for (Atleta participante : agendamento.getParticipantes()) {
                     emailService.enviarEmailJogoCancelado(participante.getEmail(), participante.getNome(), agendamento);
                 }
             }
+
             emailService.enviarEmailJogoCancelado(agendamento.getAtleta().getEmail(), agendamento.getAtleta().getNome(),
                     agendamento);
         }
@@ -754,8 +684,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
             statusesParaFiltrar = Arrays.asList(
                     StatusAgendamento.PENDENTE,
                     StatusAgendamento.AGUARDANDO_PAGAMENTO,
-                    StatusAgendamento.PAGO,
-                    StatusAgendamento.AGUARDANDO_CONFIRMACAO
+                    StatusAgendamento.PAGO
             );
         }
 
@@ -923,7 +852,6 @@ public class AgendamentoServiceImpl implements AgendamentoService {
 //    }
 
     private LocalDate calcularDataFim(LocalDate dataInicio, PeriodoAgendamento periodo) {
-        if (dataInicio == null) return null;
         return switch (periodo) {
             case UM_MES -> dataInicio.plusMonths(1);
             case TRES_MESES -> dataInicio.plusMonths(3);
@@ -933,7 +861,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
     }
 
     private int getMultiplier(LocalDate dataInicio, PeriodoAgendamento periodo) {
-        if (periodo == null || dataInicio == null) return 1;
+        if (periodo == null) return 1;
 
         LocalDate dataLimite = calcularDataFim(dataInicio, periodo);
 
@@ -947,5 +875,75 @@ public class AgendamentoServiceImpl implements AgendamentoService {
 
         // Valor total de TODAS as ocorrências (base + futuras).
         return 1 + contador;
+    }
+
+    @Override
+    @Transactional
+    public Agendamento bloquearAgendamento(AgendamentoCreateDTO dto, UUID atletaId) {
+        log.info("Bloqueando slots para atleta ID: {} na data: {} por 15 minutos",
+            atletaId, dto.getDataAgendamento());
+
+        validarRegrasNegocio(dto);
+        validarDataAgendamento(dto.getDataAgendamento());
+        Set<SlotHorario> slots = buscarEValidarSlots(dto.getSlotHorarioIds());
+
+        if (!slotHorarioService.saoSlotsSubsequentes(dto.getSlotHorarioIds())) {
+            throw new IllegalArgumentException("Os horários selecionados devem ser subsequentes");
+        }
+
+        verificarDisponibilidadeSlotsParaData(slots, dto.getDataAgendamento(), dto.getQuadraId());
+
+        Atleta atleta = atletaRepository.findById(atletaId)
+            .orElseThrow(() -> new EntityNotFoundException("Atleta não encontrado"));
+
+        Quadra quadra = quadraRepository.findById(dto.getQuadraId())
+            .orElseThrow(() -> new EntityNotFoundException("Quadra não encontrada"));
+
+        validarStatusAssinaturaDaArena(quadra);
+
+        Agendamento agendamento = agendamentoMapper.fromCreateToAgendamento(dto, slots, atleta);
+        agendamento.setStatus(StatusAgendamento.BLOQUEADO);
+        agendamento.setDataExpiracaoBloqueio(LocalDateTime.now(fusoHorarioPadrao).plusMinutes(15));
+        agendamento.criarSnapshot();
+
+        Agendamento salvo = agendamentoRepository.save(agendamento);
+
+        // Força o carregamento da Arena e dos Slots dentro da transação
+        if (salvo.getQuadra() != null && salvo.getQuadra().getArena() != null) {
+            salvo.getQuadra().getArena().getId();
+        }
+        if (salvo.getSlotsHorario() != null) {
+            salvo.getSlotsHorario().size(); // Inicializa a coleção
+        }
+
+        return salvo;
+    }
+
+    @Override
+    @Transactional
+    public void confirmarPagamentoPix(Long agendamentoId, ConfirmacaoPagamentoPixDTO dto, UUID atletaId) {
+        log.info("Confirmando realização de pagamento PIX para agendamento ID: {}", agendamentoId);
+
+        Agendamento agendamento = agendamentoRepository.findByIdWithArena(agendamentoId)
+            .orElseThrow(() -> new EntityNotFoundException("Agendamento não encontrado"));
+
+        if (!agendamento.getAtleta().getId().equals(atletaId)) {
+            throw new AccessDeniedException("Você não tem permissão para confirmar este pagamento.");
+        }
+
+        if (agendamento.getStatus() != StatusAgendamento.BLOQUEADO && agendamento.getStatus() != StatusAgendamento.PENDENTE) {
+            throw new IllegalStateException("O agendamento não está em um status que permite confirmação de pagamento.");
+        }
+
+        agendamento.setNomePagadorPix(dto.getNomeCompleto());
+        agendamento.setTelefonePagadorPix(dto.getTelefone());
+        agendamento.setStatus(StatusAgendamento.AGUARDANDO_CONFIRMACAO);
+        agendamento.setDataExpiracaoBloqueio(null);
+
+        Agendamento salvo = agendamentoRepository.save(agendamento);
+
+        // Notificar arena por email
+        Arena arena = salvo.getQuadra().getArena();
+        emailService.enviarEmailConfirmacaoPagamentoPix(arena.getEmail(), arena.getNome(), salvo);
     }
 }
