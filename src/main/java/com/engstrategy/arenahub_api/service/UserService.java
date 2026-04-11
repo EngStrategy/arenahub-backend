@@ -12,4 +12,5 @@ public interface UserService extends UserDetailsService {
     boolean existsByTelefone(String telefone);
     Usuario findUserByEmail(String email);
     Usuario findUserById(UUID id, Role role);
+    void deleteAccount(String password, Usuario currentUsuario);
 }

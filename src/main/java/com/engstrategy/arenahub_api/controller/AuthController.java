@@ -1,10 +1,13 @@
 package com.engstrategy.arenahub_api.controller;
 
 import com.engstrategy.arenahub_api.dto.usuario.AuthResponse;
+import com.engstrategy.arenahub_api.dto.usuario.DeleteAccountRequestDTO;
 import com.engstrategy.arenahub_api.dto.usuario.LoginRequest;
 import com.engstrategy.arenahub_api.exceptions.InvalidCredentialsException;
 import com.engstrategy.arenahub_api.exceptions.UserNotFoundException;
 import com.engstrategy.arenahub_api.jwt.CustomUserDetails;
+import com.engstrategy.arenahub_api.model.Usuario;
+import com.engstrategy.arenahub_api.service.UserService;
 import com.engstrategy.arenahub_api.service.impl.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -28,6 +31,7 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final UserService userService;
 
     @PostMapping("/auth")
     @Operation(summary = "Autenticar usuário",
@@ -64,6 +68,33 @@ public class AuthController {
         AuthResponse userResponse = authService.findById(userDetails.getUserId(), userDetails.getRole());
 
         return ResponseEntity.ok(userResponse);
+    }
+
+    @DeleteMapping("/delete-account")
+    @Operation(summary = "Excluir conta do usuário",
+            description = "Inativa e anonimiza os dados do usuário. Exige confirmação de senha.",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Conta excluída com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Senha incorreta ou não autenticado"),
+            @ApiResponse(responseCode = "404", description = "Usuário não encontrado")
+    })
+    public ResponseEntity<Void> deleteAccount(
+            @Valid @RequestBody DeleteAccountRequestDTO deleteRequest,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        if (userDetails == null) {
+            throw new UserNotFoundException("Nenhum usuário autenticado encontrado.");
+        }
+
+        Usuario usuario = userService.findUserById(userDetails.getUserId(), userDetails.getRole());
+        if (usuario == null) {
+            throw new UserNotFoundException("Usuário não encontrado.");
+        }
+
+        userService.deleteAccount(deleteRequest.getPassword(), usuario);
+
+        return ResponseEntity.noContent().build();
     }
 }
 
